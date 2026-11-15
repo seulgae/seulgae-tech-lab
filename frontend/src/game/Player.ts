@@ -31,7 +31,12 @@ export default class Player extends Phaser.GameObjects.Rectangle {
     }
   }
 
-  update() {
+  update(movementEnabled = true) {
+    if (!movementEnabled) {
+      this.body.setVelocity(0, 0)
+      return
+    }
+
     const left = this.cursors.left.isDown || this.wasd.left.isDown
     const right = this.cursors.right.isDown || this.wasd.right.isDown
     const up = this.cursors.up.isDown || this.wasd.up.isDown
