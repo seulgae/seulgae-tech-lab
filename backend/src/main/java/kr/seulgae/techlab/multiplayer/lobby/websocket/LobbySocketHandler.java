@@ -37,7 +37,8 @@ public class LobbySocketHandler extends TextWebSocketHandler {
         final AtomicBoolean sending = new AtomicBoolean();
         final ArrayBlockingQueue<WebSocketMessage<?>> controls = new ArrayBlockingQueue<>(16);
         final AtomicReference<WebSocketMessage<?>> latestState = new AtomicReference<>();
-        volatile long lastSeen = System.nanoTime(), lastPing;
+        final AtomicReference<CloseStatus> closing = new AtomicReference<>();
+        volatile long lastSeen = System.nanoTime(), lastPing = lastSeen;
         long windowStart = System.nanoTime();
         int messages;
         Peer(WebSocketSession socket, String playerId) { this.socket = socket; this.playerId = playerId; }
@@ -139,6 +140,7 @@ public class LobbySocketHandler extends TextWebSocketHandler {
     }
 
     private void dispatch(String id, Peer peer, WebSocketMessage<?> message, boolean reliable) {
+        if (peers.get(id) != peer) return;
         if (reliable) {
             if (!peer.controls.offer(message)) { disconnect(id, CloseStatus.SESSION_NOT_RELIABLE); return; }
         } else peer.latestState.set(message);
@@ -151,7 +153,13 @@ public class LobbySocketHandler extends TextWebSocketHandler {
         try {
             senders.execute(() -> {
                 try {
-                    while (peer.socket.isOpen()) {
+                    while (true) {
+                        var closeStatus = peer.closing.getAndSet(null);
+                        if (closeStatus != null) {
+                            if (peer.socket.isOpen()) peer.socket.close(closeStatus);
+                            break;
+                        }
+                        if (!peer.socket.isOpen() || peers.get(id) != peer) break;
                         var message = peer.controls.poll();
                         if (message == null) message = peer.latestState.getAndSet(null);
                         if (message == null) break;
@@ -161,7 +169,7 @@ public class LobbySocketHandler extends TextWebSocketHandler {
                 catch (Exception exception) { disconnect(id, CloseStatus.SESSION_NOT_RELIABLE); }
                 finally {
                     peer.sending.set(false);
-                    if (peers.get(id) == peer && (!peer.controls.isEmpty() || peer.latestState.get() != null)) drain(id, peer);
+                    if (peer.closing.get() != null || peers.get(id) == peer && (!peer.controls.isEmpty() || peer.latestState.get() != null)) drain(id, peer);
                 }
             });
         } catch (java.util.concurrent.RejectedExecutionException exception) { peer.sending.set(false); }
@@ -171,8 +179,16 @@ public class LobbySocketHandler extends TextWebSocketHandler {
         var peer = peers.remove(id);
         if (peer == null) return;
         room.leave(peer.playerId);
-        // 이미 끊긴 소켓의 close 실패와 관계없이 메모리 상태는 먼저 제거한다.
-        try { if (peer.socket.isOpen()) peer.socket.close(status); } catch (IOException ignored) { }
+        peer.controls.clear();
+        peer.latestState.set(null);
+        // 정상적인 종료 프레임은 진행 중인 송신이 끝난 뒤 같은 작업자에서 전송한다.
+        // 느리거나 손상된 연결은 송신 완료를 기다리지 않고 즉시 정리한다.
+        if (CloseStatus.SESSION_NOT_RELIABLE.equals(status)) {
+            try { if (peer.socket.isOpen()) peer.socket.close(status); } catch (IOException ignored) { }
+        } else {
+            peer.closing.set(status);
+            drain(id, peer);
+        }
         broadcast(Map.of("type", "left", "id", peer.playerId));
     }
 
@@ -182,6 +198,6 @@ public class LobbySocketHandler extends TextWebSocketHandler {
     @PreDestroy
     public void stop() {
         peers.keySet().forEach(id -> disconnect(id, CloseStatus.GOING_AWAY));
-        senders.shutdownNow();
+        senders.shutdown();
     }
 }

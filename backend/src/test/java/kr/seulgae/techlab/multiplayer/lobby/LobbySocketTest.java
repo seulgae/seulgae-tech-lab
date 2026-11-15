@@ -98,7 +98,7 @@ class LobbySocketTest {
         assertNotEquals(firstId, rejoined.type("welcome").get("selfId").stringValue());
     }
 
-    @Test void rejectsUnexpectedCoordinatesAndReplay() throws Exception {
+    @org.junit.jupiter.api.RepeatedTest(10) void rejectsUnexpectedCoordinatesAndReplay() throws Exception {
         for (String input : List.of(
             "{\"type\":\"input\",\"x\":1,\"y\":0,\"seq\":1,\"position\":99999}",
             "{\"type\":\"input\",\"x\":2,\"y\":0,\"seq\":1}",
@@ -106,6 +106,9 @@ class LobbySocketTest {
             "{\"type\":\"input\",\"x\":0,\"y\":0,\"seq\":0}")) {
             var client = connect(""); client.type("welcome");
             client.send("{\"type\":\"input\",\"x\":0,\"y\":0,\"seq\":0}");
+            // 첫 입력 수신을 확인해 접속 등록과 재전송 검증의 실행 순서를 고정한다.
+            client.await(frame -> frame.path("type").stringValue("").equals("state")
+                && frame.get("players").get(0).get("ack").asLong() == 0);
             client.send(input);
             assertEquals(1008, client.closed.get(3, TimeUnit.SECONDS));
         }
