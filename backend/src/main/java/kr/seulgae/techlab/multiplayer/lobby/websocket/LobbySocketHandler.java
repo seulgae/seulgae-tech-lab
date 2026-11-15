@@ -34,8 +34,15 @@ import tools.jackson.databind.json.JsonMapper;
 public class LobbySocketHandler extends TextWebSocketHandler {
     private static final Logger LOG = LoggerFactory.getLogger(LobbySocketHandler.class);
     private static final Set<String> INPUT_FIELDS = Set.of("type", "x", "y", "seq");
+    private static final Set<String> GREET_FIELDS = Set.of("type", "targetPlayerId");
     private static final double INPUTS_PER_SECOND = 40;
     private static final double INPUT_BURST_CAPACITY = 80;
+    /**
+     * 연결별 송신 큐와 입력 제한·진단 정보를 보관한다.
+     * @author seulgae
+     * @version 1.0, 로비 연결 수명과 제한 상태
+     * @see "None"
+     */
     private static final class Peer {
         final WebSocketSession socket;
         final String playerId;
@@ -46,6 +53,7 @@ public class LobbySocketHandler extends TextWebSocketHandler {
         volatile long lastSeen = System.nanoTime(), lastPing = lastSeen;
         final long connectedAt = System.nanoTime();
         long replenishedAt = connectedAt, receivedInputs;
+        long ignoredInputs;
         double inputTokens = INPUT_BURST_CAPACITY;
         Peer(WebSocketSession socket, String playerId) { this.socket = socket; this.playerId = playerId; }
         synchronized boolean allow(long now) {
@@ -89,7 +97,7 @@ public class LobbySocketHandler extends TextWebSocketHandler {
         }
         var socket = new ConcurrentWebSocketSessionDecorator(session, 1000, 8192);
         try {
-            socket.sendMessage(new TextMessage(json.writeValueAsString(Map.of("type", "welcome", "selfId", player.id(), "players", room.snapshot(), "maxPlayers", LobbyRoom.MAX_PLAYERS))));
+            socket.sendMessage(new TextMessage(json.writeValueAsString(Map.of("type", "welcome", "selfId", player.id(), "players", room.snapshot(), "maxPlayers", LobbyRoom.MAX_PLAYERS, "protocolVersion", 2))));
             peers.put(session.getId(), new Peer(socket, player.id()));
             broadcast(Map.of("type", "joined", "player", player));
         } catch (Exception exception) {
@@ -112,16 +120,39 @@ public class LobbySocketHandler extends TextWebSocketHandler {
                 peer.playerId, peer.receivedInputs, (now - peer.connectedAt) / 1_000_000);
             disconnect(session.getId(), CloseStatus.POLICY_VIOLATION.withReason("Input rate exceeded")); return;
         }
+        String rejection = "Invalid input: JSON";
         try {
             var input = json.readTree(message.getPayload());
-            if (!input.isObject() || !Set.copyOf(input.propertyNames()).equals(INPUT_FIELDS) || !input.get("type").isString()
-                || !input.get("type").stringValue().equals("input") || !input.get("x").isInt() || !input.get("y").isInt()
-                || !input.get("seq").isIntegralNumber() || !room.input(peer.playerId, input.get("x").asInt(), input.get("y").asInt(), input.get("seq").asLong(), now)) {
+            if (input.isObject() && input.path("type").stringValue("").equals("greet")) {
+                rejection = "Invalid greet: fields";
+                if (!Set.copyOf(input.propertyNames()).equals(GREET_FIELDS) || !input.get("targetPlayerId").isString()
+                    || !input.get("targetPlayerId").stringValue().matches("[a-f0-9-]{36}")) throw new IllegalArgumentException("Invalid greeting");
+                var greeting = room.greet(peer.playerId, input.get("targetPlayerId").stringValue(), now);
+                if (greeting != null) broadcast(greeting);
+                peer.lastSeen = now;
+                return;
+            }
+            rejection = "Invalid input: fields";
+            if (!input.isObject() || !Set.copyOf(input.propertyNames()).equals(INPUT_FIELDS)
+                || !input.get("type").isString() || !input.get("type").stringValue().equals("input")) throw new IllegalArgumentException();
+            rejection = "Invalid input: axes";
+            if (!input.get("x").isInt() || !input.get("y").isInt()
+                || Math.abs((long) input.get("x").asInt()) > 1 || Math.abs((long) input.get("y").asInt()) > 1) throw new IllegalArgumentException();
+            rejection = "Invalid input: sequence";
+            if (!input.get("seq").isIntegralNumber() || !input.get("seq").canConvertToLong()
+                || input.get("seq").asLong() < 0 || input.get("seq").asLong() > 9_007_199_254_740_991L) {
                 throw new IllegalArgumentException("Invalid input");
+            }
+            // 오래되거나 중복된 입력은 위치에 적용하지 않는다. 재전송만으로 연결을 끊지는 않는다.
+            if (!room.input(peer.playerId, input.get("x").asInt(), input.get("y").asInt(), input.get("seq").asLong(), now)) {
+                if (++peer.ignoredInputs == 1) LOG.warn("Lobby stale input ignored: player={}, seq={}", peer.playerId, input.get("seq").asLong());
+                return;
             }
             peer.lastSeen = now;
         } catch (RuntimeException exception) {
-            disconnect(session.getId(), CloseStatus.POLICY_VIOLATION.withReason("Invalid input"));
+            LOG.warn("Lobby input rejected: player={}, validation={}, receivedInputs={}, connectedMs={}",
+                peer.playerId, rejection, peer.receivedInputs, (now - peer.connectedAt) / 1_000_000);
+            disconnect(session.getId(), CloseStatus.POLICY_VIOLATION.withReason(rejection));
         }
     }
 
@@ -151,7 +182,7 @@ public class LobbySocketHandler extends TextWebSocketHandler {
 
     private void broadcast(Object payload) {
         var message = new TextMessage(json.writeValueAsString(payload));
-        boolean reliable = !"state".equals(((Map<?, ?>) payload).get("type"));
+        boolean reliable = !(payload instanceof Map<?, ?> map && "state".equals(map.get("type")));
         peers.forEach((id, peer) -> dispatch(id, peer, message, reliable));
     }
 

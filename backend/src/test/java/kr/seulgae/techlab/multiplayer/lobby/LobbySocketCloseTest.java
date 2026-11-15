@@ -67,7 +67,7 @@ class LobbySocketCloseTest {
             releaseWrite.countDown();
             assertTrue(closed.await(2, TimeUnit.SECONDS));
             assertFalse(overlap.get(), "종료 프레임과 데이터 프레임을 동시에 송신하면 안 된다");
-            verify(session).close(CloseStatus.POLICY_VIOLATION.withReason("Invalid input"));
+            verify(session).close(CloseStatus.POLICY_VIOLATION.withReason("Invalid input: axes"));
         } finally {
             releaseWrite.countDown();
             handler.stop();

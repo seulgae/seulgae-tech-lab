@@ -2,7 +2,7 @@ import Phaser from 'phaser'
 import Player from '../Player'
 import createLobbyMap, { COMPUTER } from '../LobbyMap'
 import { RESEARCH_EVENTS } from '../../features/research/researchEvents'
-import { isNearObject } from '../interaction'
+import { isNearObject, hasTextInputFocus } from '../interaction'
 import { createPixelAssets } from '../assets/pixelAssets'
 import LobbyMultiplayer from '../multiplayer/LobbyMultiplayer'
 import { SPAWN } from '../maps/lobbyLayout'
@@ -54,7 +54,7 @@ export default class LabLobbyScene extends Phaser.Scene {
     this.interactionHint = this.add.text(COMPUTER.x, COMPUTER.y - 102, 'E  ·  연구 기록', {
       fontFamily: 'monospace', fontSize: '14px', color: '#fff2d2',
       backgroundColor: '#243f43', padding: { x: 12, y: 8 },
-    }).setOrigin(0.5).setDepth(1000).setVisible(false)
+    }).setOrigin(0.5).setResolution(2).setDepth(1000).setVisible(false)
 
     this.uiEvents.on(RESEARCH_EVENTS.closeResearch, this.closeResearch)
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -67,15 +67,21 @@ export default class LabLobbyScene extends Phaser.Scene {
   update(_time = 0, delta = 16.67) {
     if (!this.player) return
 
-    this.player.update(!this.researchOpen)
+    const textFocused = hasTextInputFocus()
+    this.player.update(!this.researchOpen && !textFocused)
     this.multiplayer?.update(delta)
     const nearby = isNearObject(this.player.x, this.player.y, COMPUTER, 56)
-    this.interactionHint?.setVisible(nearby && !this.researchOpen)
-    this.computerHighlight?.setVisible(nearby && !this.researchOpen)
+    const target = nearby ? null : this.multiplayer?.nearestGreetingTarget()
+    const enabled = !this.researchOpen && !textFocused
+    this.interactionHint?.setText(nearby ? 'E  ·  연구 기록' : target ? `E · 인사하기 (${target.nickname})` : '')
+      .setPosition(nearby ? COMPUTER.x : this.player.x, nearby ? COMPUTER.y - 102 : this.player.y - 105)
+      .setVisible(enabled && (nearby || !!target))
+    this.computerHighlight?.setVisible(nearby && enabled)
 
     // 범위 밖과 패널 표시 중에도 소비해, 누르고 있던 E가 나중에 실행되지 않게 한다.
     const pressed = this.interactKey && Phaser.Input.Keyboard.JustDown(this.interactKey)
-    if (pressed && nearby && !this.researchOpen) {
+    if (pressed && enabled && target) this.multiplayer?.greet(target.id)
+    else if (pressed && nearby && enabled) {
       this.researchOpen = true
       this.player.update(false)
       this.multiplayer?.stopInput()

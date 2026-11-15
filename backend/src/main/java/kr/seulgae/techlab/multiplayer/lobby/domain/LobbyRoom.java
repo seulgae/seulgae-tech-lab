@@ -15,6 +15,15 @@ import org.springframework.stereotype.Component;
 @Component
 public class LobbyRoom {
     public static final int MAX_PLAYERS = 5;
+    public static final int GREET_RANGE = 80;
+    public static final int GREET_DURATION_MS = 3000;
+    /**
+     * 서버가 검증한 고정 인사 이벤트이다. 자유 입력 메시지는 받지 않는다.
+     * @author seulgae
+     * @version 1.0, 인사 방송 데이터
+     * @see "None"
+     */
+    public record Greeting(String type, String eventId, String playerId, String targetPlayerId, String message, int durationMs) {}
     /**
      * 스냅샷에 포함할 서버 기준 플레이어 상태이다.
      *
@@ -23,11 +32,18 @@ public class LobbyRoom {
      * @see "None"
      */
     public record PlayerView(String id, String nickname, double x, double y, String facing, boolean moving, long ack) {}
+    /**
+     * 서버 내부에서만 수정하는 방문자의 입력·위치·인사 쿨다운 상태이다.
+     * @author seulgae
+     * @version 1.0, 단일 방문자 상태 관리
+     * @see "None"
+     */
     private static final class Member {
         String id, nickname, facing = "down";
         double x, y;
         int inputX, inputY;
         long sequence = -1, inputAt;
+        long lastGreeting = Long.MIN_VALUE;
         boolean moving;
         PlayerView view() { return new PlayerView(id, nickname, x, y, facing, moving, sequence); }
     }
@@ -106,6 +122,23 @@ public class LobbyRoom {
 
     /** @return 내부 가변 객체를 노출하지 않는 현재 접속자 상태 목록 */
     public synchronized List<PlayerView> snapshot() { return members.values().stream().map(Member::view).toList(); }
+
+    /**
+     * 같은 로비의 가까운 상대에게만 3초 간격으로 고정 인사를 허용한다.
+     * @param id 요청 세션의 플레이어 ID
+     * @param targetId 대상 플레이어 ID
+     * @param now 서버 단조 시각
+     * @return 유효한 인사 또는 거절 시 null
+     */
+    public synchronized Greeting greet(String id, String targetId, long now) {
+        var sender = members.get(id);
+        var target = members.get(targetId);
+        if (sender == null || target == null || id.equals(targetId)
+            || Math.hypot(sender.x - target.x, sender.y - target.y) > GREET_RANGE
+            || sender.lastGreeting != Long.MIN_VALUE && now - sender.lastGreeting < 3_000_000_000L) return null;
+        sender.lastGreeting = now;
+        return new Greeting("player_greeted", UUID.randomUUID().toString(), id, targetId, "하이! 👋", GREET_DURATION_MS);
+    }
     /**
      * 연결이 종료된 방문자를 제거한다.
      * @param id 제거할 방문자 식별자

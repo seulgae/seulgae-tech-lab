@@ -16,6 +16,24 @@ class LobbyRoomTest {
     private final LobbyWorld world = new LobbyWorld();
     private final LobbyRoom room = new LobbyRoom(world);
 
+    /** 거리·본인·퇴장·쿨다운 검증에 클라이언트 좌표나 문구를 사용하지 않는다. */
+    @Test void validatesGreetingDistanceMembershipAndCooldown() {
+        var a = room.join(null); var b = room.join(null);
+        long now = 1_000_000_000L;
+        assertNull(room.greet(a.id(), b.id(), now));
+        assertNull(room.greet(a.id(), a.id(), now));
+        room.input(a.id(), 1, 0, 1, now);
+        room.step(0.1, now + 100_000_000L); room.step(0.1, now + 200_000_000L);
+        var event = room.greet(a.id(), b.id(), now + 200_000_000L);
+        assertNotNull(event); assertEquals("하이! 👋", event.message());
+        assertNull(room.greet(a.id(), b.id(), now + 2_000_000_000L));
+        assertNotNull(room.greet(a.id(), b.id(), now + 3_200_000_000L));
+        assertNotNull(room.greet(b.id(), a.id(), now + 3_200_000_000L));
+        room.leave(b.id());
+        assertNull(room.greet(a.id(), b.id(), now + 8_000_000_000L));
+        assertNull(room.greet(b.id(), a.id(), now + 8_000_000_000L));
+    }
+
     @Test void validatesNamesCapacityAndUniqueIdentities() {
         var first = room.join("연구원");
         var second = room.join("연구원");

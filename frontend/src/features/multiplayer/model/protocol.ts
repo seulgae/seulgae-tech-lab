@@ -2,8 +2,11 @@ export type Facing = 'down' | 'up' | 'left' | 'right'
 export type MoveInput = { x: number; y: number }
 export type PlayerState = { id: string; nickname: string; x: number; y: number; facing: Facing; moving: boolean; ack: number }
 export type ConnectionInfo = { phase: 'connecting' | 'online' | 'reconnecting'; nickname: string; online: number; maxPlayers: number; message: string }
+export type Greeting = { type: 'player_greeted'; eventId: string; playerId: string; targetPlayerId: string; message: '하이! 👋'; durationMs: 3000 }
+export const GREET_RANGE = 80
 export type ServerMessage =
-  | { type: 'welcome'; selfId: string; players: PlayerState[]; maxPlayers: number }
+  | Greeting
+  | { type: 'welcome'; selfId: string; players: PlayerState[]; maxPlayers: number; protocolVersion?: number }
   | { type: 'state'; tick: number; players: PlayerState[] }
   | { type: 'joined'; player: PlayerState }
   | { type: 'left'; id: string }
@@ -28,6 +31,9 @@ export function parseServerMessage(raw: string): ServerMessage {
   if (!message || typeof message !== 'object') throw new Error('Invalid frame')
   if (message.type === 'joined' && validPlayer(message.player)) return message
   if (message.type === 'left' && validId(message.id)) return message
+  if (message.type === 'player_greeted' && validId(message.eventId) && validId(message.playerId)
+    && validId(message.targetPlayerId) && message.playerId !== message.targetPlayerId
+    && message.message === '하이! 👋' && message.durationMs === 3000) return message
   const players = message.players
   if (!Array.isArray(players) || players.length > 5 || !players.every(validPlayer) || new Set(players.map(p => p.id)).size !== players.length) throw new Error('Invalid players')
   if (message.type === 'welcome' && validId(message.selfId) && players.some(p => p.id === message.selfId) && message.maxPlayers === 5) return message
