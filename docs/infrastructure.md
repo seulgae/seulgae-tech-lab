@@ -1,6 +1,6 @@
 # 9단계 — 기존 Ubuntu 서버 재활용
 
-2026-11-15 KST. 이 단계는 인프라와 배포 기반만 구성한다. 연구 기록 API와 게임 확장은 포함하지 않는다.
+2026-11-15 KST. 최초 서버 재활용 조사와 이후 운영 변경을 함께 기록한다. 최신 배포·장애 대응 명령과 실제 경로는 [서버 운영 가이드](operations.md)를 기준으로 한다.
 
 ## 서버 조사 및 기존 서비스
 
@@ -91,9 +91,9 @@ Set-Clipboard -Value ''
 mvn -f backend/pom.xml spring-boot:run
 ```
 
-IntelliJ는 이미 실행 중인 프로세스이므로 PowerShell 환경변수를 자동으로 상속하지 않는다. Run Configuration에 값을 지정하거나, 환경을 로드한 창에서 IDE를 새로 시작한다. 현재 PC에서는 SSH 터널을 통한 실제 PostgreSQL 로그인·개발 migrator DDL·운영 DB 접속 거부를 검증했다. IntelliJ GUI 연결 및 로컬 JDK/Maven 실행은 별도 확인이 필요하다.
+IntelliJ는 이미 실행 중인 프로세스이므로 PowerShell 환경변수를 자동으로 상속하지 않는다. Run Configuration에 값을 지정하거나, 환경을 로드한 창에서 IDE를 새로 시작한다. SSH 터널을 통한 PostgreSQL 로그인·개발 migrator DDL·운영 DB 접속 거부를 검증했고 IntelliJ Database 연결 성공도 사용자 확인을 받았다. Java 17 실행 구성은 [로컬 개발 가이드](research-records.md)를 함께 참고한다.
 
-프론트엔드 로컬 실행: `cd frontend`, `npm ci`, `npm run dev`. 현재 연구 기록 API는 없으며 백엔드는 DB 연결을 검사하는 상태 확인 기반만 제공한다.
+프론트엔드 로컬 실행: `cd frontend`, `npm ci`, `npm run dev`. 연구 기록 읽기 API와 React 패널 연동은 main에 반영돼 있다. 쓰기 API는 개발용 명시적 설정에서만 활성화하며 운영에서는 기본 비활성화한다.
 
 ## 배포, CI와 HTTPS
 
@@ -103,12 +103,12 @@ IntelliJ는 이미 실행 중인 프로세스이므로 PowerShell 환경변수�
 
 GitHub CI 검증 성공 후 main 이미지·manifest를 게시하고, 별도 workflow에서 수동 배포와 같은 `./deploy.sh`를 호출한다. 현재 자동 배포용 Secrets는 등록되지 않았으므로 DEPLOY_ENABLED는 활성화하지 않는다. 등록 항목과 방법은 운영 가이드에 있다. 수동 배포·자동 배포·운영 DB 최초 V1 적용은 서로 다른 작업이다.
 
-기존 Funnel 443은 InvenCore에 유지한다. 신규 연구소 HTTPS 8443은 설계만 했으며 이 단계에서 공개하지 않는다. PostgreSQL은 Funnel로 공개하지 않는다.
+사용자가 InvenCore 앱을 중지하고 기존 Funnel 443의 대상을 연구소 `http://127.0.0.1:18082`로 변경했다. 현재 공개 주소는 `https://seulgae-server.tailac4b36.ts.net`이며 이 작업에서 Funnel을 재설정하지 않았다. PostgreSQL은 Funnel로 공개하지 않는다.
 
 ## 검증과 다음 단계
 
 - 기존 컨테이너 6개의 ID·시작 시각·재시작 횟수와 읽을 수 있는 최상위 Compose/.env 파일 SHA-256을 비교한다. 권한이 없는 과거 백업 파일은 제외한다.
-- InvenCore 프론트엔드·백엔드, PostgreSQL, Kafka, Redis health가 healthy이고 실제 `/api/health` 응답이 UP인지 확인한다.
+- PostgreSQL, Kafka, Redis health와 기존 컨테이너 상태 보존을 확인한다. 의도적으로 중지된 InvenCore 앱은 중지 상태를 유지한다. 실행 중일 때만 InvenCore 실제 `/api/health` 응답도 검사한다.
 - 새 컨테이너 health, `/api/health` 및 실제 `stlab_prod_app` 연결을 확인한다.
 - 개발 계정의 운영 DB 접속 거부, runtime DDL 불가, migration 기본 DML 권한, 기존 InvenCore 테이블 접근 불가를 검증한다.
-- 다음 단계: IntelliJ GUI 접속 확인, 연구 기록 스키마와 Flyway 마이그레이션 설계, 연구 기록 API 구현, React 패널 연동. 게임 기능 확장은 이후 별도 진행한다.
+- 연구 기록 V1·API·React 패널과 Java 17 CI는 main에 반영했다. 남은 운영 범위는 Secrets 등록 후 자동 배포 연결 검증이다. 새 게임 기능과 연구 기록 기능 확장은 별도 진행한다.
