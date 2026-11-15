@@ -43,6 +43,7 @@ function createScene() {
         text: () => ({
           visible: true,
           setOrigin() { return this },
+          setDepth() { return this },
           setVisible(value) { this.visible = value; return this },
         }),
       }

@@ -8,7 +8,7 @@ import ResearchPanel from '../features/research/components/ResearchPanel'
  * Phaser 게임의 생성·정리와 연구 기록 패널의 이벤트 연결을 관리한다.
  *
  * @author seulgae
- * @version 1.0, 게임 인스턴스와 React 패널의 수명 관리 문서화
+ * @version 1.0, 픽셀 렌더링과 FIT 스케일링 및 크기 관찰 정리
  * @see "None"
  * @returns 게임 캔버스와 조건부 연구 기록 패널
  */
@@ -31,6 +31,7 @@ export default function GameCanvas() {
     if (!container) return
 
     let game: Phaser.Game | null = null
+    let resizeObserver: ResizeObserver | null = null
     const uiEvents = new Phaser.Events.EventEmitter()
     eventRef.current = uiEvents
     const openResearch = () => setResearchOpen(true)
@@ -43,16 +44,23 @@ export default function GameCanvas() {
         width: 800,
         height: 600,
         parent: container,
+        backgroundColor: '#ddd5bf',
+        pixelArt: true,
+        roundPixels: true,
+        scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
         physics: {
           default: 'arcade',
           arcade: { gravity: { x: 0, y: 0 } },
         },
         scene: [new LabLobbyScene(uiEvents)],
       })
+      resizeObserver = new ResizeObserver(() => game?.scale.refresh())
+      resizeObserver.observe(container)
     })
 
     return () => {
       cancelAnimationFrame(frameId)
+      resizeObserver?.disconnect()
       uiEvents.off(RESEARCH_EVENTS.openResearch, openResearch)
       uiEvents.removeAllListeners()
       eventRef.current = null
@@ -62,7 +70,7 @@ export default function GameCanvas() {
 
   return (
     <>
-      <div ref={containerRef} className="game-canvas" tabIndex={0} aria-label="슬개기술연구소 게임 화면" />
+      <div ref={containerRef} className="game-canvas" tabIndex={0} role="application" aria-label="슬개기술연구소 게임 화면. WASD 또는 방향키 이동, E 연구 기록 열기" />
       {researchOpen && <ResearchPanel onClose={closeResearch} />}
     </>
   )

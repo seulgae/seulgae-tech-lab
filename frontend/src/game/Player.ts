@@ -1,10 +1,20 @@
 import Phaser from 'phaser'
+import { createPlayerAnimations, getFacing } from './PlayerAnimation'
+import type { Facing } from './PlayerAnimation'
 
-export default class Player extends Phaser.GameObjects.Rectangle {
+/**
+ * 키보드 이동과 발밑 물리 영역을 관리하는 연구원 캐릭터이다.
+ *
+ * @author seulgae
+ * @version 1.0, 픽셀 캐릭터와 방향별 애니메이션 연결
+ * @see "None"
+ */
+export default class Player extends Phaser.GameObjects.Sprite {
   declare body: Phaser.Physics.Arcade.Body
 
   private readonly speed = 200 // 초당 이동 거리(px)
   private readonly direction = new Phaser.Math.Vector2()
+  private facing: Facing = 'down'
   private readonly cursors: Phaser.Types.Input.Keyboard.CursorKeys
   private readonly wasd: {
     up: Phaser.Input.Keyboard.Key
@@ -14,10 +24,15 @@ export default class Player extends Phaser.GameObjects.Rectangle {
   }
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
-    super(scene, x, y, 24, 24, 0xff9800)
+    super(scene, x, y, 'researcher', 16)
     scene.add.existing(this)
+    this.setOrigin(0.5, 1).setScale(2)
     scene.physics.add.existing(this)
+    // 32×48 외형과 달리 발밑 20×16 영역만 충돌시켜 가구 뒤를 자연스럽게 지나간다.
+    this.body.setSize(10, 8).setOffset(3, 16)
     this.body.setCollideWorldBounds(true)
+    createPlayerAnimations(scene)
+    this.play('idle-down')
 
     const keyboard = scene.input.keyboard
     if (!keyboard) throw new Error('Player requires keyboard input')
@@ -32,8 +47,10 @@ export default class Player extends Phaser.GameObjects.Rectangle {
   }
 
   update(movementEnabled = true) {
+    this.setDepth(this.y)
     if (!movementEnabled) {
       this.body.setVelocity(0, 0)
+      this.play(`idle-${this.facing}`, true)
       return
     }
 
@@ -46,5 +63,11 @@ export default class Player extends Phaser.GameObjects.Rectangle {
     this.direction.set(Number(right) - Number(left), Number(down) - Number(up))
     this.direction.normalize().scale(this.speed)
     this.body.setVelocity(this.direction.x, this.direction.y)
+    this.facing = getFacing(this.direction.x, this.direction.y, this.facing)
+    const { blocked, touching } = this.body
+    const movingX = left && !blocked.left && !touching.left || right && !blocked.right && !touching.right
+    const movingY = up && !blocked.up && !touching.up || down && !blocked.down && !touching.down
+    const walking = this.direction.lengthSq() > 0 && (movingX || movingY)
+    this.play(`${walking ? 'walk' : 'idle'}-${this.facing}`, true)
   }
 }

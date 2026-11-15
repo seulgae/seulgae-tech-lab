@@ -3,12 +3,21 @@ import Player from '../Player'
 import createLobbyMap, { COMPUTER } from '../LobbyMap'
 import { RESEARCH_EVENTS } from '../../features/research/researchEvents'
 import { isNearObject } from '../interaction'
+import { createPixelAssets } from '../assets/pixelAssets'
 
+/**
+ * 로비의 표시·충돌·컴퓨터 상호작용을 연결하는 게임 장면이다.
+ *
+ * @author seulgae
+ * @version 1.0, 타일 로비와 픽셀 캐릭터 및 접근 강조 연결
+ * @see "None"
+ */
 export default class LabLobbyScene extends Phaser.Scene {
   private player?: Player
   private interactionHint?: Phaser.GameObjects.Text
   private interactKey?: Phaser.Input.Keyboard.Key
   private researchOpen = false
+  private computerHighlight?: Phaser.GameObjects.Rectangle
   private readonly uiEvents: Phaser.Events.EventEmitter
 
   private readonly closeResearch = () => {
@@ -20,22 +29,22 @@ export default class LabLobbyScene extends Phaser.Scene {
     this.uiEvents = uiEvents
   }
 
+  preload() {
+    createPixelAssets(this)
+  }
+
   create() {
     this.researchOpen = false
     this.cameras.main.setBackgroundColor('#263238')
-    const obstacles = createLobbyMap(this)
-    this.add.text(400, 60, 'Seulgae Tech Lab', {
-      fontFamily: 'Arial, sans-serif',
-      fontSize: '32px',
-      color: '#ffffff',
-    }).setOrigin(0.5)
+    const { obstacles, computerHighlight } = createLobbyMap(this)
+    this.computerHighlight = computerHighlight
     this.player = new Player(this, 400, 400)
     this.physics.add.collider(this.player, obstacles)
     this.interactKey = this.input.keyboard?.addKey('E')
-    this.interactionHint = this.add.text(COMPUTER.x, COMPUTER.y - 82, 'E · 상호작용', {
-      fontFamily: 'Arial, sans-serif', fontSize: '16px', color: '#ffffff',
-      backgroundColor: '#101c22', padding: { x: 10, y: 6 },
-    }).setOrigin(0.5).setVisible(false)
+    this.interactionHint = this.add.text(COMPUTER.x, COMPUTER.y - 102, 'E  ·  연구 기록', {
+      fontFamily: 'monospace', fontSize: '14px', color: '#fff2d2',
+      backgroundColor: '#243f43', padding: { x: 12, y: 8 },
+    }).setOrigin(0.5).setDepth(1000).setVisible(false)
 
     this.uiEvents.on(RESEARCH_EVENTS.closeResearch, this.closeResearch)
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -49,6 +58,7 @@ export default class LabLobbyScene extends Phaser.Scene {
     this.player.update(!this.researchOpen)
     const nearby = isNearObject(this.player.x, this.player.y, COMPUTER, 56)
     this.interactionHint?.setVisible(nearby && !this.researchOpen)
+    this.computerHighlight?.setVisible(nearby && !this.researchOpen)
 
     // 범위 밖과 패널 표시 중에도 소비해, 누르고 있던 E가 나중에 실행되지 않게 한다.
     const pressed = this.interactKey && Phaser.Input.Keyboard.JustDown(this.interactKey)
@@ -56,6 +66,7 @@ export default class LabLobbyScene extends Phaser.Scene {
       this.researchOpen = true
       this.player.update(false)
       this.interactionHint?.setVisible(false)
+      this.computerHighlight?.setVisible(false)
       this.uiEvents.emit(RESEARCH_EVENTS.openResearch)
     }
   }
