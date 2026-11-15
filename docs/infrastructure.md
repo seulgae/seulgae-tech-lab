@@ -97,38 +97,13 @@ IntelliJ는 이미 실행 중인 프로세스이므로 PowerShell 환경변수�
 
 ## 배포, CI와 HTTPS
 
-- `compose.yml`은 이 프로젝트의 프론트엔드와 백엔드만 관리한다. 다른 프로젝트의 `down`, `restart`, `prune`, 볼륨 삭제 명령을 사용하지 않는다.
-- 이미지에 커밋 SHA 태그를 사용한다. 이전 성공 태그는 `/opt/homeserver/config/seulgae-tech-lab/deployed-sha`에 기록한다.
-- `deploy.sh`는 Git 작업 트리가 깨끗한지, 요청 SHA가 원격 main에 포함되는지 확인하고 단일 배포 잠금을 획득한다. 순차 이미지 빌드 후 신규 앱만 기동하고 전후 기존 서비스 상태를 검증한다. 신규 릴리스 기동/HTTP 검증 실패 시 이전 성공 이미지 태그로 복원한다. DB 마이그레이션 자동 롤백은 수행하지 않는다.
+현재 운영 명령은 [실제 서버 운영 가이드](operations.md)를 따른다. 기존 SHA 입력 방식은 폐기했으며 저장소 루트의 `./deploy.sh`가 성공한 main CI의 게시 manifest와 digest를 자동 선택한다. `deploy/deploy.sh`는 같은 명령으로 연결하는 호환 진입점이다.
 
-```bash
-bash /opt/homeserver/apps/seulgae-tech-lab/deploy/deploy.sh FULL_MAIN_COMMIT_SHA
-```
+`./start.sh`, `./stop.sh`, `./restart.sh`, `./status.sh`, `./logs.sh`, `./rollback.sh`도 저장소 루트에서 실행한다. 모두 연구소 backend/frontend만 관리하며 공유 DB와 InvenCore는 중지·재시작하지 않는다. 롤백은 이미지 복원만 수행하며 DB 초기화·삭제·자동 복원은 하지 않는다.
 
-GitHub Actions는 main/codex 브랜치 및 PR에서 프론트엔드 테스트·린트·빌드, 백엔드 Maven verify, 두 Docker 이미지 빌드를 수행한다. 자동 배포 job은 기본 비활성이다. 활성화에는 다음 GitHub 설정이 필요하다.
+GitHub CI 검증 성공 후 main 이미지·manifest를 게시하고, 별도 workflow에서 수동 배포와 같은 `./deploy.sh`를 호출한다. 현재 자동 배포용 Secrets는 등록되지 않았으므로 DEPLOY_ENABLED는 활성화하지 않는다. 등록 항목과 방법은 운영 가이드에 있다. 수동 배포·자동 배포·운영 DB 최초 V1 적용은 서로 다른 작업이다.
 
-| 종류 | 이름 | 내용 |
-|---|---|---|
-| Secret | TAILSCALE_AUTHKEY | CI용 재사용 가능한 ephemeral auth key. CI 노드에서 대상 서버 TCP 22만 허용하는 tailnet ACL 구성 |
-| Secret | DEPLOY_SSH_PRIVATE_KEY | 전용 배포키. 기존 개인용 homeserver 키를 재사용하지 않는다 |
-| Secret | DEPLOY_SSH_KNOWN_HOSTS | 검증한 서버 SSH 호스트 공개키. 대상 호스트명과 일치해야 한다 |
-| Variable | DEPLOY_HOST | seulgae-server.tailac4b36.ts.net 또는 해당 Tailscale IP |
-| Variable | DEPLOY_USER | 전용 배포 권한을 구성한 계정 |
-| Variable | DEPLOY_ENABLED | 전용 자격증명과 권한 검증이 끝난 뒤 true |
-
-전용 배포키의 서버 측 권한은 이 프로젝트 배포 명령으로 제한하는 것을 권장한다. Docker 그룹은 관리자 수준 권한이므로 배포계정에 무분별하게 부여하지 않는다. 현재 전용 CI 키·tailnet 자격증명이 없어 자동 배포 활성화 및 GitHub에서 서버까지의 배포 검증은 완료하지 않았다. 확인되지 않은 자격증명이나 기존 InvenCore 배포 경로를 재사용하지 않는다.
-
-HTTPS 공개 설계: 기존 Funnel의 443 → `127.0.0.1:8082`를 유지하고, 새 8443 → `127.0.0.1:18082`를 추가한다. 현재 새 사이트를 인터넷에 공개하지 않았다. 공개 시 운영자가 아래 명령을 실행하고 기존 443 매핑이 유지되는지 전후 확인한다.
-
-```bash
-tailscale funnel status
-sudo tailscale funnel --bg --https=8443 http://127.0.0.1:18082
-tailscale funnel status
-```
-
-예정 주소: `https://seulgae-server.tailac4b36.ts.net:8443`. PostgreSQL은 Funnel로 공개하지 않는다. `tailscale funnel reset`은 기존 서비스를 제거하므로 사용하지 않는다.
-
-참고: [Funnel 포트 제약](https://tailscale.com/docs/features/tailscale-funnel), [Tailscale GitHub Action](https://github.com/tailscale/github-action), [Compose secrets](https://docs.docker.com/compose/how-tos/use-secrets/), [PostgreSQL 권한](https://www.postgresql.org/docs/current/ddl-priv.html).
+기존 Funnel 443은 InvenCore에 유지한다. 신규 연구소 HTTPS 8443은 설계만 했으며 이 단계에서 공개하지 않는다. PostgreSQL은 Funnel로 공개하지 않는다.
 
 ## 검증과 다음 단계
 
