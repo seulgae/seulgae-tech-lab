@@ -1,0 +1,20 @@
+name: seulgae-tech-lab-dev-access
+services:
+  db-proxy:
+    image: alpine/socat:latest
+    command: ["TCP-LISTEN:5432,fork,reuseaddr", "TCP:postgres-postgres-1:5432"]
+    ports: ["127.0.0.1:25432:5432"]
+    networks: [database]
+    restart: unless-stopped
+    mem_limit: 32m
+    cpus: 0.25
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    logging:
+      driver: json-file
+      options: {max-size: 5m, max-file: "2"}
+networks:
+  database:
+    external: true
+    name: postgres_backend
