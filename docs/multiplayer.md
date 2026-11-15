@@ -23,7 +23,7 @@ Client input example:
 {"type":"input","x":1,"y":0,"seq":1}
 ```
 
-Only those four fields are accepted. Axes must be integers -1/0/1; input sequence must increase and remain a nonnegative JS-safe integer. Coordinates, elapsed times, velocities, extra fields, fractional axes and replayed sequences are rejected. The browser normally sends at 20Hz, plus input changes and immediate stop. Per connection: 40 messages/second maximum, 512 UTF-8 bytes maximum, binary input unsupported. This is a per-session rate cap, not an IP-level abuse firewall.
+Only those four fields are accepted. Axes must be integers -1/0/1; input sequence must increase and remain a nonnegative JS-safe integer. Coordinates, elapsed times, velocities, extra fields, fractional axes and replayed sequences are rejected. The browser combines periodic sends and input changes into at most 20Hz, keeping only the latest direction between sends. A stop reaches the next eligible send (normally within 50ms); local movement stops immediately. Per connection: 40 messages/second maximum, 512 UTF-8 bytes maximum, binary input unsupported. This is a per-session rate cap, not an IP-level abuse firewall.
 
 The server integrates at 20Hz with its own monotonic clock, normalizes diagonals, limits speed to 200 world pixels/second and resolves each axis against shared static geometry. Per-step elapsed time is capped at 100ms; input older than 300ms stops moving. Player-to-player collision is intentionally absent. The server does not trust client positions.
 
@@ -31,7 +31,9 @@ Messages: `welcome {selfId, players, maxPlayers}`, `state {tick, players}`, `joi
 
 The client keeps existing Arcade prediction for responsive own movement, but snaps to the server on reconnect or error over 24 world pixels. This is bounded correction, not full input replay/rollback. Other visitors interpolate toward authoritative positions over approximately 80ms and reuse the 4-direction animation sheet. Name tags/tints distinguish self and others.
 
-The server pings every 5s and removes a peer after 15s without input/pong. Browser state silence over 5s triggers reconnect. Reconnect delay doubles from 500ms to an 8s cap. Names are optionally kept in tab-scoped sessionStorage; IDs are never reused. Focus loss sends a stop input. Panel opening stops local and transmitted input; closing re-enables it. Socket disposal is emitted before Phaser's asynchronous destroy, so component unmount immediately closes sockets/timers. Scene shutdown also removes remote actors and listeners.
+The server pings every 5s and removes a peer after 15s without input/pong. Browser state silence over 5s triggers reconnect. Reconnect delay doubles from 500ms to an 8s cap. Names are optionally kept in tab-scoped sessionStorage; IDs are never reused. Focus loss queues a stop input. Panel opening stops local input and queues a network stop; closing re-enables it. Socket disposal is emitted before Phaser's asynchronous destroy, so component unmount immediately closes sockets/timers. Scene shutdown also removes remote actors and listeners.
+
+Unexpected closes log their code, reason and clean-close flag in the browser console with the `[multiplayer]` prefix; message-processing exceptions are logged separately without raw message payloads. Code 1008 with `Input rate exceeded` confirms server rate rejection. Code 1006 alone does not identify the cause. Rapid direction changes previously added unbounded change-triggered sends on top of the 20Hz timer, so the client could exceed the server limit; the frontend regression test now changes direction 100 times in one second and asserts only 20 sends including periodic traffic. This code path is locally verified; an individual production disconnect still requires its close code/reason to attribute.
 
 ## Origin and configuration
 

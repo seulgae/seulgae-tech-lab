@@ -31,6 +31,7 @@ test('스냅샷 크기·플레이어 수·ID·좌표·방향·본인 ID를 검�
 })
 
 test('연결·목록 변경·재연결·입력 전송·종료 정리를 중복 없이 처리한다', t => {
+  t.mock.method(console, 'warn', () => {})
   t.mock.timers.enable({ apis: ['setTimeout', 'setInterval', 'Date'], now: 1000 })
   const originals = { window: globalThis.window, document: globalThis.document, WebSocket: globalThis.WebSocket, sessionStorage: globalThis.sessionStorage }
   const storage = new Map()
@@ -63,11 +64,25 @@ test('연결·목록 변경·재연결·입력 전송·종료 정리를 중복 �
     a.open(); a.receive(welcome())
     assert.equal(statuses.at(-1).phase, 'online')
     client.setInput({ x: 1, y: 0 })
-    assert.deepEqual(a.sent.at(-1), { type: 'input', x: 1, y: 0, seq: 2 })
+    assert.equal(a.sent.length, 1)
     t.mock.timers.tick(50)
-    assert.equal(a.sent.at(-1).seq, 3)
+    assert.deepEqual(a.sent.at(-1), { type: 'input', x: 1, y: 0, seq: 2 })
     window.dispatchEvent(new Event('blur'))
+    t.mock.timers.tick(50)
     assert.equal(a.sent.at(-1).x, 0)
+    // 프레임마다 방향을 바꿔도 정기 전송을 포함한 합계가 서버 제한(40/s)을 넘지 않는다.
+    const beforeChurn = a.sent.length
+    for (let i = 0; i < 100; i++) {
+      client.setInput({ x: i % 2 ? 1 : -1, y: i % 3 ? 0 : 1 })
+      t.mock.timers.tick(10)
+    }
+    assert.equal(a.sent.length - beforeChurn, 20)
+    assert.equal(a.readyState, 1)
+    const latest = { x: -1, y: -1 }
+    client.setInput(latest)
+    t.mock.timers.tick(50)
+    assert.equal(a.sent.at(-1).x, latest.x)
+    assert.equal(a.sent.at(-1).y, latest.y)
     a.receive({ type: 'joined', player: second })
     assert.equal(statuses.at(-1).online, 2)
     a.receive({ type: 'state', tick: 2, players: [first, { ...second, x: 440, moving: true }] })
