@@ -1,9 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
-import { fetchResearchPage, fetchResearchRecord } from '../researchApi'
-import type { ResearchPage, ResearchRecord } from '../researchApi'
+import { fetchResearchPage, fetchResearchRecord } from '../api/researchApi'
+import type { ResearchPage, ResearchRecord } from '../model/researchTypes'
+import './ResearchPanel.css'
 
 type ResearchPanelProps = { onClose: () => void }
 
+/**
+ * 연구 기록 목록·상세 조회와 로딩·오류·재시도 상태를 표시하는 모달이다.
+ *
+ * @author seulgae
+ * @version 1.0, 연구 기록 조회 패널과 요청 정리 책임 문서화
+ * @see "None"
+ * @param props 패널 속성
+ * @param props.onClose 패널 종료와 게임 입력 복구를 수행하는 콜백
+ * @returns 연구 기록 모달
+ */
 export default function ResearchPanel({ onClose }: ResearchPanelProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [page, setPage] = useState<ResearchPage>({ items: [], hasMore: false })
@@ -22,6 +33,7 @@ export default function ResearchPanel({ onClose }: ResearchPanelProps) {
     return () => dialog?.close()
   }, [])
 
+  // 페이지 변경 또는 패널 해제 시 이전 요청을 중단해 늦은 응답을 무시한다.
   useEffect(() => {
     const controller = new AbortController()
     fetchResearchPage(controller.signal, offset)
@@ -31,6 +43,7 @@ export default function ResearchPanel({ onClose }: ResearchPanelProps) {
     return () => controller.abort()
   }, [offset, retry])
 
+  // 선택한 기록이 바뀌거나 패널이 닫히면 상세 조회 요청도 정리한다.
   useEffect(() => {
     if (!selectedId) return
     const controller = new AbortController()
@@ -41,17 +54,30 @@ export default function ResearchPanel({ onClose }: ResearchPanelProps) {
     return () => controller.abort()
   }, [selectedId, retry])
 
+  /**
+   * 현재 목록 또는 상세 화면의 오류 상태를 초기화하고 조회를 다시 시도한다.
+   */
   const retryLoad = () => {
     if (selectedId) { setDetailLoading(true); setDetailError(false) }
     else { setLoading(true); setError(false) }
     setRetry((n) => n + 1)
   }
+  /**
+   * 이전 상세 결과를 비우고 선택한 연구 기록을 조회한다.
+   *
+   * @param id 조회할 연구 기록 식별자
+   */
   const openRecord = (id: string) => {
     setDetailLoading(true)
     setDetailError(false)
     setSelected(null)
     setSelectedId(id)
   }
+  /**
+   * 목록 로딩 상태를 초기화하고 조회 페이지를 변경한다.
+   *
+   * @param next 다음 목록 조회에서 건너뛸 기록 수
+   */
   const changeOffset = (next: number) => {
     setLoading(true)
     setError(false)

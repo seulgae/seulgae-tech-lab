@@ -1,11 +1,4 @@
-export type ResearchSummary = {
-  id: string
-  title: string
-  summary: string
-  createdAt: string
-}
-export type ResearchRecord = ResearchSummary & { content: string }
-export type ResearchPage = { items: ResearchSummary[]; hasMore: boolean }
+import type { ResearchPage, ResearchRecord } from '../model/researchTypes'
 
 async function getJson<T>(path: string, signal: AbortSignal): Promise<T> {
   const response = await fetch(path, { signal, headers: { Accept: 'application/json' } })

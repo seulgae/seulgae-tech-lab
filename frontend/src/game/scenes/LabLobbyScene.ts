@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import Player from '../Player'
 import createLobbyMap, { COMPUTER } from '../LobbyMap'
-import { GAME_EVENTS } from '../gameEvents'
+import { RESEARCH_EVENTS } from '../../features/research/researchEvents'
 import { isNearObject } from '../interaction'
 
 export default class LabLobbyScene extends Phaser.Scene {
@@ -37,9 +37,9 @@ export default class LabLobbyScene extends Phaser.Scene {
       backgroundColor: '#101c22', padding: { x: 10, y: 6 },
     }).setOrigin(0.5).setVisible(false)
 
-    this.uiEvents.on(GAME_EVENTS.closeResearch, this.closeResearch)
+    this.uiEvents.on(RESEARCH_EVENTS.closeResearch, this.closeResearch)
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.uiEvents.off(GAME_EVENTS.closeResearch, this.closeResearch)
+      this.uiEvents.off(RESEARCH_EVENTS.closeResearch, this.closeResearch)
     })
   }
 
@@ -56,7 +56,7 @@ export default class LabLobbyScene extends Phaser.Scene {
       this.researchOpen = true
       this.player.update(false)
       this.interactionHint?.setVisible(false)
-      this.uiEvents.emit(GAME_EVENTS.openResearch)
+      this.uiEvents.emit(RESEARCH_EVENTS.openResearch)
     }
   }
 }

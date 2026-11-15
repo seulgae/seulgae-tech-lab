@@ -1,5 +1,38 @@
 # Research records
 
+## Domain structure
+
+The backend keeps common research-record code under `kr.seulgae.techlab.research.records`:
+
+```text
+research/records/
+  controller/  ResearchController, ResearchWriteController (HTTP routes and validation)
+  service/     ResearchService (pagination and create-input normalization)
+  repository/  ResearchRepository (JDBC and row mapping)
+  domain/      ResearchRecord, ResearchSummary
+  dto/         CreateResearchRequest, ResearchPage
+  exception/   ApiExceptionHandler
+```
+
+The `records` segment is the common record feature, not a Java- or Kafka-specific implementation. Future lab-specific features can be siblings such as `research.java` and `research.kafka`, each with their own layers when needed. Do not duplicate the common record API per lab or create empty placeholder packages. No lab-specific runtime behavior is added by this refactor.
+
+Controllers depend on the service, which delegates persistence to the repository. The repository does not depend on request DTOs. API paths, JSON fields, validation limits, write-route enablement and database SQL remain unchanged.
+
+The frontend groups research code under `frontend/src/features/research`:
+
+```text
+research/
+  api/researchApi.ts
+  model/researchTypes.ts
+  components/ResearchPanel.tsx
+  components/ResearchPanel.css
+  researchEvents.ts
+```
+
+`GameCanvas` connects the game to this feature through its panel and event names. Generic proximity logic remains in `game/interaction.ts`. Research styles live with the panel rather than in the application-wide CSS.
+
+Run `mvn -f backend/pom.xml clean verify` after moving Java packages so old compiled classes do not remain in the JAR. Frontend checks are `npm test`, `npm run lint` and `npm run build` from `frontend/`.
+
 ## Schema and migrations
 
 `lab.research_records` uses an application-generated UUID, nonblank title (120), summary (500), content (20,000), and a DB-generated `timestamptz` creation time. Ordering is `created_at DESC, id DESC` with a matching index. The first version intentionally omits users, tags, editing and deletion. No sample records are inserted by migrations.

@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { fetchResearchPage, fetchResearchRecord } from '../src/researchApi.ts'
+import { fetchResearchPage, fetchResearchRecord } from '../src/features/research/api/researchApi.ts'
 
 test('research API builds list/detail URLs, propagates abort signal and rejects errors', async () => {
   const originalFetch = globalThis.fetch

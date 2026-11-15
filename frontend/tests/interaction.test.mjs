@@ -5,7 +5,7 @@ import { createRequire, stripTypeScriptTypes } from 'node:module'
 import test from 'node:test'
 import vm from 'node:vm'
 import { isNearObject } from '../src/game/interaction.ts'
-import { GAME_EVENTS } from '../src/game/gameEvents.ts'
+import { RESEARCH_EVENTS } from '../src/features/research/researchEvents.ts'
 
 const require = createRequire(import.meta.url)
 const JustDown = require('phaser/src/input/keyboard/keys/JustDown.js')
@@ -57,7 +57,7 @@ function createScene() {
     .replace('export default class LabLobbyScene', 'class LabLobbyScene')
   const LobbyScene = vm.runInNewContext(source + '\nLabLobbyScene', {
     Phaser: { Scene, Input: { Keyboard: { JustDown } }, Scenes: { Events: { SHUTDOWN: 'shutdown' } } },
-    Player, createLobbyMap: () => ({}), COMPUTER: computer, GAME_EVENTS, isNearObject,
+    Player, createLobbyMap: () => ({}), COMPUTER: computer, RESEARCH_EVENTS, isNearObject,
   })
   const scene = new LobbyScene(uiEvents)
   scene.create()
@@ -67,7 +67,7 @@ function createScene() {
 test('범위 밖 E는 무시하고 나중에 접근해도 예약 실행하지 않는다', () => {
   const { scene, uiEvents, key } = createScene()
   let opens = 0
-  uiEvents.on(GAME_EVENTS.openResearch, () => opens++)
+  uiEvents.on(RESEARCH_EVENTS.openResearch, () => opens++)
   key._justDown = true
   scene.update()
   scene.player.x = 620
@@ -82,7 +82,7 @@ test('범위 밖 E는 무시하고 나중에 접근해도 예약 실행하지 �
 test('한 번 누른 E는 한 번만 열고 패널 동안 이동을 잠근다', () => {
   const { scene, uiEvents, key } = createScene()
   let opens = 0
-  uiEvents.on(GAME_EVENTS.openResearch, () => opens++)
+  uiEvents.on(RESEARCH_EVENTS.openResearch, () => opens++)
   scene.player.x = 620
   key._justDown = true
   for (let frame = 0; frame < 120; frame++) scene.update()
@@ -94,13 +94,13 @@ test('한 번 누른 E는 한 번만 열고 패널 동안 이동을 잠근다', 
 test('패널 표시 중 E를 소비하고 닫은 뒤 새 입력으로만 다시 연다', () => {
   const { scene, uiEvents, key } = createScene()
   let opens = 0
-  uiEvents.on(GAME_EVENTS.openResearch, () => opens++)
+  uiEvents.on(RESEARCH_EVENTS.openResearch, () => opens++)
   scene.player.x = 620
   key._justDown = true
   scene.update()
   key._justDown = true
   scene.update()
-  uiEvents.emit(GAME_EVENTS.closeResearch)
+  uiEvents.emit(RESEARCH_EVENTS.closeResearch)
   scene.update()
   assert.equal(opens, 1)
   assert.equal(scene.player.movementEnabled, true)
@@ -116,15 +116,15 @@ test('20회 개폐해도 리스너가 늘지 않고 장면 종료 시 제거한�
     key._justDown = true
     scene.update()
     assert.equal(scene.player.movementEnabled, false)
-    uiEvents.emit(GAME_EVENTS.closeResearch)
+    uiEvents.emit(RESEARCH_EVENTS.closeResearch)
     scene.update()
     assert.equal(scene.player.movementEnabled, true)
-    assert.equal(uiEvents.listenerCount(GAME_EVENTS.closeResearch), 1)
+    assert.equal(uiEvents.listenerCount(RESEARCH_EVENTS.closeResearch), 1)
   }
   scene.events.emit('shutdown')
-  assert.equal(uiEvents.listenerCount(GAME_EVENTS.closeResearch), 0)
+  assert.equal(uiEvents.listenerCount(RESEARCH_EVENTS.closeResearch), 0)
   scene.create()
-  assert.equal(uiEvents.listenerCount(GAME_EVENTS.closeResearch), 1)
+  assert.equal(uiEvents.listenerCount(RESEARCH_EVENTS.closeResearch), 1)
   scene.events.emit('shutdown')
-  assert.equal(uiEvents.listenerCount(GAME_EVENTS.closeResearch), 0)
+  assert.equal(uiEvents.listenerCount(RESEARCH_EVENTS.closeResearch), 0)
 })

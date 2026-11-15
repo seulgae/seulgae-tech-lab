@@ -1,16 +1,27 @@
 import { useEffect, useRef, useState } from 'react'
 import Phaser from 'phaser'
 import LabLobbyScene from '../game/scenes/LabLobbyScene'
-import { GAME_EVENTS } from '../game/gameEvents'
-import ResearchPanel from './ResearchPanel'
+import { RESEARCH_EVENTS } from '../features/research/researchEvents'
+import ResearchPanel from '../features/research/components/ResearchPanel'
 
+/**
+ * Phaser 게임의 생성·정리와 연구 기록 패널의 이벤트 연결을 관리한다.
+ *
+ * @author seulgae
+ * @version 1.0, 게임 인스턴스와 React 패널의 수명 관리 문서화
+ * @see "None"
+ * @returns 게임 캔버스와 조건부 연구 기록 패널
+ */
 export default function GameCanvas() {
   const containerRef = useRef<HTMLDivElement>(null)
   const eventRef = useRef<Phaser.Events.EventEmitter | null>(null)
   const [researchOpen, setResearchOpen] = useState(false)
 
+  /**
+   * 게임에 닫기 이벤트를 보내고 패널을 숨긴 뒤 게임 영역으로 초점을 돌린다.
+   */
   const closeResearch = () => {
-    eventRef.current?.emit(GAME_EVENTS.closeResearch)
+    eventRef.current?.emit(RESEARCH_EVENTS.closeResearch)
     setResearchOpen(false)
     containerRef.current?.focus({ preventScroll: true })
   }
@@ -23,7 +34,7 @@ export default function GameCanvas() {
     const uiEvents = new Phaser.Events.EventEmitter()
     eventRef.current = uiEvents
     const openResearch = () => setResearchOpen(true)
-    uiEvents.on(GAME_EVENTS.openResearch, openResearch)
+    uiEvents.on(RESEARCH_EVENTS.openResearch, openResearch)
 
     // StrictMode의 첫 setup/cleanup에서는 생성 예약만 취소한다.
     const frameId = requestAnimationFrame(() => {
@@ -42,7 +53,7 @@ export default function GameCanvas() {
 
     return () => {
       cancelAnimationFrame(frameId)
-      uiEvents.off(GAME_EVENTS.openResearch, openResearch)
+      uiEvents.off(RESEARCH_EVENTS.openResearch, openResearch)
       uiEvents.removeAllListeners()
       eventRef.current = null
       game?.destroy(true)
