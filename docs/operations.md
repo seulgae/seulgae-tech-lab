@@ -75,7 +75,7 @@ cd /opt/homeserver/apps/seulgae-tech-lab
 5. 현재 DB 스키마가 해당 앱의 호환 범위인지 확인한다. 범위 밖이면 컨테이너를 건드리기 전에 중단한다.
 6. 두 digest 이미지를 Pull하고 이미지의 OCI revision 라벨이 검증 SHA와 같은지 확인한다. 이미지가 없거나 접근할 수 없으면 중단한다.
 7. 이전 정상 버전과 후보를 transaction.json에 기록한 뒤 연구소 앱만 갱신한다.
-8. 컨테이너 health, 웹 HTML, `/api/health`, `/api/research-records?limit=1`을 확인한다. 기존 공유 컨테이너 ID·시작 시각·재시작 횟수와 InvenCore health도 전후 대조한다.
+8. 컨테이너 health, 웹 HTML, `/api/health`, `/api/research-records?limit=1`을 확인한다. 기존 공유 컨테이너 ID·시작 시각·재시작 횟수·실행 상태를 전후 대조한다. 사용자가 중지한 InvenCore 앱은 중지 상태를 보존하며, 실행 중일 때만 InvenCore health도 확인한다.
 9. 성공하면 current/previous 및 이력을 저장한다. 실패하면 이전 앱을 한 번 복원한다. 복원에도 실패하면 원인을 기록하고 멈춘다.
 
 초기 인프라 버전은 첫 실행 때 현재 컨테이너의 이미지 ID로 기록한다. 그 버전에는 연구 기록 API가 없으므로 해당 초기 버전의 복원 검증은 HTML과 health에 한정된다. 초기 버전의 DB 호환 범위는 기존 상태를 확인한 0..1로만 기록한다.
@@ -116,7 +116,7 @@ curl --fail --silent --show-error http://127.0.0.1:8082/api/health
 
 InvenCore의 과거 기준값 비교에는 기존 `bash deploy/audit-existing.sh check`도 사용할 수 있다. 다른 정상 유지보수에서 기존 컨테이너가 갱신되면 과거 기준값과 차이가 생길 수 있다. 새로운 운영 명령은 각 작업 직전·직후의 상태를 비교한다.
 
-공유 PostgreSQL·Kafka·Redis·InvenCore의 restart/down, Docker system prune, volume rm은 연구소 운영 명령에 포함하지 않는다. 포트를 변경하거나 기존 Funnel을 reset하지 않는다.
+공유 PostgreSQL·Kafka·Redis·InvenCore의 restart/down, Docker system prune, volume rm은 연구소 운영 명령에 포함하지 않는다. 포트를 변경하거나 기존 Funnel을 reset하지 않는다. 사용자가 InvenCore를 중지하고 기존 Funnel의 대상을 연구소 루프백 웹 포트로 변경했음을 확인했다. 운영 스크립트는 이 상태를 유지하며 Funnel 설정을 수정하지 않는다.
 
 ## GitHub Secrets 등록과 자동 배포 활성화
 

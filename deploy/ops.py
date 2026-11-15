@@ -130,12 +130,19 @@ def containers(names):
 
 def shared_snapshot():
     result = {}
+    invencore_running = []
     for c in containers(SHARED):
         s = c['State']
-        if not s['Running'] or s.get('Health', {}).get('Status', 'healthy') != 'healthy':
+        is_invencore_app = c['Name'].lstrip('/') in SHARED[:2]
+        if is_invencore_app:
+            invencore_running.append(s['Running'])
+        if ((not s['Running'] and not is_invencore_app)
+                or (s['Running'] and s.get('Health', {}).get('Status', 'healthy') != 'healthy')):
             raise OpsError('Shared infrastructure is not healthy')
-        result[c['Name']] = [c['Id'], s['StartedAt'], c['RestartCount']]
-    if request_json('http://127.0.0.1:8082/api/health').get('status') != 'UP':
+        result[c['Name']] = [c['Id'], s['StartedAt'], c['RestartCount'], s['Running'], s['Status']]
+    if any(invencore_running) and not all(invencore_running):
+        raise OpsError('InvenCore application is only partially running; inspect manually')
+    if all(invencore_running) and request_json('http://127.0.0.1:8082/api/health').get('status') != 'UP':
         raise OpsError('InvenCore health failed')
     return result
 

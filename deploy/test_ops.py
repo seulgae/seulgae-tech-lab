@@ -19,6 +19,25 @@ def release(sha='a' * 40, run=10):
 
 
 class OperationsTests(unittest.TestCase):
+    def shared_containers(self):
+        return [dict(Name='/' + name, Id=name, RestartCount=0,
+                     State=dict(Running=index >= 2, Status='running' if index >= 2 else 'exited',
+                                StartedAt='baseline', Health={'Status': 'healthy'}))
+                for index, name in enumerate(ops.SHARED)]
+
+    def test_intentionally_stopped_invencore_is_preserved_without_health_request(self):
+        with patch.object(ops, 'containers', return_value=self.shared_containers()), \
+                patch.object(ops, 'request_json') as request:
+            snapshot = ops.shared_snapshot()
+            self.assertEqual(snapshot['/' + ops.SHARED[0]][3:], [False, 'exited'])
+            request.assert_not_called()
+
+    def test_stopped_shared_database_is_rejected(self):
+        data = self.shared_containers()
+        data[-1]['State']['Running'] = False
+        with patch.object(ops, 'containers', return_value=data), self.assertRaises(ops.OpsError):
+            ops.shared_snapshot()
+
     def test_sha_arguments_are_not_accepted(self):
         with self.assertRaises(ops.OpsError):
             ops.main(['deploy', 'a' * 40])
