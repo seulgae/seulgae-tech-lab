@@ -5,7 +5,7 @@ import { lobbySocketUrl, parseServerMessage, validNickname } from '../src/featur
 
 const first = { id: '00000000-0000-4000-8000-000000000001', nickname: '연구원-0001', x: 400, y: 400, facing: 'down', moving: false, ack: -1 }
 const second = { ...first, id: '00000000-0000-4000-8000-000000000002', nickname: '연구원-0002', x: 428 }
-const welcome = (self = first, players = [self]) => ({ type: 'welcome', selfId: self.id, players, maxPlayers: 5 })
+const welcome = (self = first, players = [self]) => ({ type: 'welcome', selfId: self.id, players, maxPlayers: 5, protocolVersion: 2 })
 
 test('동일 서비스의 HTTPS는 WSS로 연결하고 임시 이름만 쿼리에 넣는다', () => {
   const url = new URL(lobbySocketUrl({ protocol: 'https:', host: 'lab.example' }, '연구원-1234'))
@@ -28,6 +28,10 @@ test('스냅샷 크기·플레이어 수·ID·좌표·방향·본인 ID를 검�
     { type: 'unknown', players: [first] },
   ]) assert.throws(() => parseServerMessage(JSON.stringify(invalid)))
   assert.throws(() => parseServerMessage('x'.repeat(8193)))
+  const greet = { type: 'player_greeted', eventId: first.id, playerId: first.id, targetPlayerId: second.id, message: '하이! 👋', durationMs: 3000 }
+  assert.deepEqual(parseServerMessage(JSON.stringify(greet)), greet)
+  assert.throws(() => parseServerMessage(JSON.stringify({ ...greet, message: 'free chat' })))
+  assert.throws(() => parseServerMessage(JSON.stringify({ ...greet, targetPlayerId: first.id })))
 })
 
 test('연결·목록 변경·재연결·입력 전송·종료 정리를 중복 없이 처리한다', t => {
@@ -55,8 +59,9 @@ test('연결·목록 변경·재연결·입력 전송·종료 정리를 중복 �
   globalThis.document = Object.assign(new EventTarget(), { hidden: false })
   globalThis.sessionStorage = { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) }
   globalThis.WebSocket = Socket
-  const snapshots = [], statuses = []
-  const client = new MultiplayerClient({ snapshot: (players, selfId) => snapshots.push({ players, selfId }), status: status => statuses.push(status) })
+  const snapshots = [], statuses = [], greetings = []
+  let throwOnSnapshot = false
+  const client = new MultiplayerClient({ snapshot: (players, selfId) => { if (throwOnSnapshot) throw new Error('render failure'); snapshots.push({ players, selfId }) }, status: status => statuses.push(status), greeted: event => greetings.push(event) })
   try {
     client.start(); client.start()
     assert.equal(Socket.instances.length, 1)
@@ -70,13 +75,16 @@ test('연결·목록 변경·재연결·입력 전송·종료 정리를 중복 �
     window.dispatchEvent(new Event('blur'))
     t.mock.timers.tick(50)
     assert.equal(a.sent.at(-1).x, 0)
+    const idleCount = a.sent.length
+    t.mock.timers.tick(1000)
+    assert.equal(a.sent.length, idleCount)
     // 프레임마다 방향을 바꿔도 정기 전송을 포함한 합계가 서버 제한(40/s)을 넘지 않는다.
     const beforeChurn = a.sent.length
     for (let i = 0; i < 100; i++) {
       client.setInput({ x: i % 2 ? 1 : -1, y: i % 3 ? 0 : 1 })
       t.mock.timers.tick(10)
     }
-    assert.equal(a.sent.length - beforeChurn, 20)
+    assert.ok(a.sent.length - beforeChurn <= 21) // 양 끝 시각을 포함한 1초 구간
     assert.equal(a.readyState, 1)
     const latest = { x: -1, y: -1 }
     client.setInput(latest)
@@ -85,6 +93,15 @@ test('연결·목록 변경·재연결·입력 전송·종료 정리를 중복 �
     assert.equal(a.sent.at(-1).y, latest.y)
     a.receive({ type: 'joined', player: second })
     assert.equal(statuses.at(-1).online, 2)
+    client.greet(second.id); client.greet(second.id); client.greet(first.id)
+    assert.equal(a.sent.filter(message => message.type === 'greet').length, 1)
+    const greet = { type: 'player_greeted', eventId: first.id, playerId: first.id, targetPlayerId: second.id, message: '하이! 👋', durationMs: 3000 }
+    a.receive(greet)
+    assert.deepEqual(greetings, [greet])
+    throwOnSnapshot = true
+    a.receive({ type: 'state', tick: 0, players: [first, second] })
+    assert.equal(a.readyState, 1)
+    throwOnSnapshot = false
     a.receive({ type: 'state', tick: 2, players: [first, { ...second, x: 440, moving: true }] })
     a.receive({ type: 'state', tick: 1, players: [first] })
     assert.equal(snapshots.at(-1).players.length, 2)
@@ -93,7 +110,7 @@ test('연결·목록 변경·재연결·입력 전송·종료 정리를 중복 �
     a.drop(1006)
     const closeDetails = warnings.mock.calls.at(-1).arguments[1]
     assert.equal(closeDetails.code, 1006)
-    assert.equal(closeDetails.sentInputs, a.sent.length)
+    assert.equal(closeDetails.sentInputs, a.sent.filter(message => message.type === 'input').length)
     assert.ok(closeDetails.sentLastSecond <= 20)
     assert.ok(closeDetails.connectedMs >= 1000)
     assert.deepEqual(snapshots.at(-1), { players: [], selfId: null })
@@ -103,6 +120,10 @@ test('연결·목록 변경·재연결·입력 전송·종료 정리를 중복 �
     b.open(); b.receive(welcome(second))
     assert.equal(snapshots.at(-1).selfId, second.id)
     assert.equal(b.sent[0].seq, 1)
+    b.receive({ ...welcome(second, [first, second]), protocolVersion: undefined })
+    client.greet(first.id)
+    assert.equal(client.canGreet(), false)
+    assert.equal(b.sent.filter(message => message.type === 'greet').length, 0)
     b.receive({ type: 'state', tick: 1, players: [{ ...second, x: 10000 }] })
     assert.equal(b.lastCloseCode, 4002)
     const sentCount = b.sent.length

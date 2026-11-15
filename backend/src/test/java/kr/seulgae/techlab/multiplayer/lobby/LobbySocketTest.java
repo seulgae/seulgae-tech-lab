@@ -103,7 +103,7 @@ class LobbySocketTest {
             "{\"type\":\"input\",\"x\":1,\"y\":0,\"seq\":1,\"position\":99999}",
             "{\"type\":\"input\",\"x\":2,\"y\":0,\"seq\":1}",
             "{\"type\":\"input\",\"x\":0.5,\"y\":0,\"seq\":1}",
-            "{\"type\":\"input\",\"x\":0,\"y\":0,\"seq\":0}")) {
+            "{\"type\":\"input\",\"x\":0,\"y\":0,\"seq\":-1}")) {
             var client = connect(""); client.type("welcome");
             client.send("{\"type\":\"input\",\"x\":0,\"y\":0,\"seq\":0}");
             // 첫 입력 수신을 확인해 접속 등록과 재전송 검증의 실행 순서를 고정한다.
@@ -112,6 +112,46 @@ class LobbySocketTest {
             client.send(input);
             assertEquals(1008, client.closed.get(3, TimeUnit.SECONDS));
         }
+    }
+
+    /** 재전송은 무시하되 정상 후속 입력과 연결은 유지한다. */
+    @Test void ignoresStaleInputWithoutClosingHealthyConnection() throws Exception {
+        var client = connect(""); client.type("welcome");
+        client.send("{\"type\":\"input\",\"x\":0,\"y\":0,\"seq\":2}");
+        client.send("{\"type\":\"input\",\"x\":-1,\"y\":0,\"seq\":1}");
+        client.send("{\"type\":\"input\",\"x\":0,\"y\":0,\"seq\":2}");
+        client.await(frame -> frame.path("type").stringValue("").equals("state") && frame.get("players").get(0).get("ack").asLong() == 2);
+        assertFalse(client.closed.isDone());
+        client.send("{\"type\":\"input\",\"x\":0,\"y\":0,\"seq\":3}");
+        client.await(frame -> frame.path("type").stringValue("").equals("state") && frame.get("players").get(0).get("ack").asLong() == 3);
+    }
+
+    /** 가까워진 뒤에만 서버 고정 문구를 세 방문자 모두에게 전달한다. */
+    @Test void synchronizesValidatedGreetingAndRejectsInjectedText() throws Exception {
+        var a = connect(""); var aw = a.type("welcome");
+        String aid = aw.get("selfId").stringValue();
+        var b = connect(""); String bid = b.type("welcome").get("selfId").stringValue();
+        var c = connect(""); c.type("welcome");
+        a.send("{\"type\":\"input\",\"x\":1,\"y\":0,\"seq\":1}");
+        a.await(frame -> frame.path("type").stringValue("").equals("state")
+            && frame.get("players").valueStream().anyMatch(p -> p.get("id").stringValue().equals(aid) && p.get("x").asDouble() >= 435));
+        a.send("{\"type\":\"input\",\"x\":0,\"y\":0,\"seq\":2}");
+        a.send("{\"type\":\"greet\",\"targetPlayerId\":\"" + bid + "\"}");
+        var event = a.type("player_greeted");
+        assertEquals("하이! 👋", event.get("message").stringValue());
+        assertEquals(3000, event.get("durationMs").asInt());
+        assertEquals(aid, event.get("playerId").stringValue());
+        assertEquals(bid, event.get("targetPlayerId").stringValue());
+        assertEquals(event, b.type("player_greeted"));
+        assertEquals(event, c.type("player_greeted"));
+        a.send("{\"type\":\"greet\",\"targetPlayerId\":\"" + bid + "\"}");
+        a.send("{\"type\":\"input\",\"x\":0,\"y\":0,\"seq\":3}");
+        a.await(frame -> frame.path("type").stringValue("").equals("state")
+            && frame.get("players").get(0).get("ack").asLong() == 3);
+        assertFalse(a.frames.stream().anyMatch(f -> f.path("type").stringValue("").equals("player_greeted")));
+        assertFalse(a.closed.isDone());
+        a.send("{\"type\":\"greet\",\"targetPlayerId\":\"" + bid + "\",\"message\":\"arbitrary\"}");
+        assertEquals(1008, a.closed.get(3, TimeUnit.SECONDS));
     }
 
     @Test void limitsCapacityNicknamePayloadAndInputRate() throws Exception {

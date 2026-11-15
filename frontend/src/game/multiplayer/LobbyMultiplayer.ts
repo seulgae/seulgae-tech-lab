@@ -1,9 +1,11 @@
 import Phaser from 'phaser'
 import MultiplayerClient from '../../features/multiplayer/MultiplayerClient'
-import { MULTIPLAYER_EVENTS } from '../../features/multiplayer/model/protocol'
-import type { PlayerState } from '../../features/multiplayer/model/protocol'
+import { MULTIPLAYER_EVENTS, GREET_RANGE } from '../../features/multiplayer/model/protocol'
+import type { PlayerState, Greeting } from '../../features/multiplayer/model/protocol'
 import type Player from '../Player'
 import RemotePlayer from './RemotePlayer'
+import GreetingBubble from './GreetingBubble'
+import { nearestPlayer } from '../interaction'
 
 /**
  * 게임 장면과 소켓의 수명을 묶고 본인 예측 위치를 서버 상태로 보정한다.
@@ -16,6 +18,9 @@ export default class LobbyMultiplayer {
   private readonly client: MultiplayerClient
   private readonly remotes = new Map<string, RemotePlayer>()
   private readonly ownLabel: Phaser.GameObjects.Text
+  private players: PlayerState[] = []
+  private readonly bubbles = new Map<string, GreetingBubble>()
+  private readonly greetedEvents = new Set<string>()
   private selfId: string | null = null
   private readonly player: Player
   private readonly scene: Phaser.Scene
@@ -27,6 +32,7 @@ export default class LobbyMultiplayer {
     }).setOrigin(0.5).setResolution(2)
     this.client = new MultiplayerClient({
       snapshot: (players, selfId) => this.applySnapshot(players, selfId),
+      greeted: event => this.showGreeting(event),
       status: info => {
         this.ownLabel.setText(info.phase === 'online' ? `나 · ${info.nickname}` : '나 · 로컬 연구원')
         events.emit(MULTIPLAYER_EVENTS.status, info)
@@ -36,10 +42,20 @@ export default class LobbyMultiplayer {
   }
 
   private applySnapshot(players: PlayerState[], selfId: string | null) {
+    this.players = players
+    if (this.selfId !== selfId) {
+      for (const bubble of this.bubbles.values()) bubble.destroy()
+      this.bubbles.clear(); this.greetedEvents.clear()
+    }
     const own = players.find(player => player.id === selfId)
     if (own) {
       // 짧은 지연은 기존 Arcade 예측을 유지하고, 큰 오차와 재접속은 서버 위치로 보정한다.
-      if (this.selfId !== selfId || Math.hypot(this.player.x - own.x, this.player.y - own.y) > 24) this.player.body.reset(own.x, own.y)
+      const distance = Math.hypot(this.player.x - own.x, this.player.y - own.y)
+      const input = this.player.getInput()
+      if (this.selfId !== selfId || distance > 96) this.player.body.reset(own.x, own.y)
+      else if (distance > 24 || !own.moving && input.x === 0 && input.y === 0 && distance > 1) {
+        this.player.body.reset(Phaser.Math.Linear(this.player.x, own.x, 0.25), Phaser.Math.Linear(this.player.y, own.y, 0.25))
+      }
     }
     this.selfId = selfId
     const otherIds = new Set(players.filter(player => player.id !== selfId).map(player => player.id))
@@ -58,6 +74,25 @@ export default class LobbyMultiplayer {
     this.client.setInput(this.player.getInput())
     for (const remote of this.remotes.values()) remote.update(delta)
     this.ownLabel.setPosition(this.player.x, this.player.y - 55).setDepth(900)
+    for (const [id, bubble] of this.bubbles) {
+      const actor = id === this.selfId ? this.player : this.remotes.get(id)
+      if (!actor || !bubble.update(actor.x, actor.y)) { bubble.destroy(); this.bubbles.delete(id) }
+    }
+  }
+
+  nearestGreetingTarget() { return this.client.canGreet() ? nearestPlayer(this.player.x, this.player.y, this.players, this.selfId, GREET_RANGE) : null }
+
+  greet(targetId: string) { this.client.greet(targetId) }
+
+  private showGreeting(event: Greeting) {
+    if (this.greetedEvents.has(event.eventId) || !this.players.some(player => player.id === event.playerId)) return
+    this.greetedEvents.add(event.eventId)
+    if (this.greetedEvents.size > 128) this.greetedEvents.delete(this.greetedEvents.values().next().value!)
+    this.bubbles.get(event.playerId)?.destroy()
+    const bubble = new GreetingBubble(this.scene, event.message, event.durationMs)
+    this.bubbles.set(event.playerId, bubble)
+    const actor = event.playerId === this.selfId ? this.player : this.remotes.get(event.playerId)
+    if (actor) bubble.update(actor.x, actor.y)
   }
 
   stopInput() { this.client.setInput({ x: 0, y: 0 }) }
@@ -66,5 +101,7 @@ export default class LobbyMultiplayer {
     this.client.destroy()
     for (const remote of this.remotes.values()) remote.destroy()
     this.remotes.clear(); this.ownLabel.destroy()
+    for (const bubble of this.bubbles.values()) bubble.destroy()
+    this.bubbles.clear(); this.greetedEvents.clear()
   }
 }
