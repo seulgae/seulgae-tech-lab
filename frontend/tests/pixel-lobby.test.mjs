@@ -23,7 +23,7 @@ test('가구 충돌 영역이 벽 안쪽에 있고 시작 위치를 막지 않�
     const overlapsSpawn = Math.abs(body.x - 400) < body.width / 2 + 10 && Math.abs(body.y - 392) < body.height / 2 + 8
     assert.equal(overlapsSpawn, false)
   }
-  assert.equal(LOBBY_OBJECTS.find(object => object.texture === 'computer').body, COMPUTER)
+  assert.deepEqual(LOBBY_OBJECTS.find(object => object.texture === 'computer').body, COMPUTER)
 })
 
 test('입력 방향을 표현하고 정지 시 마지막 방향을 유지한다', () => {

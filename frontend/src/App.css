@@ -35,6 +35,6 @@ kbd { font: 10px/1.5 monospace; padding: 3px 5px; border: 1px solid #5e7163; bac
 .key-interaction { border: 1px solid #e0c283; }
 .lab-notes .quiet-note { font-size: 11px; padding-top: 22px; border-top: 1px solid #344f49; color: #7e998a; }
 .lab-footer { display: flex; justify-content: space-between; gap: 12px; padding-top: 22px; color: #779387; font: 10px/1.6 monospace; letter-spacing: 1px; }
-@media (min-width: 951px) { .lab-shell { width: min(1160px, 100%, calc((100svh - 310px) * 4 / 3 + 296px)); } }
+@media (min-width: 951px) { .lab-shell { width: min(1160px, 100%, calc((100svh - 344px) * 4 / 3 + 296px)); } }
 @media (max-width: 950px) { .lab-layout { grid-template-columns: minmax(0, 1fr); } .lab-notes { display: none; } .lab-shell { max-width: 850px; } }
 @media (max-width: 560px) { .lab-shell { padding: 18px 12px 14px; } .lab-header { margin-bottom: 23px; } .lab-brand strong { font-size: 14px; } .lab-brand .eyebrow { font-size: 8px; letter-spacing: 1px; } .brand-mark { width: 34px; height: 34px; font-size: 22px; } .location-badge { font-size: 10px; padding: 6px 8px; } .location-badge span { display: none; } .game-card-header { padding: 14px; min-height: 74px; } .game-card h1 { font-size: 15px; } .game-card-header .eyebrow { font-size: 8px; letter-spacing: .6px; } .room-label { display: none; } .game-controls { padding: 13px 12px; gap: 13px; font-size: 10px; } .game-controls kbd { font-size: 9px; padding: 2px 3px; } .lab-footer { font-size: 8px; letter-spacing: .5px; } }

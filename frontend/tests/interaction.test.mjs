@@ -6,6 +6,7 @@ import test from 'node:test'
 import vm from 'node:vm'
 import { isNearObject } from '../src/game/interaction.ts'
 import { RESEARCH_EVENTS } from '../src/features/research/researchEvents.ts'
+import { MULTIPLAYER_EVENTS } from '../src/features/multiplayer/model/protocol.ts'
 
 const require = createRequire(import.meta.url)
 const JustDown = require('phaser/src/input/keyboard/keys/JustDown.js')
@@ -59,6 +60,7 @@ function createScene() {
   const LobbyScene = vm.runInNewContext(source + '\nLabLobbyScene', {
     Phaser: { Scene, Input: { Keyboard: { JustDown } }, Scenes: { Events: { SHUTDOWN: 'shutdown' } } },
     Player, createLobbyMap: () => ({}), COMPUTER: computer, RESEARCH_EVENTS, isNearObject,
+    SPAWN: { x: 400, y: 400 }, MULTIPLAYER_EVENTS, LobbyMultiplayer: class { update() {} destroy() {} stopInput() {} },
   })
   const scene = new LobbyScene(uiEvents)
   scene.create()
