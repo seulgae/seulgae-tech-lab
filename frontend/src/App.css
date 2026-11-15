@@ -97,3 +97,9 @@
 .research-footer {
   margin-top: 20px;
 }
+
+.research-entry + .research-entry { margin-top: 16px; }
+.research-title { border: 0; padding: 0; background: transparent; color: #b2dfdb; font: inherit; text-align: left; cursor: pointer; }
+.research-title:focus-visible { outline: 2px solid #b2dfdb; outline-offset: 4px; }
+.research-content { white-space: pre-wrap; overflow-wrap: anywhere; }
+.research-pagination { display: flex; justify-content: space-between; margin-top: 16px; }

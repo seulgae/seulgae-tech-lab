@@ -11,4 +11,5 @@ if ($Migration) {
 $env:DB_URL = 'jdbc:postgresql://127.0.0.1:25432/stlab_dev?currentSchema=lab'
 $env:DB_PASSWORD = [IO.File]::ReadAllText($passwordFile).Trim()
 $env:SERVER_ADDRESS = '127.0.0.1'
+$env:LAB_RESEARCH_WRITE_ENABLED = 'true'
 Write-Host "Loaded development environment for $env:DB_USERNAME. Password is not printed."
