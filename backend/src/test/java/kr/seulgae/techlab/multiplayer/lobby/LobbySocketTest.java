@@ -120,7 +120,7 @@ class LobbySocketTest {
         var large = connect(""); large.type("welcome"); large.send("a".repeat(600));
         assertEquals(1009, large.closed.get(3, TimeUnit.SECONDS));
         var fast = connect(""); fast.type("welcome");
-        for (int i = 0; i < 45 && !fast.closed.isDone(); i++) {
+        for (int i = 0; i < 160 && !fast.closed.isDone(); i++) {
             try { fast.send("{\"type\":\"input\",\"x\":0,\"y\":0,\"seq\":" + i + "}"); }
             catch (CompletionException ignored) { break; }
         }
@@ -128,6 +128,31 @@ class LobbySocketTest {
         for (int i = 0; i < 5; i++) connect("").type("welcome");
         var full = connect("");
         assertEquals(1013, full.closed.get(3, TimeUnit.SECONDS));
+    }
+
+    /** 정상 20Hz 입력 약 2초 분량이 지연 후 몰려도 연결을 유지해야 한다. */
+    @Test void acceptsBatchedInputsAfterShortTransportDelay() throws Exception {
+        var client = connect("");
+        client.type("welcome");
+        client.send("{\"type\":\"input\",\"x\":0,\"y\":0,\"seq\":0}");
+        client.await(frame -> frame.path("type").stringValue("").equals("state")
+            && frame.get("players").get(0).get("ack").asLong() == 0);
+        for (int sequence = 1; sequence <= 45; sequence++) {
+            client.send("{\"type\":\"input\",\"x\":" + (sequence % 3 - 1)
+                + ",\"y\":0,\"seq\":" + sequence + "}");
+        }
+        client.await(frame -> frame.path("type").stringValue("").equals("state")
+            && frame.get("players").get(0).get("ack").asLong() == 45);
+        assertFalse(client.closed.isDone());
+        // 몰림 이후에도 정상 주기의 방향 변경 입력을 계속 수용해야 한다.
+        for (int sequence = 46; sequence <= 65; sequence++) {
+            Thread.sleep(50);
+            client.send("{\"type\":\"input\",\"x\":" + (sequence % 3 - 1)
+                + ",\"y\":0,\"seq\":" + sequence + "}");
+        }
+        client.await(frame -> frame.path("type").stringValue("").equals("state")
+            && frame.get("players").get(0).get("ack").asLong() == 65);
+        assertFalse(client.closed.isDone());
     }
 
     @Test void rejectsForeignAndMissingOrigins() {
