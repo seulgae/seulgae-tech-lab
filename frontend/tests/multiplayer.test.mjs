@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import MultiplayerClient from '../src/features/multiplayer/MultiplayerClient.ts'
-import { lobbySocketUrl, parseServerMessage, validNickname } from '../src/features/multiplayer/model/protocol.ts'
+import { lobbySocketUrl, parseServerMessage, validNickname, validChatText } from '../src/features/multiplayer/model/protocol.ts'
 
 const first = { id: '00000000-0000-4000-8000-000000000001', nickname: '연구원-0001', x: 400, y: 400, facing: 'down', moving: false, ack: -1 }
 const second = { ...first, id: '00000000-0000-4000-8000-000000000002', nickname: '연구원-0002', x: 428 }
-const welcome = (self = first, players = [self]) => ({ type: 'welcome', selfId: self.id, players, maxPlayers: 5, protocolVersion: 2 })
+const welcome = (self = first, players = [self]) => ({ type: 'welcome', selfId: self.id, players, maxPlayers: 5, protocolVersion: 3 })
+const chat = (index = 1) => ({ type: 'chat_message', messageId: `10000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
+  playerId: first.id, nickname: first.nickname, message: '안녕하세요! <b>일반 텍스트</b>', sentAt: '2026-11-16T00:00:00Z' })
 
 test('동일 서비스의 HTTPS는 WSS로 연결하고 임시 이름만 쿼리에 넣는다', () => {
   const url = new URL(lobbySocketUrl({ protocol: 'https:', host: 'lab.example' }, '연구원-1234'))
@@ -27,11 +29,18 @@ test('스냅샷 크기·플레이어 수·ID·좌표·방향·본인 ID를 검�
     { ...welcome(), players: [{ ...first, ack: 1.5 }] },
     { type: 'unknown', players: [first] },
   ]) assert.throws(() => parseServerMessage(JSON.stringify(invalid)))
-  assert.throws(() => parseServerMessage('x'.repeat(8193)))
-  const greet = { type: 'player_greeted', eventId: first.id, playerId: first.id, targetPlayerId: second.id, message: '하이! 👋', durationMs: 3000 }
-  assert.deepEqual(parseServerMessage(JSON.stringify(greet)), greet)
-  assert.throws(() => parseServerMessage(JSON.stringify({ ...greet, message: 'free chat' })))
-  assert.throws(() => parseServerMessage(JSON.stringify({ ...greet, targetPlayerId: first.id })))
+  assert.throws(() => parseServerMessage('x'.repeat(65537)))
+  assert.deepEqual(parseServerMessage(JSON.stringify(chat())), chat())
+  assert.equal(validChatText('👋'.repeat(150)), true)
+  assert.equal(validChatText('가'.repeat(151)), false)
+  assert.equal(validChatText(' \n\t '), false)
+  assert.equal(validChatText(String.fromCharCode(0)), false)
+  assert.throws(() => parseServerMessage(JSON.stringify({ ...chat(), nickname: '<bad>' })))
+  assert.throws(() => parseServerMessage(JSON.stringify({ type: 'chat_history', messages: [chat(), chat()] })))
+  assert.throws(() => parseServerMessage(JSON.stringify({ type: 'chat_history', messages: Array.from({length:51}, (_,i) => chat(i)) })))
+  const history = { type: 'chat_history', messages: Array.from({length:50}, (_,i) => ({...chat(i),message:'👋'.repeat(150)})) }
+  assert.ok(JSON.stringify(history).length > 8192)
+  assert.equal(parseServerMessage(JSON.stringify(history)).messages.length, 50)
 })
 
 test('연결·목록 변경·재연결·입력 전송·종료 정리를 중복 없이 처리한다', t => {
@@ -59,9 +68,9 @@ test('연결·목록 변경·재연결·입력 전송·종료 정리를 중복 �
   globalThis.document = Object.assign(new EventTarget(), { hidden: false })
   globalThis.sessionStorage = { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) }
   globalThis.WebSocket = Socket
-  const snapshots = [], statuses = [], greetings = []
+  const snapshots = [], statuses = [], chats = [], histories = [], errors = []
   let throwOnSnapshot = false
-  const client = new MultiplayerClient({ snapshot: (players, selfId) => { if (throwOnSnapshot) throw new Error('render failure'); snapshots.push({ players, selfId }) }, status: status => statuses.push(status), greeted: event => greetings.push(event) })
+  const client = new MultiplayerClient({ snapshot: (players, selfId) => { if (throwOnSnapshot) throw new Error('render failure'); snapshots.push({ players, selfId }) }, status: status => statuses.push(status), chat: event => chats.push(event), history: messages => histories.push(messages), chatError: error => errors.push(error) })
   try {
     client.start(); client.start()
     assert.equal(Socket.instances.length, 1)
@@ -93,11 +102,34 @@ test('연결·목록 변경·재연결·입력 전송·종료 정리를 중복 �
     assert.equal(a.sent.at(-1).y, latest.y)
     a.receive({ type: 'joined', player: second })
     assert.equal(statuses.at(-1).online, 2)
-    client.greet(second.id); client.greet(second.id); client.greet(first.id)
-    assert.equal(a.sent.filter(message => message.type === 'greet').length, 1)
-    const greet = { type: 'player_greeted', eventId: first.id, playerId: first.id, targetPlayerId: second.id, message: '하이! 👋', durationMs: 3000 }
-    a.receive(greet)
-    assert.deepEqual(greetings, [greet])
+    assert.equal(client.sendChat('   '), false)
+    const inputCount = a.sent.filter(message => message.type === 'input').length
+    assert.equal(client.sendChat('안녕하세요!'), true)
+    assert.equal(client.sendChat('빠른 반복'), false)
+    assert.equal(errors.at(-1), 'rate_limited')
+    assert.equal(a.sent.filter(message => message.type === 'chat').length, 1)
+    assert.equal(a.sent.filter(message => message.type === 'input').length, inputCount)
+    t.mock.timers.tick(1000)
+    const sendBeforeFailure = a.send
+    a.send = message => { if (JSON.parse(message).type === 'chat') throw new Error('transport failure'); sendBeforeFailure.call(a, message) }
+    assert.equal(client.sendChat('전송 실패 시 입력 유지'), false)
+    assert.equal(errors.at(-1), 'unavailable')
+    a.send = sendBeforeFailure
+    const snapshotCount = snapshots.length
+    a.receive({ type: 'chat_history', messages: [chat()] })
+    assert.equal(chats.length, 0)
+    a.receive(chat()); assert.equal(chats.length, 0)
+    for (let i = 2; i <= 61; i++) a.receive(chat(i))
+    a.receive(chat(61))
+    assert.equal(chats.length, 60)
+    assert.equal(snapshots.length, snapshotCount)
+    let restored = []
+    const detach = client.subscribe({ history: values => { restored = values } })
+    assert.equal(restored.length, 50)
+    assert.equal(restored[0].messageId, chat(12).messageId)
+    detach()
+    assert.equal(a.readyState, 1)
+    assert.equal(Socket.instances.length, 1)
     throwOnSnapshot = true
     a.receive({ type: 'state', tick: 0, players: [first, second] })
     assert.equal(a.readyState, 1)
@@ -121,9 +153,9 @@ test('연결·목록 변경·재연결·입력 전송·종료 정리를 중복 �
     assert.equal(snapshots.at(-1).selfId, second.id)
     assert.equal(b.sent[0].seq, 1)
     b.receive({ ...welcome(second, [first, second]), protocolVersion: undefined })
-    client.greet(first.id)
-    assert.equal(client.canGreet(), false)
-    assert.equal(b.sent.filter(message => message.type === 'greet').length, 0)
+    assert.equal(client.sendChat('이전 서버'), false)
+    assert.equal(client.canChat(), false)
+    assert.equal(b.sent.filter(message => message.type === 'chat').length, 0)
     b.receive({ type: 'state', tick: 1, players: [{ ...second, x: 10000 }] })
     assert.equal(b.lastCloseCode, 4002)
     const sentCount = b.sent.length

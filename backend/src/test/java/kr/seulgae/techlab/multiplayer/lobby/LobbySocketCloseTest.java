@@ -26,7 +26,7 @@ class LobbySocketCloseTest {
     /** 느린 송신 도중 잘못된 입력을 받아도 close와 send가 동시에 실행되지 않아야 한다. */
     @Test void sendsPolicyCloseOnlyAfterInFlightMessageCompletes() throws Exception {
         var room = new LobbyRoom(new LobbyWorld());
-        var handler = new LobbySocketHandler(room);
+        var handler = new LobbySocketHandler(room, new kr.seulgae.techlab.multiplayer.lobby.domain.LobbyChat(room));
         var session = mock(WebSocketSession.class);
         var open = new AtomicBoolean(true);
         var blockWrites = new AtomicBoolean(false);
@@ -57,7 +57,7 @@ class LobbySocketCloseTest {
         try {
             handler.afterConnectionEstablished(session);
             // 입장 알림 송신까지 끝낸 다음에만 다음 상태 프레임을 붙잡는다.
-            verify(session, timeout(1000).times(2)).sendMessage(any());
+            verify(session, timeout(1000).times(3)).sendMessage(any());
             blockWrites.set(true);
             handler.updateRoom();
             assertTrue(writeStarted.await(1, TimeUnit.SECONDS));

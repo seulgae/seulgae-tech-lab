@@ -12,6 +12,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import kr.seulgae.techlab.multiplayer.lobby.domain.LobbyRoom;
+import kr.seulgae.techlab.multiplayer.lobby.domain.LobbyChat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -34,7 +35,7 @@ import tools.jackson.databind.json.JsonMapper;
 public class LobbySocketHandler extends TextWebSocketHandler {
     private static final Logger LOG = LoggerFactory.getLogger(LobbySocketHandler.class);
     private static final Set<String> INPUT_FIELDS = Set.of("type", "x", "y", "seq");
-    private static final Set<String> GREET_FIELDS = Set.of("type", "targetPlayerId");
+    private static final Set<String> CHAT_FIELDS = Set.of("type", "message");
     private static final double INPUTS_PER_SECOND = 40;
     private static final double INPUT_BURST_CAPACITY = 80;
     /**
@@ -68,17 +69,18 @@ public class LobbySocketHandler extends TextWebSocketHandler {
         }
     }
     private final LobbyRoom room;
+    private final LobbyChat chat;
     private final JsonMapper json = JsonMapper.builder().build();
     private final ConcurrentHashMap<String, Peer> peers = new ConcurrentHashMap<>();
     private final ExecutorService senders = Executors.newFixedThreadPool(LobbyRoom.MAX_PLAYERS);
     private long lastTick = System.nanoTime(), tick;
 
-    public LobbySocketHandler(LobbyRoom room) { this.room = room; }
+    public LobbySocketHandler(LobbyRoom room, LobbyChat chat) { this.room = room; this.chat = chat; }
 
     /** 검증된 임시 이름으로 접속시키고 본인 ID와 전체 스냅샷을 먼저 전송한다. */
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-        session.setTextMessageSizeLimit(512);
+        session.setTextMessageSizeLimit(1024);
         session.setBinaryMessageSizeLimit(128);
         LobbyRoom.PlayerView player;
         try {
@@ -95,10 +97,16 @@ public class LobbySocketHandler extends TextWebSocketHandler {
             session.close(new CloseStatus(1013, "Lobby full"));
             return;
         }
-        var socket = new ConcurrentWebSocketSessionDecorator(session, 1000, 8192);
+        var socket = new ConcurrentWebSocketSessionDecorator(session, 1000, 65536);
         try {
-            socket.sendMessage(new TextMessage(json.writeValueAsString(Map.of("type", "welcome", "selfId", player.id(), "players", room.snapshot(), "maxPlayers", LobbyRoom.MAX_PLAYERS, "protocolVersion", 2))));
-            peers.put(session.getId(), new Peer(socket, player.id()));
+            // 입장 기록과 실시간 방송 사이에 메시지가 빠지지 않게 같은 채팅 잠금을 사용한다.
+            synchronized (chat) {
+                var peer = new Peer(socket, player.id());
+                peer.controls.add(new TextMessage(json.writeValueAsString(Map.of("type", "welcome", "selfId", player.id(), "players", room.snapshot(), "maxPlayers", LobbyRoom.MAX_PLAYERS, "protocolVersion", 3))));
+                peer.controls.add(new TextMessage(json.writeValueAsString(Map.of("type", "chat_history", "messages", chat.history()))));
+                peers.put(session.getId(), peer);
+                drain(session.getId(), peer);
+            }
             broadcast(Map.of("type", "joined", "player", player));
         } catch (Exception exception) {
             room.leave(player.id());
@@ -112,25 +120,33 @@ public class LobbySocketHandler extends TextWebSocketHandler {
         var peer = peers.get(session.getId());
         if (peer == null) return;
         long now = System.nanoTime();
-        if (message.getPayload().getBytes(StandardCharsets.UTF_8).length > 512) {
+        int payloadBytes = message.getPayload().getBytes(StandardCharsets.UTF_8).length;
+        if (payloadBytes > 1024) {
             disconnect(session.getId(), CloseStatus.TOO_BIG_TO_PROCESS); return;
-        }
-        if (!peer.allow(now)) {
-            LOG.warn("Lobby input rate exceeded: player={}, receivedInputs={}, connectedMs={}",
-                peer.playerId, peer.receivedInputs, (now - peer.connectedAt) / 1_000_000);
-            disconnect(session.getId(), CloseStatus.POLICY_VIOLATION.withReason("Input rate exceeded")); return;
         }
         String rejection = "Invalid input: JSON";
         try {
             var input = json.readTree(message.getPayload());
-            if (input.isObject() && input.path("type").stringValue("").equals("greet")) {
-                rejection = "Invalid greet: fields";
-                if (!Set.copyOf(input.propertyNames()).equals(GREET_FIELDS) || !input.get("targetPlayerId").isString()
-                    || !input.get("targetPlayerId").stringValue().matches("[a-f0-9-]{36}")) throw new IllegalArgumentException("Invalid greeting");
-                var greeting = room.greet(peer.playerId, input.get("targetPlayerId").stringValue(), now);
-                if (greeting != null) broadcast(greeting);
+            if (input.isObject() && input.path("type").stringValue("").equals("chat")) {
+                try {
+                    synchronized (chat) {
+                        if (peers.get(session.getId()) != peer) return;
+                        // 부정한 필드 요청도 채팅 제한을 소비하게 해 반복 오류 방송을 막는다.
+                        String text = Set.copyOf(input.propertyNames()).equals(CHAT_FIELDS) && input.get("message").isString()
+                            ? input.get("message").stringValue() : null;
+                        broadcast(chat.post(peer.playerId, text, now));
+                    }
+                } catch (LobbyChat.Rejected exception) {
+                    dispatch(session.getId(), peer, new TextMessage(json.writeValueAsString(Map.of("type", "chat_error", "reason", exception.getMessage()))), true);
+                }
                 peer.lastSeen = now;
                 return;
+            }
+            if (payloadBytes > 512) { disconnect(session.getId(), CloseStatus.TOO_BIG_TO_PROCESS); return; }
+            if (!peer.allow(now)) {
+                LOG.warn("Lobby input rate exceeded: player={}, receivedInputs={}, connectedMs={}",
+                    peer.playerId, peer.receivedInputs, (now - peer.connectedAt) / 1_000_000);
+                disconnect(session.getId(), CloseStatus.POLICY_VIOLATION.withReason("Input rate exceeded")); return;
             }
             rejection = "Invalid input: fields";
             if (!input.isObject() || !Set.copyOf(input.propertyNames()).equals(INPUT_FIELDS)
@@ -150,6 +166,7 @@ public class LobbySocketHandler extends TextWebSocketHandler {
             }
             peer.lastSeen = now;
         } catch (RuntimeException exception) {
+            if (payloadBytes > 512) { disconnect(session.getId(), CloseStatus.TOO_BIG_TO_PROCESS); return; }
             LOG.warn("Lobby input rejected: player={}, validation={}, receivedInputs={}, connectedMs={}",
                 peer.playerId, rejection, peer.receivedInputs, (now - peer.connectedAt) / 1_000_000);
             disconnect(session.getId(), CloseStatus.POLICY_VIOLATION.withReason(rejection));
@@ -229,6 +246,7 @@ public class LobbySocketHandler extends TextWebSocketHandler {
             peer.playerId, status.getCode(), status.getReason(), peer.receivedInputs,
             (System.nanoTime() - peer.connectedAt) / 1_000_000);
         room.leave(peer.playerId);
+        chat.leave(peer.playerId);
         peer.controls.clear();
         peer.latestState.set(null);
         // 정상적인 종료 프레임은 진행 중인 송신이 끝난 뒤 같은 작업자에서 전송한다.

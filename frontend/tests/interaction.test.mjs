@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 import { createRequire, stripTypeScriptTypes } from 'node:module'
 import test from 'node:test'
 import vm from 'node:vm'
-import { isNearObject, nearestPlayer } from '../src/game/interaction.ts'
+import { isNearObject } from '../src/game/interaction.ts'
 import { RESEARCH_EVENTS } from '../src/features/research/researchEvents.ts'
 import { MULTIPLAYER_EVENTS } from '../src/features/multiplayer/model/protocol.ts'
 
@@ -34,13 +34,13 @@ test('모서리에서도 원형 거리로 범위를 제한한다', () => {
 function createScene() {
   const uiEvents = new EventEmitter()
   const key = { _justDown: false }
-  const state = { textFocused: false, target: null, greetings: [] }
+  const state = { textFocused: false, resets: 0 }
   class Scene {
     constructor() {
       this.events = new EventEmitter()
       this.cameras = { main: { setBackgroundColor() {} } }
       this.physics = { add: { collider() {} } }
-      this.input = { keyboard: { addKey: () => key } }
+      this.input = { keyboard: { addKey: () => key, resetKeys: () => { state.resets++ } } }
       this.add = {
         text: () => ({
           visible: true,
@@ -67,8 +67,6 @@ function createScene() {
     hasTextInputFocus: () => state.textFocused,
     SPAWN: { x: 400, y: 400 }, MULTIPLAYER_EVENTS, LobbyMultiplayer: class {
       update() {} destroy() {} stopInput() {}
-      nearestGreetingTarget() { return state.target }
-      greet(id) { state.greetings.push(id) }
     },
   })
   const scene = new LobbyScene(uiEvents)
@@ -76,36 +74,23 @@ function createScene() {
   return { scene, uiEvents, key, state }
 }
 
-test('가장 가까운 타인을 선택하고 자신·오프라인·거리 밖 대상은 제외한다', () => {
-  const players = [{ id: 'self', nickname: '나', x: 0, y: 0 }, { id: 'a', nickname: 'A', x: 80, y: 0 }, { id: 'b', nickname: 'B', x: 40, y: 0 }]
-  assert.equal(nearestPlayer(0, 0, players, 'self', 80).id, 'b')
-  assert.equal(nearestPlayer(0, 0, players.slice(0, 2), 'self', 80).id, 'a')
-  assert.equal(nearestPlayer(0, 0, players, null, 80), null)
-  assert.equal(nearestPlayer(-100, 0, players, 'self', 80), null)
-})
-
-test('컴퓨터 우선순위·패널·입력 포커스·퇴장·키 누름에 따라 인사를 한 번만 실행한다', () => {
+test('채팅 입력 포커스는 이동과 컴퓨터 E를 막고 키 상태를 초기화한다', () => {
   const { scene, uiEvents, key, state } = createScene()
-  state.target = { id: 'other', nickname: '동료' }
-  key._justDown = true; scene.update(); scene.update()
-  assert.deepEqual(state.greetings, ['other'])
-  assert.ok(scene.interactionHint.text.includes('동료'))
-  state.target = null; scene.update()
-  assert.equal(scene.interactionHint.visible, false)
-  state.target = { id: 'other', nickname: '동료' }
-  state.textFocused = true; key._justDown = true; scene.update()
+  let opens = 0
+  uiEvents.on(RESEARCH_EVENTS.openResearch, () => opens++)
+  scene.player.x = 620
+  state.textFocused = true
+  uiEvents.emit('chat:focus')
+  key._justDown = true; scene.update()
+  assert.equal(opens, 0)
+  assert.equal(scene.player.movementEnabled, false)
+  assert.equal(state.resets, 1)
   state.textFocused = false; scene.update()
-  assert.equal(state.greetings.length, 1)
-  scene.player.x = 620; key._justDown = true; scene.update()
-  assert.equal(scene.researchOpen, true)
-  assert.equal(state.greetings.length, 1)
+  assert.equal(opens, 0)
+  assert.equal(scene.player.movementEnabled, true)
   key._justDown = true; scene.update()
-  uiEvents.emit(RESEARCH_EVENTS.closeResearch); scene.player.x = 400; scene.update()
-  assert.equal(state.greetings.length, 1)
-  key._justDown = true; scene.update()
-  assert.equal(state.greetings.length, 2)
+  assert.equal(opens, 1)
 })
-
 test('범위 밖 E는 무시하고 나중에 접근해도 예약 실행하지 않는다', () => {
   const { scene, uiEvents, key } = createScene()
   let opens = 0

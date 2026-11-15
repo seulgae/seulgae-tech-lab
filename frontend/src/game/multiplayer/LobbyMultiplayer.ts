@@ -1,28 +1,25 @@
 import Phaser from 'phaser'
 import MultiplayerClient from '../../features/multiplayer/MultiplayerClient'
-import { MULTIPLAYER_EVENTS, GREET_RANGE } from '../../features/multiplayer/model/protocol'
-import type { PlayerState, Greeting } from '../../features/multiplayer/model/protocol'
+import type { PlayerState, ChatMessage } from '../../features/multiplayer/model/protocol'
 import type Player from '../Player'
 import RemotePlayer from './RemotePlayer'
-import GreetingBubble from './GreetingBubble'
-import { nearestPlayer } from '../interaction'
+import ChatBubble from './ChatBubble'
 import LocalReconciliation from './LocalReconciliation'
 import MovementDiagnostics from './MovementDiagnostics'
 
 /**
- * 게임 장면과 소켓의 수명을 묶고 본인 예측 위치를 서버 상태로 보정한다.
+ * 공유 소켓을 장면에서 구독하고 본인 예측 위치와 채팅 말풍선을 연결한다.
  *
  * @author seulgae
- * @version 1.0, 서버 스냅샷과 로컬 예측·원격 캐릭터 연결
+ * @version 1.0, 서버 스냅샷·로컬 예측·원격 캐릭터 및 채팅 구독
  * @see "None"
  */
 export default class LobbyMultiplayer {
   private readonly client: MultiplayerClient
   private readonly remotes = new Map<string, RemotePlayer>()
   private readonly ownLabel: Phaser.GameObjects.Text
-  private players: PlayerState[] = []
-  private readonly bubbles = new Map<string, GreetingBubble>()
-  private readonly greetedEvents = new Set<string>()
+  private readonly bubbles = new Map<string, ChatBubble>()
+  private readonly unsubscribe: () => void
   private selfId: string | null = null
   private readonly player: Player
   private readonly scene: Phaser.Scene
@@ -44,36 +41,38 @@ export default class LobbyMultiplayer {
       }
     }
     this.ownLabel.setPosition(this.player.x, this.player.y - 55)
+    for (const [id, bubble] of this.bubbles) {
+      const actor = id === this.selfId ? this.player : this.remotes.get(id)
+      if (!actor || !bubble.update(actor.x, actor.y)) { bubble.destroy(); this.bubbles.delete(id) }
+    }
     this.diagnostics.frame(this.player.x, this.player.y, this.player.getInput(), this.frameDelta, this.reconciliation.lastError)
   }
 
-  constructor(scene: Phaser.Scene, player: Player, events: Phaser.Events.EventEmitter) {
+  constructor(scene: Phaser.Scene, player: Player, client: MultiplayerClient) {
     this.scene = scene; this.player = player
+    this.client = client
     this.ownLabel = scene.add.text(player.x, player.y - 55, '나 · 로컬 연구원', {
       fontFamily: 'Arial, sans-serif', fontSize: '16px', color: '#fff0bd', backgroundColor: '#20383a', padding: { x: 4, y: 2 },
     }).setOrigin(0.5).setResolution(2)
-    this.client = new MultiplayerClient({
+    this.unsubscribe = client.subscribe({
       inputSent: sequence => {
         this.reconciliation.record(sequence, { x: this.player.x, y: this.player.y })
         this.diagnostics.sent()
       },
       snapshot: (players, selfId) => this.applySnapshot(players, selfId),
-      greeted: event => this.showGreeting(event),
+      chat: message => this.showChat(message),
       status: info => {
         this.ownLabel.setText(info.phase === 'online' ? `나 · ${info.nickname}` : '나 · 로컬 연구원')
-        events.emit(MULTIPLAYER_EVENTS.status, info)
       },
     })
     scene.events.on(Phaser.Scenes.Events.POST_UPDATE, this.afterPhysics)
-    this.client.start()
   }
 
   private applySnapshot(players: PlayerState[], selfId: string | null) {
     this.diagnostics.received()
-    this.players = players
     if (this.selfId !== selfId) {
       for (const bubble of this.bubbles.values()) bubble.destroy()
-      this.bubbles.clear(); this.greetedEvents.clear()
+      this.bubbles.clear()
     }
     const own = players.find(player => player.id === selfId)
     if (own) {
@@ -85,7 +84,10 @@ export default class LobbyMultiplayer {
     this.selfId = selfId
     const otherIds = new Set(players.filter(player => player.id !== selfId).map(player => player.id))
     for (const [id, remote] of this.remotes) {
-      if (!otherIds.has(id)) { remote.destroy(); this.remotes.delete(id) }
+      if (!otherIds.has(id)) {
+        remote.destroy(); this.remotes.delete(id)
+        this.bubbles.get(id)?.destroy(); this.bubbles.delete(id)
+      }
     }
     for (const state of players) {
       if (state.id === selfId) continue
@@ -100,25 +102,15 @@ export default class LobbyMultiplayer {
     this.client.setInput(this.player.getInput())
     for (const remote of this.remotes.values()) remote.update(delta)
     this.ownLabel.setPosition(this.player.x, this.player.y - 55).setDepth(900)
-    for (const [id, bubble] of this.bubbles) {
-      const actor = id === this.selfId ? this.player : this.remotes.get(id)
-      if (!actor || !bubble.update(actor.x, actor.y)) { bubble.destroy(); this.bubbles.delete(id) }
-    }
   }
 
-  nearestGreetingTarget() { return this.client.canGreet() ? nearestPlayer(this.player.x, this.player.y, this.players, this.selfId, GREET_RANGE) : null }
-
-  greet(targetId: string) { this.client.greet(targetId) }
-
-  private showGreeting(event: Greeting) {
-    if (this.greetedEvents.has(event.eventId) || !this.players.some(player => player.id === event.playerId)) return
-    this.greetedEvents.add(event.eventId)
-    if (this.greetedEvents.size > 128) this.greetedEvents.delete(this.greetedEvents.values().next().value!)
-    this.bubbles.get(event.playerId)?.destroy()
-    const bubble = new GreetingBubble(this.scene, event.message, event.durationMs)
-    this.bubbles.set(event.playerId, bubble)
-    const actor = event.playerId === this.selfId ? this.player : this.remotes.get(event.playerId)
-    if (actor) bubble.update(actor.x, actor.y)
+  private showChat(message: ChatMessage) {
+    const actor = message.playerId === this.selfId ? this.player : this.remotes.get(message.playerId)
+    if (!actor) return
+    let bubble = this.bubbles.get(message.playerId)
+    if (bubble) bubble.setMessage(message.message)
+    else { bubble = new ChatBubble(this.scene, message.message); this.bubbles.set(message.playerId, bubble) }
+    bubble.update(actor.x, actor.y)
   }
 
   stopInput() { this.client.setInput({ x: 0, y: 0 }) }
@@ -126,10 +118,10 @@ export default class LobbyMultiplayer {
   destroy() {
     this.scene.events.off(Phaser.Scenes.Events.POST_UPDATE, this.afterPhysics)
     this.reconciliation.reset()
-    this.client.destroy()
+    this.unsubscribe()
     for (const remote of this.remotes.values()) remote.destroy()
     this.remotes.clear(); this.ownLabel.destroy()
     for (const bubble of this.bubbles.values()) bubble.destroy()
-    this.bubbles.clear(); this.greetedEvents.clear()
+    this.bubbles.clear()
   }
 }

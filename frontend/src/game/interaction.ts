@@ -1,12 +1,4 @@
 type InteractionArea = { x: number; y: number; width: number; height: number }
-type NearbyPlayer = { id: string; nickname: string; x: number; y: number }
-
-export function nearestPlayer(x: number, y: number, players: NearbyPlayer[], selfId: string | null, range: number) {
-  if (!selfId) return null
-  return players.filter(player => player.id !== selfId && Math.hypot(player.x - x, player.y - y) <= range)
-    .sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y) || a.id.localeCompare(b.id))[0] ?? null
-}
-
 export function hasTextInputFocus() {
   const active = document.activeElement
   return !!active && (['INPUT', 'TEXTAREA', 'SELECT'].includes(active.tagName)
