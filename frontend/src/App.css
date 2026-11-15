@@ -1,0 +1,14 @@
+.game-page {
+  padding: 24px 0;
+  overflow-x: auto;
+}
+
+.game-canvas {
+  width: 800px;
+  height: 600px;
+  margin: 0 auto;
+}
+
+.game-canvas canvas {
+  display: block;
+}
