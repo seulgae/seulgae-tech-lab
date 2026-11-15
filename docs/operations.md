@@ -133,6 +133,23 @@ GitHub 저장소 Settings → Secrets and variables → Actions에서 다음 Rep
 
 전용 공개키는 서버 `~/.ssh/authorized_keys`에 `restrict,command="/opt/homeserver/apps/seulgae-tech-lab/deploy.sh"` 제한을 붙여 등록한다. 이 키로 일반 셸이나 포트 포워딩을 사용하지 못하게 하며 기존 암호·개인키·InvenCore 설정은 변경하지 않는다.
 
+이번 설정에서는 전용 CI 키를 Windows의 `$env:USERPROFILE\.config\seulgae-tech-lab\ci\deploy_ed25519`에 생성하고, 현재 사용자만 접근할 수 있도록 디렉터리 ACL을 제한했다. 공개키의 위 제한 등록까지 완료했다. 기존 SSH 세션에서 읽은 서버 호스트 공개키로 같은 폴더의 `known_hosts`를 만들었다. 개인키는 Git에 추가하지 않는다.
+
+GitHub 저장소 [Actions Secrets 설정](https://github.com/seulgae/seulgae-tech-lab/settings/secrets/actions)에서 New repository secret으로 등록한다. PowerShell에서 한 항목씩 클립보드로 복사하고 해당 Secret 값 입력란에 붙여 넣는다. 터미널이나 채팅에 값을 출력하지 않는다.
+
+```powershell
+# DEPLOY_SSH_PRIVATE_KEY
+Get-Content "$env:USERPROFILE\.config\seulgae-tech-lab\ci\deploy_ed25519" -Raw | Set-Clipboard
+# 위 Secret 저장 후 DEPLOY_SSH_KNOWN_HOSTS
+Get-Content "$env:USERPROFILE\.config\seulgae-tech-lab\ci\known_hosts" -Raw | Set-Clipboard
+```
+
+Tailscale 관리자 콘솔 → Settings → Keys에서 CI 전용 auth key를 생성한다. Reusable과 Ephemeral을 켜고 필요하면 Pre-approved를 사용한다. 기존 tailnet 정책에서 이 CI 노드가 배포 서버의 TCP 22와 연결 확인에 필요한 경로에 접근할 수 있도록 최소 범위를 부여한다. 기존 정책을 무조건 덮어쓰거나 전체 허용하지 않는다. 생성한 값은 `TAILSCALE_AUTHKEY`에 직접 등록한다. 만료 시 Secret도 교체해야 한다.
+
+[Actions Variables 설정](https://github.com/seulgae/seulgae-tech-lab/settings/variables/actions)에 표의 DEPLOY_HOST와 DEPLOY_USER를 등록하고, DEPLOY_ENABLED는 Secrets 등록 완료 전까지 false로 둔다. SSH known_hosts를 실행 시 ssh-keyscan으로 무조건 신뢰하는 방식은 사용하지 않는다.
+
+관련 공식 문서: [Tailscale GitHub Action의 auth key 및 ping 설정](https://github.com/tailscale/github-action), [GHCR 패키지 공개 및 익명 Pull](https://docs.github.com/en/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility). 패키지의 저장소 접근 권한 상속과 공개 여부는 별도 설정이다.
+
 CI는 PR에서 검증만 수행한다. main의 빌드·테스트가 성공하면 GHCR digest와 release manifest를 게시한다. CI workflow 전체가 성공 완료되면 별도 deploy workflow가 실행된다. main·동일 저장소·성공 이벤트와 DEPLOY_ENABLED 조건을 충족할 때만 Secrets를 사용해 SSH로 고정된 `./deploy.sh`를 실행한다. PR 코드나 다운로드한 artifact를 권한 있는 deploy workflow에서 실행하지 않는다.
 
 Secrets를 등록해도 과거 완료 이벤트가 다시 발생하지는 않는다. 활성화 후 Actions → Build and deploy tech lab → Run workflow에서 main을 선택하고 인자 없이 실행한다. 새 검증·게시가 완료되면 자동 배포가 시작되며 서버 history.jsonl과 status.sh에서 결과를 확인한다.
