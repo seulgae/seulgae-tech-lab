@@ -74,28 +74,69 @@ jobs:
           node backend/tests/research-api.mjs
       - run: docker build -f backend/Dockerfile -t tech-lab-backend:ci .
       - run: docker build -f frontend/Dockerfile -t tech-lab-frontend:ci .
-  deploy:
-    needs: [frontend, backend]
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.DEPLOY_ENABLED == 'true'
+  operations:
     runs-on: ubuntu-latest
-    environment: production
     steps:
-      - uses: tailscale/github-action@v4
+      - uses: actions/checkout@v4
+      - run: for script in deploy.sh start.sh stop.sh restart.sh status.sh logs.sh rollback.sh deploy/deploy.sh; do bash -n "$script"; done
+      - run: python3 -m unittest discover -s deploy -p 'test_*.py' -v
+  publish:
+    needs: [frontend, backend, operations]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
         with:
-          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
-      - name: Deploy over private SSH
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish backend image
+        id: backend
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          push: true
+          tags: ghcr.io/seulgae/seulgae-tech-lab-backend:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/seulgae/seulgae-tech-lab
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha,scope=tech-lab-backend
+          cache-to: type=gha,mode=max,scope=tech-lab-backend
+      - name: Publish frontend image
+        id: frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: frontend/Dockerfile
+          push: true
+          tags: ghcr.io/seulgae/seulgae-tech-lab-frontend:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/seulgae/seulgae-tech-lab
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha,scope=tech-lab-frontend
+          cache-to: type=gha,mode=max,scope=tech-lab-frontend
+      - name: Publish deployment manifest
         env:
-          SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
-          SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
-          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BACKEND_DIGEST: ${{ steps.backend.outputs.digest }}
+          FRONTEND_DIGEST: ${{ steps.frontend.outputs.digest }}
         run: |
-          set -euo pipefail
-          umask 077
-          mkdir -p ~/.ssh
-          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
-          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
-          [[ "$DEPLOY_HOST" =~ ^[a-zA-Z0-9.-]+$ ]]
-          [[ "$DEPLOY_USER" =~ ^[a-z_][a-z0-9_-]*$ ]]
-          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" \
-            "bash /opt/homeserver/apps/seulgae-tech-lab/deploy/deploy.sh '$GITHUB_SHA'"
+          python3 - <<'PY'
+          import json,os
+          manifest = dict(format=1, repository=os.environ['GITHUB_REPOSITORY'],
+                          sha=os.environ['GITHUB_SHA'], run_id=int(os.environ['GITHUB_RUN_ID']),
+                          db_schema=dict(min=1,max=1),
+                          images={s:'ghcr.io/seulgae/seulgae-tech-lab-'+s+'@'+os.environ[s.upper()+'_DIGEST']
+                                  for s in ('backend','frontend')})
+          with open('release.json','w') as f: json.dump(manifest,f,indent=2)
+          PY
+          gh release create "deploy-run-$GITHUB_RUN_ID" release.json \
+            --target "$GITHUB_SHA" --title "Deployable tech lab $GITHUB_SHA" \
+            --notes "Pinned application images from validated main CI. DB schema compatibility: 1." \
+            --prerelease --latest=false

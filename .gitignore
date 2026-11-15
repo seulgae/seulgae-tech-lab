@@ -10,3 +10,4 @@
 *.pem
 *.key
 *.log
+**/__pycache__/
