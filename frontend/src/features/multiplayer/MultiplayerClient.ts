@@ -1,7 +1,7 @@
 import { INITIAL_CONNECTION, lobbySocketUrl, parseServerMessage } from './model/protocol.ts'
 import type { ConnectionInfo, MoveInput, PlayerState, Greeting, ServerMessage } from './model/protocol'
 
-type Callbacks = { snapshot: (players: PlayerState[], selfId: string | null) => void; status: (info: ConnectionInfo) => void; greeted?: (event: Greeting) => void }
+type Callbacks = { snapshot: (players: PlayerState[], selfId: string | null) => void; status: (info: ConnectionInfo) => void; greeted?: (event: Greeting) => void; inputSent?: (sequence: number) => void }
 
 /**
  * 소켓 상태와 입력 전송을 관리하고 끊김 시 제한된 지수 지연으로 재접속한다.
@@ -68,6 +68,7 @@ export default class MultiplayerClient {
     this.lastSentInput = { ...this.input }
     this.recentInputSends = this.recentInputSends.filter(sentAt => now - sentAt < 1000)
     this.recentInputSends.push(now)
+    this.callbacks.inputSent?.(this.sequence)
   }
 
   /** 가까운 대상 선택은 장면에서, 실제 거리와 쿨다운 검증은 서버에서 수행한다. */

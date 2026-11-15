@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { createPlayerAnimations, getFacing } from './PlayerAnimation'
 import type { Facing } from './PlayerAnimation'
 import { PLAYER_FOOT } from './maps/lobbyLayout'
+import { constrainedPosition, translateBody } from './multiplayer/networkPosition'
 
 /**
  * 키보드 이동과 발밑 물리 영역을 관리하는 연구원 캐릭터이다.
@@ -77,4 +78,12 @@ export default class Player extends Phaser.GameObjects.Sprite {
 
   /** 좌표 대신 현재 정수 방향 입력만 네트워크 계층에 전달한다. */
   getInput() { return this.movementInput }
+
+  /** 물리 프레임 완료 후에만 네트워크 보정을 적용하며 일반 보정은 장애물을 통과하지 않는다. */
+  correctPosition(x: number, y: number, authoritative = false) {
+    const target = authoritative ? { x, y } : constrainedPosition(this.x, this.y, x - this.x, y - this.y)
+    const dx = target.x - this.x, dy = target.y - this.y
+    translateBody(this, this.body, dx, dy)
+    return { x: dx, y: dy }
+  }
 }
