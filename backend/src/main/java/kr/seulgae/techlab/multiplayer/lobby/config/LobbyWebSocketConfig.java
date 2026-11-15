@@ -56,7 +56,7 @@ public class LobbyWebSocketConfig implements WebSocketConfigurer {
     @Bean
     public ServletServerContainerFactoryBean lobbySocketContainer() {
         var container = new ServletServerContainerFactoryBean();
-        container.setMaxTextMessageBufferSize(512);
+        container.setMaxTextMessageBufferSize(1024);
         container.setMaxBinaryMessageBufferSize(128);
         container.setMaxSessionIdleTimeout(20_000L);
         return container;

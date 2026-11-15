@@ -1,7 +1,8 @@
-import { INITIAL_CONNECTION, lobbySocketUrl, parseServerMessage } from './model/protocol.ts'
-import type { ConnectionInfo, MoveInput, PlayerState, Greeting, ServerMessage } from './model/protocol'
+import { INITIAL_CONNECTION, lobbySocketUrl, parseServerMessage, normalizeChat, validChatText } from './model/protocol.ts'
+import type { ConnectionInfo, MoveInput, PlayerState, ChatMessage, ChatError, ServerMessage } from './model/protocol'
 
-type Callbacks = { snapshot: (players: PlayerState[], selfId: string | null) => void; status: (info: ConnectionInfo) => void; greeted?: (event: Greeting) => void; inputSent?: (sequence: number) => void }
+type Callbacks = { snapshot?: (players: PlayerState[], selfId: string | null) => void; status?: (info: ConnectionInfo) => void;
+  chat?: (event: ChatMessage) => void; history?: (messages: ChatMessage[]) => void; chatError?: (reason: ChatError) => void; inputSent?: (sequence: number) => void }
 
 /**
  * 소켓 상태와 입력 전송을 관리하고 끊김 시 제한된 지수 지연으로 재접속한다.
@@ -20,8 +21,10 @@ export default class MultiplayerClient {
   private sequence = 0
   private lastInputSent = -Infinity
   private lastSentInput: MoveInput | null = null
-  private lastGreetingSent = -Infinity
-  private greetingsEnabled = false
+  private lastChatSent = -Infinity
+  private chatEnabled = false
+  private messages: ChatMessage[] = []
+  private readonly seenMessages = new Set<string>()
   private connectedAt = 0
   private recentInputSends: number[] = []
   private lastMessage = 0
@@ -30,11 +33,28 @@ export default class MultiplayerClient {
   private input: MoveInput = { x: 0, y: 0 }
   private players = new Map<string, PlayerState>()
   private info = { ...INITIAL_CONNECTION }
-  private readonly callbacks: Callbacks
+  private readonly listeners = new Set<Callbacks>()
   private readonly stopInput = () => this.setInput({ x: 0, y: 0 })
   private readonly onVisibility = () => { if (document.hidden) this.stopInput() }
 
-  constructor(callbacks: Callbacks) { this.callbacks = callbacks }
+  constructor(callbacks: Callbacks = {}) { this.listeners.add(callbacks) }
+
+  /** Scene은 구독만 교체하고 React 게임 컴포넌트가 소켓 수명을 소유한다. */
+  subscribe(callbacks: Callbacks) {
+    this.listeners.add(callbacks)
+    try {
+      callbacks.status?.(this.info)
+      callbacks.snapshot?.([...this.players.values()], this.selfId)
+      callbacks.history?.([...this.messages])
+    } catch (error) { console.warn('[multiplayer] 구독 초기화 실패', error) }
+    return () => { this.listeners.delete(callbacks) }
+  }
+
+  private notify(effect: (callbacks: Callbacks) => void) {
+    for (const listener of this.listeners) {
+      try { effect(listener) } catch (error) { console.warn('[multiplayer] UI/Scene 콜백 실패 (연결 유지)', error) }
+    }
+  }
 
   start() {
     if (this.started || this.disposed) return
@@ -68,18 +88,32 @@ export default class MultiplayerClient {
     this.lastSentInput = { ...this.input }
     this.recentInputSends = this.recentInputSends.filter(sentAt => now - sentAt < 1000)
     this.recentInputSends.push(now)
-    this.callbacks.inputSent?.(this.sequence)
+    this.notify(callbacks => callbacks.inputSent?.(this.sequence))
   }
 
-  /** 가까운 대상 선택은 장면에서, 실제 거리와 쿨다운 검증은 서버에서 수행한다. */
-  greet(targetPlayerId: string) {
-    if (!this.canGreet() || targetPlayerId === this.selfId
-      || !this.players.has(targetPlayerId) || Date.now() - this.lastGreetingSent < 3000) return
-    this.lastGreetingSent = Date.now()
-    this.socket?.send(JSON.stringify({ type: 'greet', targetPlayerId }))
+  /** 이동 sequence나 입력 예산을 소비하지 않는 별도 일반 텍스트 요청이다. */
+  sendChat(text: string) {
+    const message = normalizeChat(text)
+    const reason: ChatError | null = !this.canChat() ? 'unavailable' : !message ? 'empty'
+      : Array.from(message).length > 150 ? 'too_long' : !validChatText(message) ? 'invalid'
+      : Date.now() - this.lastChatSent < 1000 ? 'rate_limited' : null
+    if (reason) { this.notify(callbacks => callbacks.chatError?.(reason)); return false }
+    if (this.socket!.bufferedAmount > 4096) { this.notify(callbacks => callbacks.chatError?.('unavailable')); return false }
+    this.lastChatSent = Date.now()
+    try { this.socket!.send(JSON.stringify({ type: 'chat', message })) }
+    catch { this.notify(callbacks => callbacks.chatError?.('unavailable')); return false }
+    return true
   }
 
-  canGreet() { return this.greetingsEnabled && !!this.selfId && this.socket?.readyState === 1 }
+  canChat() { return this.chatEnabled && !!this.selfId && this.socket?.readyState === 1 }
+
+  private remember(message: ChatMessage) {
+    if (this.seenMessages.has(message.messageId)) return false
+    this.seenMessages.add(message.messageId)
+    if (this.seenMessages.size > 200) this.seenMessages.delete(this.seenMessages.values().next().value!)
+    this.messages = [...this.messages, message].slice(-50)
+    return true
+  }
 
   private connect() {
     if (this.disposed) return
@@ -91,7 +125,7 @@ export default class MultiplayerClient {
     try { socket = new WebSocket(lobbySocketUrl(window.location, nickname)) }
     catch { this.retry(); return }
     this.socket = socket
-    this.greetingsEnabled = false
+    this.chatEnabled = false
     this.connectedAt = 0; this.sequence = 0; this.recentInputSends = []
     socket.onopen = () => { this.lastMessage = Date.now() }
     socket.onmessage = event => {
@@ -109,16 +143,24 @@ export default class MultiplayerClient {
         if (message.type === 'welcome') {
           this.selfId = message.selfId; this.sequence = 0; this.lastInputSent = -Infinity; this.lastTick = -1; this.attempts = 0
           this.connectedAt = Date.now(); this.recentInputSends = []
-          this.lastSentInput = null; this.lastGreetingSent = -Infinity
-          this.greetingsEnabled = message.protocolVersion === 2
+          this.lastSentInput = null; this.lastChatSent = -Infinity
+          this.chatEnabled = message.protocolVersion === 3
           this.players = new Map(message.players.map(player => [player.id, player]))
           const own = this.players.get(this.selfId)!
           this.updateStatus({ phase: 'online', nickname: own.nickname, online: this.players.size, message: '로비에 연결됐어요.' })
           try { sessionStorage.setItem('lab.nickname', own.nickname) } catch { }
           this.sendInput()
         } else if (!this.selfId) return
-        else if (message.type === 'player_greeted') {
-          this.callbacks.greeted?.(message)
+        else if (message.type === 'chat_history') {
+          this.messages = []; this.seenMessages.clear()
+          for (const entry of message.messages) this.remember(entry)
+          this.notify(callbacks => callbacks.history?.([...this.messages]))
+          return
+        } else if (message.type === 'chat_message') {
+          if (this.remember(message)) this.notify(callbacks => callbacks.chat?.(message))
+          return
+        } else if (message.type === 'chat_error') {
+          this.notify(callbacks => callbacks.chatError?.(message.reason))
           return
         }
         else if (message.type === 'state') {
@@ -127,7 +169,7 @@ export default class MultiplayerClient {
           this.players = new Map(message.players.map(player => [player.id, player]))
         } else if (message.type === 'joined') this.players.set(message.player.id, message.player)
         else if (message.type === 'left') this.players.delete(message.id)
-        this.callbacks.snapshot([...this.players.values()], this.selfId)
+        this.notify(callbacks => callbacks.snapshot?.([...this.players.values()], this.selfId))
         this.updateStatus({ online: this.players.size })
       } catch (error) {
         console.warn('[multiplayer] 화면 상태 반영 실패 (연결 유지)', error)
@@ -143,8 +185,7 @@ export default class MultiplayerClient {
       })
       socket.onmessage = null; socket.onclose = null; socket.onerror = null; socket.onopen = null
       this.socket = null; this.selfId = null; this.players.clear()
-      try { this.callbacks.snapshot([], null) }
-      catch (error) { console.warn('[multiplayer] 종료 화면 정리 실패', error) }
+      this.notify(callbacks => callbacks.snapshot?.([], null))
       if (event.code === 1008) {
         try { sessionStorage.removeItem('lab.nickname') } catch { }
         this.info.nickname = ''
@@ -165,8 +206,7 @@ export default class MultiplayerClient {
     const next = { ...this.info, ...patch }
     if (Object.keys(next).every(key => next[key as keyof ConnectionInfo] === this.info[key as keyof ConnectionInfo])) return
     this.info = next
-    try { this.callbacks.status(next) }
-    catch (error) { console.warn('[multiplayer] 연결 상태 UI 반영 실패', error) }
+    this.notify(callbacks => callbacks.status?.(next))
   }
 
   /** 재시도·입력 타이머와 브라우저 이벤트를 먼저 해제한 뒤 소켓을 닫는다. */
@@ -180,5 +220,6 @@ export default class MultiplayerClient {
       this.socket.close()
     }
     this.socket = null; this.players.clear()
+    this.listeners.clear(); this.messages = []; this.seenMessages.clear()
   }
 }

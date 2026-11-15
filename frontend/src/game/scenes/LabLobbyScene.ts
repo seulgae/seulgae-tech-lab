@@ -7,6 +7,7 @@ import { createPixelAssets } from '../assets/pixelAssets'
 import LobbyMultiplayer from '../multiplayer/LobbyMultiplayer'
 import { SPAWN } from '../maps/lobbyLayout'
 import { MULTIPLAYER_EVENTS } from '../../features/multiplayer/model/protocol'
+import type MultiplayerClient from '../../features/multiplayer/MultiplayerClient'
 
 /**
  * 로비의 표시·충돌·컴퓨터 상호작용을 연결하는 게임 장면이다.
@@ -23,6 +24,12 @@ export default class LabLobbyScene extends Phaser.Scene {
   private computerHighlight?: Phaser.GameObjects.Rectangle
   private multiplayer?: LobbyMultiplayer
   private readonly uiEvents: Phaser.Events.EventEmitter
+  private readonly client: MultiplayerClient
+  private readonly resetChatInput = () => {
+    this.input.keyboard?.resetKeys()
+    this.player?.update(false)
+    this.multiplayer?.stopInput()
+  }
 
   private readonly closeResearch = () => {
     this.researchOpen = false
@@ -32,9 +39,10 @@ export default class LabLobbyScene extends Phaser.Scene {
     this.multiplayer = undefined
   }
 
-  constructor(uiEvents: Phaser.Events.EventEmitter) {
+  constructor(uiEvents: Phaser.Events.EventEmitter, client: MultiplayerClient) {
     super('LabLobbyScene')
     this.uiEvents = uiEvents
+    this.client = client
   }
 
   preload() {
@@ -48,7 +56,7 @@ export default class LabLobbyScene extends Phaser.Scene {
     this.computerHighlight = computerHighlight
     this.player = new Player(this, SPAWN.x, SPAWN.y)
     this.physics.add.collider(this.player, obstacles)
-    this.multiplayer = new LobbyMultiplayer(this, this.player, this.uiEvents)
+    this.multiplayer = new LobbyMultiplayer(this, this.player, this.client)
     this.uiEvents.once(MULTIPLAYER_EVENTS.dispose, this.stopMultiplayer)
     this.interactKey = this.input.keyboard?.addKey('E')
     this.interactionHint = this.add.text(COMPUTER.x, COMPUTER.y - 102, 'E  ·  연구 기록', {
@@ -57,10 +65,12 @@ export default class LabLobbyScene extends Phaser.Scene {
     }).setOrigin(0.5).setResolution(2).setDepth(1000).setVisible(false)
 
     this.uiEvents.on(RESEARCH_EVENTS.closeResearch, this.closeResearch)
+    this.uiEvents.on('chat:focus', this.resetChatInput)
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.stopMultiplayer()
       this.uiEvents.off(MULTIPLAYER_EVENTS.dispose, this.stopMultiplayer)
       this.uiEvents.off(RESEARCH_EVENTS.closeResearch, this.closeResearch)
+      this.uiEvents.off('chat:focus', this.resetChatInput)
     })
   }
 
@@ -71,17 +81,13 @@ export default class LabLobbyScene extends Phaser.Scene {
     this.player.update(!this.researchOpen && !textFocused)
     this.multiplayer?.update(delta)
     const nearby = isNearObject(this.player.x, this.player.y, COMPUTER, 56)
-    const target = nearby ? null : this.multiplayer?.nearestGreetingTarget()
     const enabled = !this.researchOpen && !textFocused
-    this.interactionHint?.setText(nearby ? 'E  ·  연구 기록' : target ? `E · 인사하기 (${target.nickname})` : '')
-      .setPosition(nearby ? COMPUTER.x : this.player.x, nearby ? COMPUTER.y - 102 : this.player.y - 105)
-      .setVisible(enabled && (nearby || !!target))
+    this.interactionHint?.setVisible(enabled && nearby)
     this.computerHighlight?.setVisible(nearby && enabled)
 
     // 범위 밖과 패널 표시 중에도 소비해, 누르고 있던 E가 나중에 실행되지 않게 한다.
     const pressed = this.interactKey && Phaser.Input.Keyboard.JustDown(this.interactKey)
-    if (pressed && enabled && target) this.multiplayer?.greet(target.id)
-    else if (pressed && nearby && enabled) {
+    if (pressed && nearby && enabled) {
       this.researchOpen = true
       this.player.update(false)
       this.multiplayer?.stopInput()

@@ -126,34 +126,6 @@ class LobbySocketTest {
         client.await(frame -> frame.path("type").stringValue("").equals("state") && frame.get("players").get(0).get("ack").asLong() == 3);
     }
 
-    /** 가까워진 뒤에만 서버 고정 문구를 세 방문자 모두에게 전달한다. */
-    @Test void synchronizesValidatedGreetingAndRejectsInjectedText() throws Exception {
-        var a = connect(""); var aw = a.type("welcome");
-        String aid = aw.get("selfId").stringValue();
-        var b = connect(""); String bid = b.type("welcome").get("selfId").stringValue();
-        var c = connect(""); c.type("welcome");
-        a.send("{\"type\":\"input\",\"x\":1,\"y\":0,\"seq\":1}");
-        a.await(frame -> frame.path("type").stringValue("").equals("state")
-            && frame.get("players").valueStream().anyMatch(p -> p.get("id").stringValue().equals(aid) && p.get("x").asDouble() >= 435));
-        a.send("{\"type\":\"input\",\"x\":0,\"y\":0,\"seq\":2}");
-        a.send("{\"type\":\"greet\",\"targetPlayerId\":\"" + bid + "\"}");
-        var event = a.type("player_greeted");
-        assertEquals("하이! 👋", event.get("message").stringValue());
-        assertEquals(3000, event.get("durationMs").asInt());
-        assertEquals(aid, event.get("playerId").stringValue());
-        assertEquals(bid, event.get("targetPlayerId").stringValue());
-        assertEquals(event, b.type("player_greeted"));
-        assertEquals(event, c.type("player_greeted"));
-        a.send("{\"type\":\"greet\",\"targetPlayerId\":\"" + bid + "\"}");
-        a.send("{\"type\":\"input\",\"x\":0,\"y\":0,\"seq\":3}");
-        a.await(frame -> frame.path("type").stringValue("").equals("state")
-            && frame.get("players").get(0).get("ack").asLong() == 3);
-        assertFalse(a.frames.stream().anyMatch(f -> f.path("type").stringValue("").equals("player_greeted")));
-        assertFalse(a.closed.isDone());
-        a.send("{\"type\":\"greet\",\"targetPlayerId\":\"" + bid + "\",\"message\":\"arbitrary\"}");
-        assertEquals(1008, a.closed.get(3, TimeUnit.SECONDS));
-    }
-
     @Test void limitsCapacityNicknamePayloadAndInputRate() throws Exception {
         var invalidName = connect("?nickname=%3Cbad%3E");
         assertEquals(1008, invalidName.closed.get(3, TimeUnit.SECONDS));
@@ -168,6 +140,36 @@ class LobbySocketTest {
         for (int i = 0; i < 5; i++) connect("").type("welcome");
         var full = connect("");
         assertEquals(1013, full.closed.get(3, TimeUnit.SECONDS));
+    }
+
+    /** 방송·과거 기록·사칭/도배 차단이 이동 ACK 및 기존 연결에 영향을 주지 않는다. */
+    @Test void broadcastsChatAndHistoryWithIndependentValidation() throws Exception {
+        var a = connect("?nickname=Alpha"); String aid = a.type("welcome").get("selfId").stringValue(); a.type("chat_history");
+        var b = connect(""); b.type("welcome"); b.type("chat_history");
+        a.send("{\"type\":\"chat\",\"message\":\"안녕하세요!\"}");
+        var message = a.type("chat_message");
+        assertEquals(aid, message.get("playerId").stringValue());
+        assertEquals("Alpha", message.get("nickname").stringValue());
+        assertEquals(message, b.type("chat_message"));
+        var c = connect(""); c.type("welcome");
+        assertTrue(c.type("chat_history").get("messages").valueStream()
+            .anyMatch(entry -> entry.get("messageId").equals(message.get("messageId"))));
+        a.send("{\"type\":\"chat\",\"message\":\"위조\",\"nickname\":\"Other\"}");
+        assertEquals("invalid", a.type("chat_error").get("reason").stringValue());
+        a.send("{\"type\":\"chat\",\"message\":\" \"}");
+        assertEquals("empty", a.type("chat_error").get("reason").stringValue());
+        for (int i = 0; i < 8; i++) a.send("{\"type\":\"chat\",\"message\":\"과다\"}");
+        assertEquals("rate_limited", a.type("chat_error").get("reason").stringValue());
+        a.send("{\"type\":\"input\",\"x\":0,\"y\":0,\"seq\":1}");
+        a.await(frame -> frame.path("type").stringValue("").equals("state") && frame.get("players").valueStream()
+            .anyMatch(player -> player.get("id").stringValue().equals(aid) && player.get("ack").asLong() == 1));
+        assertFalse(a.closed.isDone());
+        String emojiText = "👋".repeat(150);
+        b.send(JSON.writeValueAsString(java.util.Map.of("type", "chat", "message", emojiText)));
+        b.await(frame -> frame.path("type").stringValue("").equals("chat_message") && frame.get("message").stringValue().equals(emojiText));
+        b.send(JSON.writeValueAsString(java.util.Map.of("type", "chat", "message", "👋".repeat(151))));
+        assertEquals("too_long", b.type("chat_error").get("reason").stringValue());
+        assertFalse(b.closed.isDone());
     }
 
     /** 정상 20Hz 입력 약 2초 분량이 지연 후 몰려도 연결을 유지해야 한다. */

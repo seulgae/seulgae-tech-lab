@@ -5,7 +5,9 @@ import { RESEARCH_EVENTS } from '../features/research/researchEvents'
 import ResearchPanel from '../features/research/components/ResearchPanel'
 import MultiplayerStatus from '../features/multiplayer/components/MultiplayerStatus'
 import { INITIAL_CONNECTION, MULTIPLAYER_EVENTS } from '../features/multiplayer/model/protocol'
-import type { ConnectionInfo } from '../features/multiplayer/model/protocol'
+import type { ConnectionInfo, ChatMessage, ChatError } from '../features/multiplayer/model/protocol'
+import MultiplayerClient from '../features/multiplayer/MultiplayerClient'
+import ChatPanel from '../features/multiplayer/components/ChatPanel'
 
 /**
  * Phaser 게임의 생성·정리와 연구 기록 패널의 이벤트 연결을 관리한다.
@@ -20,6 +22,10 @@ export default function GameCanvas() {
   const eventRef = useRef<Phaser.Events.EventEmitter | null>(null)
   const [researchOpen, setResearchOpen] = useState(false)
   const [connection, setConnection] = useState<ConnectionInfo>(INITIAL_CONNECTION)
+  const clientRef = useRef<MultiplayerClient | null>(null)
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [chatError, setChatError] = useState<ChatError | null>(null)
+  const [chatAvailable, setChatAvailable] = useState(false)
 
   /**
    * 게임에 닫기 이벤트를 보내고 패널을 숨긴 뒤 게임 영역으로 초점을 돌린다.
@@ -37,10 +43,16 @@ export default function GameCanvas() {
     let game: Phaser.Game | null = null
     let resizeObserver: ResizeObserver | null = null
     const uiEvents = new Phaser.Events.EventEmitter()
+    const client = new MultiplayerClient({
+      status: info => { setConnection(info); setChatAvailable(client.canChat()) },
+      history: setMessages,
+      chat: message => setMessages(previous => [...previous, message].slice(-50)),
+      chatError: setChatError,
+    })
+    clientRef.current = client
     eventRef.current = uiEvents
     const openResearch = () => setResearchOpen(true)
     uiEvents.on(RESEARCH_EVENTS.openResearch, openResearch)
-    uiEvents.on(MULTIPLAYER_EVENTS.status, setConnection)
 
     // StrictMode의 첫 setup/cleanup에서는 생성 예약만 취소한다.
     const frameId = requestAnimationFrame(() => {
@@ -57,10 +69,11 @@ export default function GameCanvas() {
           default: 'arcade',
           arcade: { gravity: { x: 0, y: 0 } },
         },
-        scene: [new LabLobbyScene(uiEvents)],
+        scene: [new LabLobbyScene(uiEvents, client)],
       })
       resizeObserver = new ResizeObserver(() => game?.scale.refresh())
       resizeObserver.observe(container)
+      client.start()
     })
 
     return () => {
@@ -69,7 +82,8 @@ export default function GameCanvas() {
       // Phaser의 비동기 destroy 프레임을 기다리지 않고 소켓·타이머부터 정리한다.
       uiEvents.emit(MULTIPLAYER_EVENTS.dispose)
       uiEvents.off(RESEARCH_EVENTS.openResearch, openResearch)
-      uiEvents.off(MULTIPLAYER_EVENTS.status, setConnection)
+      client.destroy()
+      clientRef.current = null
       uiEvents.removeAllListeners()
       eventRef.current = null
       game?.destroy(true)
@@ -78,8 +92,14 @@ export default function GameCanvas() {
 
   return (
     <>
-      <div ref={containerRef} className="game-canvas" tabIndex={0} role="application" aria-label="슬개기술연구소 게임 화면. WASD 또는 방향키 이동, E 연구 기록 열기" />
+      <div ref={containerRef} className="game-canvas" tabIndex={0} role="application"
+        onPointerDown={() => containerRef.current?.focus({ preventScroll: true })}
+        aria-label="슬개기술연구소 게임 화면. WASD 또는 방향키 이동, E 연구 기록 열기" />
       <MultiplayerStatus connection={connection} />
+      <ChatPanel messages={messages} connected={connection.phase === 'online' && chatAvailable}
+        error={chatError} onSend={message => clientRef.current?.sendChat(message) ?? false}
+        onInputFocus={() => eventRef.current?.emit('chat:focus')}
+        onExit={() => containerRef.current?.focus({ preventScroll: true })} onEdit={() => setChatError(null)} />
       {researchOpen && <ResearchPanel onClose={closeResearch} />}
     </>
   )

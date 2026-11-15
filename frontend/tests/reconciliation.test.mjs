@@ -129,7 +129,7 @@ test('보정 경로는 공유 바닥 경계·책상·컴퓨터 충돌을 유지�
 test('수신 콜백은 위치를 쓰지 않고 postUpdate에서만 보정하며 장면 종료 시 리스너를 제거한다', () => {
   let callbacks
   class Client {
-    constructor(value) { callbacks = value }
+    subscribe(value) { callbacks = value; return () => { this.unsubscribed = true } }
     start() {} destroy() {} setInput() {}
   }
   const label = { setOrigin() { return this }, setResolution() { return this }, setPosition() { return this }, destroy() {} }
@@ -143,7 +143,8 @@ test('수신 콜백은 위치를 쓰지 않고 postUpdate에서만 보정하며 
     MultiplayerClient: Client, LocalReconciliation, Phaser: { Scenes: { Events: { POST_UPDATE: 'postupdate' } } },
     MovementDiagnostics: class { sent() {} received() {} frame() {} corrected() {} }, Date,
   })
-  const bridge = new Bridge(scene, player, new EventEmitter())
+  const connection = new Client()
+  const bridge = new Bridge(scene, player, connection)
   callbacks.snapshot([{ id: 'self', x: 400, y: 400, ack: -1, moving: false }], 'self')
   assert.equal(player.changes, 0)
   scene.events.emit('postupdate')
@@ -154,6 +155,7 @@ test('수신 콜백은 위치를 쓰지 않고 postUpdate에서만 보정하며 
   scene.events.emit('postupdate')
   assert.ok(player.x < 430 && player.x >= 428.999)
   bridge.destroy()
+  assert.equal(connection.unsubscribed, true)
   assert.equal(scene.events.listenerCount('postupdate'), 0)
   const changes = player.changes
   scene.events.emit('postupdate')
