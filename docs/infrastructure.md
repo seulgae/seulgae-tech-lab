@@ -23,7 +23,7 @@ Windows IntelliJ / local backend
 
 Ubuntu 127.0.0.1:18082
   -> tech-lab frontend (nginx, React + Phaser)
-  -> internal app network -> tech-lab backend (Spring Boot, Java 21)
+  -> internal app network -> tech-lab backend (Spring Boot, Java 17)
   -> existing postgres_backend -> PostgreSQL stlab_prod
 ```
 
@@ -84,7 +84,7 @@ Set-Clipboard -Value ''
 
 스키마 마이그레이션은 별도 데이터 소스 `stlab_dev_migrator`와 `dev-migrator-password`를 사용한다. 운영 자격증명은 Windows로 복사하지 않았다.
 
-로컬 백엔드는 JDK 21과 Maven이 필요하다. IntelliJ에서 `backend/pom.xml`을 Maven 프로젝트로 열고 `TechLabApplication`을 실행한다. 환경변수 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`를 위 개발 값으로 지정한다. `.idea` 설정을 Git에 올리지 않는다. PowerShell에서 실행할 때:
+로컬 백엔드는 JDK 17과 Maven이 필요하다. IntelliJ에서 `backend/pom.xml`을 Maven 프로젝트로 열고 `TechLabApplication`을 실행한다. 환경변수 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`를 위 개발 값으로 지정한다. `.idea` 설정을 Git에 올리지 않는다. PowerShell에서 실행할 때:
 
 ```powershell
 . .\deploy\dev-env.ps1

@@ -29,14 +29,49 @@ jobs:
       - run: npm run build
   backend:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: research_ci
+          POSTGRES_PASSWORD: ci-test-only
+        ports: ['127.0.0.1:5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d research_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: '17'
           cache: maven
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Prepare disposable PostgreSQL roles
+        env:
+          PGPASSWORD: ci-test-only
+        run: psql -h 127.0.0.1 -U postgres -d research_ci -v ON_ERROR_STOP=1 -f backend/src/test/resources/bootstrap-ci.sql
+      - name: Migrate and validate disposable schema
+        env:
+          DB_URL: jdbc:postgresql://127.0.0.1:5432/research_ci?currentSchema=lab
+          DB_USERNAME: test_migrator
+          DB_PASSWORD: ci-migrator-only
+        run: mvn -B -f backend/pom.xml flyway:migrate flyway:validate
       - run: mvn -B -f backend/pom.xml verify
+      - name: Exercise HTTP API against disposable PostgreSQL
+        env:
+          DB_URL: jdbc:postgresql://127.0.0.1:5432/research_ci?currentSchema=lab
+          DB_USERNAME: test_app
+          DB_PASSWORD: ci-app-only
+          LAB_RESEARCH_WRITE_ENABLED: 'true'
+          TEST_DATABASE_DISPOSABLE: 'true'
+        run: |
+          java -jar backend/target/tech-lab-0.0.1-SNAPSHOT.jar > "$RUNNER_TEMP/research-backend.log" 2>&1 &
+          backend_pid=$!
+          trap 'kill "$backend_pid"' EXIT
+          node backend/tests/research-api.mjs
       - run: docker build -f backend/Dockerfile -t tech-lab-backend:ci .
       - run: docker build -f frontend/Dockerfile -t tech-lab-frontend:ci .
   deploy:
