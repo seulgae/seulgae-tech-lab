@@ -18,6 +18,10 @@ export default function GameCanvas() {
         width: 800,
         height: 600,
         parent: container,
+        physics: {
+          default: 'arcade',
+          arcade: { gravity: { x: 0, y: 0 } },
+        },
         scene: [LabLobbyScene],
       })
     })
