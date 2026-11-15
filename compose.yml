@@ -1,0 +1,69 @@
+name: seulgae-tech-lab
+services:
+  frontend:
+    image: seulgae-tech-lab-frontend:${IMAGE_TAG:-local}
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "127.0.0.1:18082:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks: [edge, app]
+    restart: unless-stopped
+    mem_limit: 128m
+    cpus: 0.5
+    read_only: true
+    tmpfs: [/tmp, /var/cache/nginx, /var/run]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD-SHELL, "wget -q -O /dev/null http://127.0.0.1:8080/api/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    logging: &logging
+      driver: json-file
+      options: {max-size: 10m, max-file: "3"}
+  backend:
+    image: seulgae-tech-lab-backend:${IMAGE_TAG:-local}
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      DB_URL: jdbc:postgresql://postgres-postgres-1:5432/stlab_prod?currentSchema=lab
+      DB_USERNAME: stlab_prod_app
+      # Config-tree key DB_PASSWORD resolves the application placeholder.
+      SPRING_CONFIG_IMPORT: configtree:/run/secrets/
+      SERVER_ADDRESS: 0.0.0.0
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=65 -XX:ActiveProcessorCount=2
+    secrets:
+      - source: prod_db_password
+        target: DB_PASSWORD
+    networks: [app, database]
+    restart: unless-stopped
+    mem_limit: 512m
+    cpus: 1.0
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD-SHELL, "wget -q -O /dev/null http://127.0.0.1:8080/actuator/health || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    logging: *logging
+networks:
+  edge: {}
+  app:
+    internal: true
+  database:
+    external: true
+    name: postgres_backend
+secrets:
+  prod_db_password:
+    file: ${STLAB_SECRETS_DIR:-/opt/homeserver/config/seulgae-tech-lab}/prod-app-password
