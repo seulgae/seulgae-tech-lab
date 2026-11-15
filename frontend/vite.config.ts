@@ -6,6 +6,10 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: '127.0.0.1',
-    proxy: { '/api': 'http://127.0.0.1:8080' },
+    fs: { allow: ['.', '../shared'] },
+    proxy: {
+      '/api': process.env.LAB_DEV_BACKEND_URL ?? 'http://127.0.0.1:8080',
+      '/ws': { target: process.env.LAB_DEV_BACKEND_URL ?? 'http://127.0.0.1:8080', ws: true },
+    },
   },
 })

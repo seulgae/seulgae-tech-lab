@@ -1,0 +1,5 @@
+.multiplayer-status { min-height: 34px; padding: 8px 16px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 11px; color: #c2d1bc; border-bottom: 1px solid #4b6258; }
+.connection-indicator { width: 6px; height: 6px; flex-shrink: 0; background: #d8bd87; }
+.online .connection-indicator { background: #a1c58f; }
+.my-nickname { margin-left: auto; color: #d8bd87; }
+@media (max-width: 560px) { .multiplayer-status { padding: 8px 10px; font-size: 10px; } }

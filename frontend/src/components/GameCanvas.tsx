@@ -3,6 +3,9 @@ import Phaser from 'phaser'
 import LabLobbyScene from '../game/scenes/LabLobbyScene'
 import { RESEARCH_EVENTS } from '../features/research/researchEvents'
 import ResearchPanel from '../features/research/components/ResearchPanel'
+import MultiplayerStatus from '../features/multiplayer/components/MultiplayerStatus'
+import { INITIAL_CONNECTION, MULTIPLAYER_EVENTS } from '../features/multiplayer/model/protocol'
+import type { ConnectionInfo } from '../features/multiplayer/model/protocol'
 
 /**
  * Phaser 게임의 생성·정리와 연구 기록 패널의 이벤트 연결을 관리한다.
@@ -16,6 +19,7 @@ export default function GameCanvas() {
   const containerRef = useRef<HTMLDivElement>(null)
   const eventRef = useRef<Phaser.Events.EventEmitter | null>(null)
   const [researchOpen, setResearchOpen] = useState(false)
+  const [connection, setConnection] = useState<ConnectionInfo>(INITIAL_CONNECTION)
 
   /**
    * 게임에 닫기 이벤트를 보내고 패널을 숨긴 뒤 게임 영역으로 초점을 돌린다.
@@ -36,6 +40,7 @@ export default function GameCanvas() {
     eventRef.current = uiEvents
     const openResearch = () => setResearchOpen(true)
     uiEvents.on(RESEARCH_EVENTS.openResearch, openResearch)
+    uiEvents.on(MULTIPLAYER_EVENTS.status, setConnection)
 
     // StrictMode의 첫 setup/cleanup에서는 생성 예약만 취소한다.
     const frameId = requestAnimationFrame(() => {
@@ -61,7 +66,10 @@ export default function GameCanvas() {
     return () => {
       cancelAnimationFrame(frameId)
       resizeObserver?.disconnect()
+      // Phaser의 비동기 destroy 프레임을 기다리지 않고 소켓·타이머부터 정리한다.
+      uiEvents.emit(MULTIPLAYER_EVENTS.dispose)
       uiEvents.off(RESEARCH_EVENTS.openResearch, openResearch)
+      uiEvents.off(MULTIPLAYER_EVENTS.status, setConnection)
       uiEvents.removeAllListeners()
       eventRef.current = null
       game?.destroy(true)
@@ -71,6 +79,7 @@ export default function GameCanvas() {
   return (
     <>
       <div ref={containerRef} className="game-canvas" tabIndex={0} role="application" aria-label="슬개기술연구소 게임 화면. WASD 또는 방향키 이동, E 연구 기록 열기" />
+      <MultiplayerStatus connection={connection} />
       {researchOpen && <ResearchPanel onClose={closeResearch} />}
     </>
   )

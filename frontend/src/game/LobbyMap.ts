@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import { COMPUTER, createFloorData, LOBBY_OBJECTS, WORLD } from './maps/lobbyLayout'
+import { COMPUTER, createFloorData, LOBBY_OBJECTS, WALLS } from './maps/lobbyLayout'
 
 export { COMPUTER } from './maps/lobbyLayout'
 
@@ -16,13 +16,7 @@ export default function createLobbyMap(scene: Phaser.Scene) {
   scene.add.image(400, 599, 'door').setOrigin(0.5, 1).setScale(2).setDepth(0)
 
   const obstacles = scene.physics.add.staticGroup()
-  const walls = [
-    { x: 400, y: 32, width: WORLD.width, height: 64 },
-    { x: 400, y: 588, width: WORLD.width, height: WORLD.wall },
-    { x: 12, y: 300, width: WORLD.wall, height: WORLD.height },
-    { x: 788, y: 300, width: WORLD.wall, height: WORLD.height },
-  ]
-  for (const area of [...walls, ...LOBBY_OBJECTS.map(object => object.body)]) {
+  for (const area of [...WALLS, ...LOBBY_OBJECTS.map(object => object.body)]) {
     const body = scene.add.rectangle(area.x, area.y, area.width, area.height).setVisible(false)
     obstacles.add(body)
   }
