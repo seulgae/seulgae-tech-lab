@@ -1,6 +1,9 @@
 import Phaser from 'phaser'
+import Player from '../Player'
 
 export default class LabLobbyScene extends Phaser.Scene {
+  private player?: Player
+
   constructor() {
     super('LabLobbyScene')
   }
@@ -13,5 +16,10 @@ export default class LabLobbyScene extends Phaser.Scene {
       fontSize: '32px',
       color: '#ffffff',
     }).setOrigin(0.5)
+    this.player = new Player(this, 400, 400)
+  }
+
+  update(_time: number, delta: number) {
+    this.player?.update(delta)
   }
 }
