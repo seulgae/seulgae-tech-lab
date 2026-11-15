@@ -19,6 +19,8 @@ export default class MultiplayerClient {
   private attempts = 0
   private sequence = 0
   private lastInputSent = -Infinity
+  private connectedAt = 0
+  private recentInputSends: number[] = []
   private lastMessage = 0
   private lastTick = -1
   private selfId: string | null = null
@@ -58,6 +60,8 @@ export default class MultiplayerClient {
     if (socket.bufferedAmount > 4096) { socket.close(); return }
     socket.send(JSON.stringify({ type: 'input', x: this.input.x, y: this.input.y, seq: ++this.sequence }))
     this.lastInputSent = now
+    this.recentInputSends = this.recentInputSends.filter(sentAt => now - sentAt < 1000)
+    this.recentInputSends.push(now)
   }
 
   private connect() {
@@ -70,6 +74,7 @@ export default class MultiplayerClient {
     try { socket = new WebSocket(lobbySocketUrl(window.location, nickname)) }
     catch { this.retry(); return }
     this.socket = socket
+    this.connectedAt = 0; this.sequence = 0; this.recentInputSends = []
     socket.onopen = () => { this.lastMessage = Date.now() }
     socket.onmessage = event => {
       if (this.disposed || socket !== this.socket) return
@@ -78,6 +83,7 @@ export default class MultiplayerClient {
         this.lastMessage = Date.now()
         if (message.type === 'welcome') {
           this.selfId = message.selfId; this.sequence = 0; this.lastInputSent = -Infinity; this.lastTick = -1; this.attempts = 0
+          this.connectedAt = Date.now(); this.recentInputSends = []
           this.players = new Map(message.players.map(player => [player.id, player]))
           const own = this.players.get(this.selfId)!
           this.updateStatus({ phase: 'online', nickname: own.nickname, online: this.players.size, message: '로비에 연결됐어요.' })
@@ -100,7 +106,11 @@ export default class MultiplayerClient {
     socket.onerror = () => socket.close()
     socket.onclose = event => {
       if (this.disposed || socket !== this.socket) return
-      console.warn('[multiplayer] 연결 종료', { code: event.code, reason: event.reason, wasClean: event.wasClean })
+      console.warn('[multiplayer] 연결 종료', {
+        code: event.code, reason: event.reason, wasClean: event.wasClean,
+        sentInputs: this.sequence, connectedMs: this.connectedAt ? Date.now() - this.connectedAt : 0,
+        sentLastSecond: this.recentInputSends.filter(sentAt => Date.now() - sentAt < 1000).length,
+      })
       socket.onmessage = null; socket.onclose = null; socket.onerror = null; socket.onopen = null
       this.socket = null; this.selfId = null; this.players.clear()
       this.callbacks.snapshot([], null)

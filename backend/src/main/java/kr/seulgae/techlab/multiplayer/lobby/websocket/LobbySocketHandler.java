@@ -12,6 +12,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import kr.seulgae.techlab.multiplayer.lobby.domain.LobbyRoom;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.*;
@@ -30,7 +32,10 @@ import tools.jackson.databind.json.JsonMapper;
  */
 @Component
 public class LobbySocketHandler extends TextWebSocketHandler {
+    private static final Logger LOG = LoggerFactory.getLogger(LobbySocketHandler.class);
     private static final Set<String> INPUT_FIELDS = Set.of("type", "x", "y", "seq");
+    private static final double INPUTS_PER_SECOND = 40;
+    private static final double INPUT_BURST_CAPACITY = 80;
     private static final class Peer {
         final WebSocketSession socket;
         final String playerId;
@@ -39,12 +44,19 @@ public class LobbySocketHandler extends TextWebSocketHandler {
         final AtomicReference<WebSocketMessage<?>> latestState = new AtomicReference<>();
         final AtomicReference<CloseStatus> closing = new AtomicReference<>();
         volatile long lastSeen = System.nanoTime(), lastPing = lastSeen;
-        long windowStart = System.nanoTime();
-        int messages;
+        final long connectedAt = System.nanoTime();
+        long replenishedAt = connectedAt, receivedInputs;
+        double inputTokens = INPUT_BURST_CAPACITY;
         Peer(WebSocketSession socket, String playerId) { this.socket = socket; this.playerId = playerId; }
         synchronized boolean allow(long now) {
-            if (now - windowStart >= 1_000_000_000L) { windowStart = now; messages = 0; }
-            return ++messages <= 40;
+            receivedInputs++;
+            // 수신 시각에 몰린 정상 입력은 여유분으로 흡수하고 지속적인 과다 전송은 제한한다.
+            inputTokens = Math.min(INPUT_BURST_CAPACITY,
+                inputTokens + Math.max(0, now - replenishedAt) / 1_000_000_000d * INPUTS_PER_SECOND);
+            replenishedAt = now;
+            if (inputTokens < 1) return false;
+            inputTokens--;
+            return true;
         }
     }
     private final LobbyRoom room;
@@ -95,7 +107,11 @@ public class LobbySocketHandler extends TextWebSocketHandler {
         if (message.getPayload().getBytes(StandardCharsets.UTF_8).length > 512) {
             disconnect(session.getId(), CloseStatus.TOO_BIG_TO_PROCESS); return;
         }
-        if (!peer.allow(now)) { disconnect(session.getId(), CloseStatus.POLICY_VIOLATION.withReason("Input rate exceeded")); return; }
+        if (!peer.allow(now)) {
+            LOG.warn("Lobby input rate exceeded: player={}, receivedInputs={}, connectedMs={}",
+                peer.playerId, peer.receivedInputs, (now - peer.connectedAt) / 1_000_000);
+            disconnect(session.getId(), CloseStatus.POLICY_VIOLATION.withReason("Input rate exceeded")); return;
+        }
         try {
             var input = json.readTree(message.getPayload());
             if (!input.isObject() || !Set.copyOf(input.propertyNames()).equals(INPUT_FIELDS) || !input.get("type").isString()
@@ -178,6 +194,9 @@ public class LobbySocketHandler extends TextWebSocketHandler {
     private void disconnect(String id, CloseStatus status) {
         var peer = peers.remove(id);
         if (peer == null) return;
+        LOG.info("Lobby connection closed: player={}, code={}, reason={}, receivedInputs={}, connectedMs={}",
+            peer.playerId, status.getCode(), status.getReason(), peer.receivedInputs,
+            (System.nanoTime() - peer.connectedAt) / 1_000_000);
         room.leave(peer.playerId);
         peer.controls.clear();
         peer.latestState.set(null);

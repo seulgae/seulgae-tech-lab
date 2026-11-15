@@ -31,7 +31,7 @@ test('스냅샷 크기·플레이어 수·ID·좌표·방향·본인 ID를 검�
 })
 
 test('연결·목록 변경·재연결·입력 전송·종료 정리를 중복 없이 처리한다', t => {
-  t.mock.method(console, 'warn', () => {})
+  const warnings = t.mock.method(console, 'warn', () => {})
   t.mock.timers.enable({ apis: ['setTimeout', 'setInterval', 'Date'], now: 1000 })
   const originals = { window: globalThis.window, document: globalThis.document, WebSocket: globalThis.WebSocket, sessionStorage: globalThis.sessionStorage }
   const storage = new Map()
@@ -91,6 +91,11 @@ test('연결·목록 변경·재연결·입력 전송·종료 정리를 중복 �
     a.receive({ type: 'left', id: second.id })
     assert.equal(statuses.at(-1).online, 1)
     a.drop(1006)
+    const closeDetails = warnings.mock.calls.at(-1).arguments[1]
+    assert.equal(closeDetails.code, 1006)
+    assert.equal(closeDetails.sentInputs, a.sent.length)
+    assert.ok(closeDetails.sentLastSecond <= 20)
+    assert.ok(closeDetails.connectedMs >= 1000)
     assert.deepEqual(snapshots.at(-1), { players: [], selfId: null })
     t.mock.timers.tick(500)
     assert.equal(Socket.instances.length, 2)
