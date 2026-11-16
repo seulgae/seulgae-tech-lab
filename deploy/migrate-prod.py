@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Explicit production migration up to the latest schema (V2). Never called by deploy/start/rollback.
+"""Explicit production migration up to the latest schema (V3). Never called by deploy/start/rollback.
 
-Supported paths: empty DB -> V2 and existing V1 -> V2. A verified pg_dump backup is taken first;
+Supported paths: empty DB, V1 or V2 -> V3. A verified pg_dump backup is taken first;
 there is no automatic DB rollback.
 """
 import fcntl
@@ -13,7 +13,7 @@ import sys
 import tempfile
 import ops
 
-LATEST_SCHEMA = 2
+LATEST_SCHEMA = 3
 
 
 def migration_plan(version, release):

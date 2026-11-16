@@ -14,20 +14,20 @@ def release(minimum, maximum):
 
 
 class MigrationPlanTests(unittest.TestCase):
-    def test_current_v2_needs_no_migration(self):
-        self.assertIsNone(migrate.migration_plan(2, release(2, 2)))
+    def test_current_v3_needs_no_migration(self):
+        self.assertIsNone(migrate.migration_plan(3, release(3, 3)))
 
-    def test_empty_and_v1_databases_migrate_to_v2_with_a_v2_release(self):
-        self.assertEqual(migrate.migration_plan(0, release(2, 2)), 2)
-        self.assertEqual(migrate.migration_plan(1, release(2, 2)), 2)
+    def test_empty_v1_and_v2_databases_migrate_to_v3_with_a_v3_release(self):
+        for version in (0, 1, 2):
+            self.assertEqual(migrate.migration_plan(version, release(3, 3)), 3)
 
     def test_old_release_or_unknown_schema_is_refused_without_changes(self):
-        with self.assertRaisesRegex(migrate.ops.OpsError, 'declare schema V2'):
-            migrate.migration_plan(1, release(1, 1))
+        with self.assertRaisesRegex(migrate.ops.OpsError, 'declare schema V3'):
+            migrate.migration_plan(2, release(2, 2))
         with self.assertRaisesRegex(migrate.ops.OpsError, 'Unsupported'):
-            migrate.migration_plan(3, release(2, 2))
+            migrate.migration_plan(4, release(3, 3))
         with self.assertRaisesRegex(migrate.ops.OpsError, 'Unsupported'):
-            migrate.migration_plan(-1, release(2, 2))
+            migrate.migration_plan(-1, release(3, 3))
 
 
 if __name__ == '__main__':

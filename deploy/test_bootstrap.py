@@ -244,12 +244,13 @@ class PreflightTests(unittest.TestCase):
         for c in self.command.call_args_list:
             self.assertFalse(set(c.args[0]) & {'pull', 'up', 'restart', 'down', 'migrate'})
 
-    def test_existing_v2_schema_is_accepted_but_unknown_versions_are_not(self):
-        self.schema.return_value = 2
-        ops.preflight()
-        for version in (0, 3):
+    def test_existing_v2_and_v3_schemas_are_accepted_but_unknown_versions_are_not(self):
+        for version in (2, 3):
             self.schema.return_value = version
-            with self.assertRaisesRegex(ops.OpsError, 'V1 or V2'):
+            ops.preflight()
+        for version in (0, 4):
+            self.schema.return_value = version
+            with self.assertRaisesRegex(ops.OpsError, 'V1-V3'):
                 ops.preflight()
 
     def test_missing_empty_or_private_app_password_is_rejected(self):
@@ -298,8 +299,8 @@ class PreflightTests(unittest.TestCase):
         self.schema.assert_not_called()
 
     def test_existing_schema_zero_or_unknown_is_rejected_without_migration(self):
-        # V2는 지원 범위(SUPPORTED_SCHEMAS)에 들어가므로, 빈 DB와 아직 모르는 V3만 거부한다.
-        for version in (0, 3):
+        # V2·V3는 지원 범위(SUPPORTED_SCHEMAS)에 들어가므로, 빈 DB와 아직 모르는 V4만 거부한다.
+        for version in (0, 4):
             self.schema.return_value = version
             with self.assertRaisesRegex(ops.OpsError, 'No migration'):
                 ops.preflight()

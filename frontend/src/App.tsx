@@ -3,6 +3,8 @@ import { ROOMS } from './game/maps/rooms'
 import type { RoomId } from './game/maps/rooms'
 import GameCanvas from './components/GameCanvas'
 import { ROOM_THEMES } from './game/rooms/roomThemes'
+import AuthBar from './features/auth/AuthBar'
+import { authStore } from './features/auth/authStore'
 import './App.css'
 
 /**
@@ -16,6 +18,18 @@ import './App.css'
 function App() {
   const [roomId, setRoomId] = useState<RoomId>('lobby')
   const theme = ROOM_THEMES[roomId]
+  // 로그인 회원이면 게임 이름표를 회원 닉네임으로 접속한다. 로그인 확인이 늦어도 2.5초 뒤에는 게임을 시작한다.
+  const [gameReady, setGameReady] = useState(false)
+  useEffect(() => {
+    const timer = window.setTimeout(() => setGameReady(true), 2500)
+    void authStore.load().finally(() => {
+      const member = authStore.get().member
+      if (member) { try { sessionStorage.setItem('lab.nickname', member.nickname) } catch { /* 저장소 불가 시 임시 이름 */ } }
+      window.clearTimeout(timer)
+      setGameReady(true)
+    })
+    return () => window.clearTimeout(timer)
+  }, [])
   // 페이지 배경·카드·강조색도 현재 방 분위기를 따라간다.
   useEffect(() => {
     const root = document.documentElement
@@ -29,7 +43,10 @@ function App() {
           <span className="brand-mark" aria-hidden="true">S<span /></span>
           <span><span className="eyebrow">SEULGAE TECH LAB</span><strong>슬개기술연구소</strong></span>
         </a>
-        <span className="location-badge"><i aria-hidden="true" /> {ROOMS[roomId].name} <span>LAB</span></span>
+        <div className="lab-header-right">
+          <AuthBar />
+          <span className="location-badge"><i aria-hidden="true" /> {ROOMS[roomId].name} <span>LAB</span></span>
+        </div>
       </header>
       <div className="lab-layout">
         <section className="game-card" id="lobby" aria-labelledby="lobby-title">
@@ -37,7 +54,7 @@ function App() {
             <div><span className="eyebrow">YOUR LITTLE PLACE TO EXPLORE</span><h1 id="lobby-title">작은 발견이 시작되는 곳</h1></div>
             <span className="room-label">{roomId.toUpperCase()}</span>
           </header>
-          <GameCanvas onRoomChange={setRoomId} />
+          {gameReady ? <GameCanvas onRoomChange={setRoomId} /> : <div className="game-canvas" aria-busy="true" aria-label="연구소를 불러오는 중" />}
           <footer className="game-controls">
             <span><kbd>W A S D</kbd><span className="control-or">/</span><kbd>↑ ← ↓ →</kbd> 이동</span>
             <span><kbd>E</kbd> 상호작용</span>

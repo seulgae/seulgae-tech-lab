@@ -63,7 +63,7 @@ test('글자 수는 이모지도 1자로 세고, 제목·내용 한도는 서버
   assert.equal(IDEA_CONTENT_MAX, 130)
   assert.equal(ideaTitle(12), '연구 아이디어 일지 #12')
   assert.match(new BoardError(429).message, /잠시 후/)
-  assert.match(new BoardError(403).message, /이 브라우저/)
+  assert.match(new BoardError(403).message, /내가 쓴 글/)
 })
 
 test('수정 키는 이 브라우저에만 저장되고, 수정·삭제 요청에 헤더로 실린다', async t => {

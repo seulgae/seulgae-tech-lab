@@ -6,6 +6,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import kr.seulgae.techlab.common.write.Ownership;
 import kr.seulgae.techlab.research.records.domain.ResearchRecord;
 import kr.seulgae.techlab.research.records.domain.ResearchSummary;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -86,21 +87,21 @@ public class ResearchRepository {
     }
 
     /** 수정 키 해시와 함께 아이디어 일지를 저장한다. 요약과 본문은 같은 130자 내용이다. */
-    public ResearchRecord createIdea(String title, String content, String editTokenHash) {
+    public ResearchRecord createIdea(String title, String content, String editTokenHash, UUID authorId) {
         return jdbc.sql("""
-            INSERT INTO lab.research_records (id, title, summary, content, edit_token_hash)
-            VALUES (:id, :title, :content, :content, :hash)
+            INSERT INTO lab.research_records (id, title, summary, content, edit_token_hash, author_id)
+            VALUES (:id, :title, :content, :content, :hash, :author)
             RETURNING id, title, summary, content, created_at
-            """).param("id", UUID.randomUUID()).param("title", title).param("content", content).param("hash", editTokenHash)
+            """).param("id", UUID.randomUUID()).param("title", title).param("content", content).param("hash", editTokenHash).param("author", authorId)
             .query((rs, row) -> map(rs)).single();
     }
 
     /**
-     * 기록의 수정 키 해시를 조회한다. 행이 없으면 빈 Optional, V1 기록처럼 해시가 없으면 값이 빈 문자열이다.
+     * 기록의 수정 키 해시와 작성자를 조회한다. 행이 없으면 빈 Optional, V1 기록처럼 해시가 없으면 해시가 빈 문자열이다.
      */
-    public Optional<String> editTokenHash(UUID id) {
-        return jdbc.sql("SELECT COALESCE(edit_token_hash, '') FROM lab.research_records WHERE id = :id")
-            .param("id", id).query(String.class).optional();
+    public Optional<Ownership> ownership(UUID id) {
+        return jdbc.sql("SELECT COALESCE(edit_token_hash, '') AS hash, author_id FROM lab.research_records WHERE id = :id").param("id", id)
+            .query((rs, row) -> new Ownership(rs.getString("hash"), rs.getObject("author_id", UUID.class))).optional();
     }
 
     /** 제목·내용을 바꾸고 수정 시각을 기록한다. */

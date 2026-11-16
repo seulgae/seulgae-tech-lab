@@ -1,6 +1,7 @@
 package kr.seulgae.techlab.meeting.agendas;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import kr.seulgae.techlab.common.write.EditTokens;
 import kr.seulgae.techlab.common.write.TextRules;
@@ -57,24 +58,26 @@ public class MeetingAgendaService {
         return new Page(rows.stream().limit(limit).toList(), rows.size() > limit);
     }
 
-    public Created create(Request request) {
+    /** @param author 로그인 회원(로그인이 꺼져 있으면 빈 값) */
+    public Created create(Request request, Optional<UUID> author) {
         var token = EditTokens.generate();
-        return new Created(repository.create(title(request), content(request), EditTokens.hash(token)), token);
+        return new Created(repository.create(title(request), content(request), EditTokens.hash(token), author.orElse(null)), token);
     }
 
-    public MeetingAgenda update(UUID id, Request request, String token) {
-        authorize(id, token);
+    public MeetingAgenda update(UUID id, Request request, String token, Optional<UUID> member) {
+        authorize(id, token, member);
         return repository.update(id, title(request), content(request));
     }
 
-    public void delete(UUID id, String token) {
-        authorize(id, token);
+    public void delete(UUID id, String token, Optional<UUID> member) {
+        authorize(id, token, member);
         repository.delete(id);
     }
 
-    private void authorize(UUID id, String token) {
-        var hash = repository.editTokenHash(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Agenda not found"));
-        if (!EditTokens.matches(token, hash)) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the author's browser can change this agenda");
+    /** 작성 회원 본인이거나 작성 브라우저의 수정 키가 있어야 한다. */
+    private void authorize(UUID id, String token, Optional<UUID> member) {
+        var owner = repository.ownership(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Agenda not found"));
+        if (!owner.allows(token, member)) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the author can change this agenda");
     }
 
     private static String title(Request request) { return TextRules.title(request == null ? null : request.title(), TITLE_MAX, "title"); }

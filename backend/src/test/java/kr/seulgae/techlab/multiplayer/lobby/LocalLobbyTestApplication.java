@@ -7,6 +7,13 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import kr.seulgae.techlab.auth.AuthController;
+import kr.seulgae.techlab.auth.AuthService;
+import kr.seulgae.techlab.auth.AuthSettings;
+import kr.seulgae.techlab.auth.KakaoClient;
+import kr.seulgae.techlab.auth.Member;
+import kr.seulgae.techlab.auth.MemberRepository;
+import kr.seulgae.techlab.common.write.Ownership;
 import kr.seulgae.techlab.common.write.WriteRateLimiter;
 import kr.seulgae.techlab.lab.status.LabStatusController;
 import kr.seulgae.techlab.meeting.agendas.MeetingAgenda;
@@ -44,7 +51,8 @@ import org.springframework.context.annotation.Import;
 @EnableAutoConfiguration(excludeName = "org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration")
 @Import({LobbyWebSocketConfig.class, LobbySocketHandler.class, LobbyRoom.class, LobbyWorld.class, LobbyChat.class,
     ResearchController.class, ResearchService.class, ApiExceptionHandler.class, LabStatusController.class,
-    ResearchIdeaController.class, ResearchIdeaService.class, MeetingAgendaController.class, MeetingAgendaService.class, WriteRateLimiter.class})
+    ResearchIdeaController.class, ResearchIdeaService.class, MeetingAgendaController.class, MeetingAgendaService.class, WriteRateLimiter.class,
+    AuthSettings.class, AuthService.class, AuthController.class, KakaoClient.class})
 public class LocalLobbyTestApplication {
     public static final UUID RECORD_ID = UUID.fromString("00000000-0000-4000-8000-000000000001");
     private static final OffsetDateTime CREATED_AT = OffsetDateTime.parse("2026-11-15T12:00:00+09:00");
@@ -67,12 +75,12 @@ public class LocalLobbyTestApplication {
                 return records.values().stream().map(r -> r.title().matches("연구 아이디어 일지 #\\d{1,6}") ? Integer.parseInt(r.title().substring(r.title().indexOf('#') + 1)) : 0)
                     .max(Integer::compare).orElse(0) + 1;
             }
-            @Override public ResearchRecord createIdea(String title, String content, String hash) {
+            @Override public ResearchRecord createIdea(String title, String content, String hash, UUID authorId) {
                 var record = new ResearchRecord(UUID.randomUUID(), title, content, content, OffsetDateTime.now());
                 records.put(record.id(), record); hashes.put(record.id(), hash);
                 return record;
             }
-            @Override public Optional<String> editTokenHash(UUID id) { return records.containsKey(id) ? Optional.of(hashes.getOrDefault(id, "")) : Optional.empty(); }
+            @Override public Optional<Ownership> ownership(UUID id) { return records.containsKey(id) ? Optional.of(new Ownership(hashes.getOrDefault(id, ""), null)) : Optional.empty(); }
             @Override public ResearchRecord updateIdea(UUID id, String title, String content) {
                 var record = new ResearchRecord(id, title, content, content, records.get(id).createdAt());
                 records.put(id, record);
@@ -90,18 +98,31 @@ public class LocalLobbyTestApplication {
             @Override public List<MeetingAgenda> list(int limit, int offset) {
                 return agendas.values().stream().sorted(Comparator.comparing(MeetingAgenda::createdAt).reversed()).skip(offset).limit(limit).toList();
             }
-            @Override public MeetingAgenda create(String title, String content, String hash) {
+            @Override public MeetingAgenda create(String title, String content, String hash, UUID authorId) {
                 var agenda = new MeetingAgenda(UUID.randomUUID(), title, content, OffsetDateTime.now(), null);
                 agendas.put(agenda.id(), agenda); hashes.put(agenda.id(), hash);
                 return agenda;
             }
-            @Override public Optional<String> editTokenHash(UUID id) { return Optional.ofNullable(hashes.get(id)); }
+            @Override public Optional<Ownership> ownership(UUID id) { return Optional.ofNullable(hashes.get(id)).map(hash -> new Ownership(hash, null)); }
             @Override public MeetingAgenda update(UUID id, String title, String content) {
                 var agenda = new MeetingAgenda(id, title, content, agendas.get(id).createdAt(), OffsetDateTime.now());
                 agendas.put(id, agenda);
                 return agenda;
             }
             @Override public int delete(UUID id) { hashes.remove(id); return agendas.remove(id) == null ? 0 : 1; }
+        };
+    }
+
+    @Bean
+    MemberRepository fixtureMemberRepository() {
+        Map<UUID, Member> members = new ConcurrentHashMap<>();
+        return new MemberRepository(null) {
+            @Override public Optional<Member> findById(UUID id) { return Optional.ofNullable(members.get(id)); }
+            @Override public Optional<Member> loginByKakaoId(long kakaoId) { return members.values().stream().filter(m -> m.kakaoId() == kakaoId).findFirst(); }
+            @Override public Member create(UUID id, long kakaoId, String nickname) { var m = new Member(id, kakaoId, nickname); members.put(id, m); return m; }
+            @Override public void updateNickname(UUID id, String nickname) { members.computeIfPresent(id, (key, m) -> new Member(key, m.kakaoId(), nickname)); }
+            @Override public List<UUID> recentRecordIds(UUID memberId) { return List.of(); }
+            @Override public List<UUID> recentAgendaIds(UUID memberId) { return List.of(); }
         };
     }
 }

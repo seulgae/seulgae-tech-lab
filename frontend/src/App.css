@@ -54,3 +54,5 @@ kbd { font: 10px/1.5 monospace; padding: 3px 5px; border: 1px solid var(--room-b
   .location-badge { font-size: 10px; padding: 5px; }
   .game-canvas { height: calc(100dvh - 100px); }
 }
+
+.lab-header-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }

@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { fetchResearchPage, fetchResearchRecord } from '../api/researchApi'
 import type { ResearchPage, ResearchRecord } from '../model/researchTypes'
 import EntryForm from '../../boards/EntryForm'
-import { BoardError, IDEA_CONTENT_MAX, IDEA_TITLE_MAX, createIdea, deleteIdea, editToken, ideaTitle, nextIdeaNumber, updateIdea } from '../../boards/boardsApi'
+import { BoardError, IDEA_CONTENT_MAX, IDEA_TITLE_MAX, createIdea, deleteIdea, ideaTitle, nextIdeaNumber, updateIdea } from '../../boards/boardsApi'
+import { LOGIN_URL, authStore, canWrite, isMine, useAuth } from '../../auth/authStore'
 import './ResearchPanel.css'
 
 type ResearchPanelProps = { onClose: () => void }
@@ -13,7 +14,7 @@ type Form = { kind: 'create'; title: string } | { kind: 'edit'; record: Research
  * 일지 제목은 다음 번호("연구 아이디어 일지 #N")로 미리 채우고 내용은 130자까지 받는다.
  *
  * @author seulgae
- * @version 1.1, 아이디어 일지 입력과 내 글 수정·삭제
+ * @version 1.2, 제목만 보이는 목록, 카카오 로그인 글쓰기와 내 글 관리
  * @see "None"
  * @param props 패널 속성
  * @param props.onClose 패널 종료와 게임 입력 복구를 수행하는 콜백
@@ -32,6 +33,7 @@ export default function ResearchPanel({ onClose }: ResearchPanelProps) {
   const [detailError, setDetailError] = useState(false)
   const [form, setForm] = useState<Form>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const auth = useAuth()
 
   useEffect(() => {
     const dialog = dialogRef.current
@@ -70,7 +72,7 @@ export default function ResearchPanel({ onClose }: ResearchPanelProps) {
   }
   const changeOffset = (next: number) => { setLoading(true); setError(false); setOffset(next) }
   /** 저장·삭제 후 첫 페이지 목록으로 돌아간다. */
-  const refresh = () => { setForm(null); setSelectedId(null); setSelected(null); setLoading(true); setError(false); setOffset(0); setRetry(n => n + 1) }
+  const refresh = () => { setForm(null); setSelectedId(null); setSelected(null); setLoading(true); setError(false); setOffset(0); setRetry(n => n + 1); void authStore.refreshOwned() }
 
   /** 다음 일지 번호를 서버에서 받아 제목을 미리 채운다. 실패하면 #1로 시작한다. */
   const startCreate = async () => {
@@ -84,7 +86,7 @@ export default function ResearchPanel({ onClose }: ResearchPanelProps) {
     catch (cause) { setActionError(cause instanceof BoardError ? cause.message : '삭제하지 못했어요.') }
   }
 
-  const mine = (id: string) => !!editToken(id)
+  const mine = (id: string) => isMine(auth, 'record', id)
   return (
     <dialog
       ref={dialogRef}
@@ -128,7 +130,7 @@ export default function ResearchPanel({ onClose }: ResearchPanelProps) {
               <h3>{selected.title}{mine(selected.id) && <span className="board-mine">내 일지</span>}</h3>
               {selected.summary !== selected.content && <p>{selected.summary}</p>}
               <p className="research-content">{selected.content}</p>
-              {mine(selected.id) && <div className="board-entry-actions">
+              {mine(selected.id) && canWrite(auth) && <div className="board-entry-actions">
                 <button type="button" className="research-close" onClick={() => setForm({ kind: 'edit', record: selected })}>수정</button>
                 <button type="button" className="research-close" onClick={() => void remove(selected)}>삭제</button>
               </div>}
@@ -140,7 +142,9 @@ export default function ResearchPanel({ onClose }: ResearchPanelProps) {
         <section aria-live="polite" aria-busy={loading}>
           <div className="board-toolbar">
             <p>떠오른 연구 아이디어를 130자로 남겨 보세요.</p>
-            <button type="button" className="research-close board-primary" onClick={() => void startCreate()}>아이디어 일지 쓰기</button>
+            {canWrite(auth)
+              ? <button type="button" className="research-close board-primary" onClick={() => void startCreate()}>아이디어 일지 쓰기</button>
+              : <span className="board-login">글쓰기는 로그인 후 <a className="auth-kakao" href={LOGIN_URL}>카카오 로그인</a></span>}
           </div>
           {loading && <p role="status">연구 기록을 불러오는 중…</p>}
           {error && <p role="alert">연구 기록을 불러오지 못했습니다. <button type="button" onClick={retryLoad}>다시 시도</button></p>}
@@ -150,7 +154,6 @@ export default function ResearchPanel({ onClose }: ResearchPanelProps) {
               <span className="research-status">{new Date(record.createdAt).toLocaleString('ko-KR')}</span>
               <h3><button type="button" className="research-title" onClick={() => openRecord(record.id)}>{record.title}</button>
                 {mine(record.id) && <span className="board-mine">내 일지</span>}</h3>
-              <p>{record.summary}</p>
             </article>
           ))}
           {!loading && !error && (offset > 0 || page.hasMore) && (
@@ -161,7 +164,7 @@ export default function ResearchPanel({ onClose }: ResearchPanelProps) {
           )}
         </section>
       )}
-      <p className="research-footer">ESC 또는 닫기 버튼으로 로비로 돌아갑니다. 이 브라우저에서 쓴 일지만 수정·삭제할 수 있어요.</p>
+      <p className="research-footer">ESC 또는 닫기 버튼으로 로비로 돌아갑니다. 목록의 제목을 누르면 내용을 볼 수 있어요.</p>
     </dialog>
   )
 }
