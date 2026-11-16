@@ -103,6 +103,41 @@ test('보정은 ack 이후 로컬 진행을 보존하며 같은 이동 ack와 �
   assert.ok(prediction.step(16).x >= -1)
 })
 
+test('서버 틱 오차가 허용 경계 16px를 넘나들어도 보정 속도가 갑자기 뛰지 않는다', t => {
+  function correction(error) {
+    const prediction = new LocalReconciliation()
+    prediction.record(1, { x: 400, y: 400 })
+    prediction.receive({ ack: 1, x: 400 - error, y: 400, moving: true }, { x: 430, y: 400 }, 0)
+    return prediction.step(1000 / 60).x
+  }
+  const inside = correction(15.9), outside = correction(16.1)
+  assert.equal(inside, 0)
+  assert.ok(Math.abs(outside - inside) < 0.02, `허용 경계에서 한 프레임 보정 변화: ${outside - inside}px`)
+  t.diagnostic(`16.1px 오차의 60Hz 한 프레임 보정: ${Math.abs(outside).toFixed(4)}px`)
+})
+
+test('늦게 도착한 서버 정지 상태가 새 이동 중인 캐릭터에 2px 정지 보정을 걸지 않는다', () => {
+  for (const input of [{ x: 1, y: 0 }, { x: 0, y: -1 }, { x: -1, y: 1 }]) {
+    const prediction = new LocalReconciliation()
+    prediction.record(1, { x: 400, y: 400 })
+    prediction.receive({ ack: 1, x: 408, y: 400, moving: false }, { x: 430, y: 400 }, 0, input)
+    assert.deepEqual(prediction.step(1000 / 60), { x: 0, y: 0 })
+  }
+})
+
+test('정지 후에는 작은 잔여 오차를 단조롭게 2px까지 줄이고 경계에서 흔들리지 않는다', () => {
+  const prediction = new LocalReconciliation(), position = { x: 408, y: 400 }
+  prediction.record(1, position)
+  for (let frame = 0; frame < 180; frame++) {
+    if (frame % 3 === 0) prediction.receive({ ack: 1, x: 400, y: 400, moving: false }, position, frame * 1000 / 60)
+    const correction = prediction.step(1000 / 60)
+    assert.ok(correction.x <= 0 && position.x + correction.x >= 402 - 1e-8)
+    position.x += correction.x
+    prediction.applied(correction, correction)
+  }
+  assert.ok(Math.abs(position.x - 402) < 0.001)
+})
+
 test('큰 오차·재접속은 한 번 동기화하고, 누락된 예측 기록은 즉시 역행시키지 않는다', () => {
   const prediction = new LocalReconciliation()
   prediction.reset({ x: 400, y: 400 })
@@ -150,7 +185,12 @@ test('수신 콜백은 위치를 쓰지 않고 postUpdate에서만 보정하며 
   scene.events.emit('postupdate')
   assert.equal(player.changes, 1)
   player.x = 430; callbacks.inputSent(1)
-  callbacks.snapshot([{ id: 'self', x: 400, y: 400, ack: 1, moving: true }], 'self')
+  callbacks.snapshot([{ id: 'self', x: 438, y: 400, ack: 1, moving: false }], 'self')
+  scene.events.emit('postupdate')
+  assert.equal(player.x, 430)
+  assert.equal(player.changes, 1)
+  callbacks.inputSent(2)
+  callbacks.snapshot([{ id: 'self', x: 400, y: 400, ack: 2, moving: true }], 'self')
   assert.equal(player.x, 430)
   scene.events.emit('postupdate')
   assert.ok(player.x < 430 && player.x >= 428.999)
