@@ -157,9 +157,18 @@ public class LobbySocketHandler extends TextWebSocketHandler {
                     synchronized (chat) {
                         if (peers.get(session.getId()) != peer) return;
                         // 부정한 필드 요청도 채팅 제한을 소비하게 해 반복 오류 방송을 막는다.
-                        String text = fields(input, CHAT_FIELDS) && input.get("message").isString()
+                        var scope = input.get("scope");
+                        boolean validScope = scope == null || scope.isString() && Set.of(LobbyChat.Message.ROOM, LobbyChat.Message.TABLE).contains(scope.stringValue());
+                        String text = validScope && fields(input, CHAT_FIELDS, "scope") && input.get("message").isString()
                             ? input.get("message").stringValue() : null;
-                        broadcastIn(room.roomId(peer.playerId), chat.post(peer.playerId, text, now));
+                        boolean table = validScope && scope != null && scope.stringValue().equals(LobbyChat.Message.TABLE);
+                        String roomId = room.roomId(peer.playerId);
+                        var posted = chat.post(peer.playerId, text, now, table);
+                        if (posted.table()) {
+                            // 테이블 대화는 서버 좌표가 같은 테이블 범위 안인 같은 방 참가자에게만 전달한다.
+                            var listeners = room.playersNear(roomId, LobbyChat.TABLE_KIND);
+                            peers.forEach((id, other) -> { if (listeners.contains(other.playerId)) sendScoped(id, other, posted); });
+                        } else broadcastIn(roomId, posted);
                     }
                 } catch (LobbyChat.Rejected exception) {
                     sendScoped(session.getId(), peer, Map.of("type", "chat_error", "reason", exception.getMessage()));
@@ -248,9 +257,10 @@ public class LobbySocketHandler extends TextWebSocketHandler {
     }
 
     /** 이동 입력 필드에는 선택적인 방 세대만 추가할 수 있다. */
-    private boolean fields(tools.jackson.databind.JsonNode input, Set<String> expected) {
+    private boolean fields(tools.jackson.databind.JsonNode input, Set<String> expected, String... optional) {
         var keys = new java.util.HashSet<>(input.propertyNames());
         keys.remove("roomEpoch");
+        for (var key : optional) keys.remove(key);
         return keys.equals(expected);
     }
 

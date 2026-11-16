@@ -161,6 +161,18 @@
   "rooms": {
     "lobby": {
       "name": "중앙 로비",
+      "interactions": [
+        {
+          "id": "lobby-research",
+          "kind": "research",
+          "label": "연구 기록",
+          "x": 620,
+          "y": 330,
+          "width": 112,
+          "height": 72,
+          "range": 56
+        }
+      ],
       "doors": [
         {
           "id": "lobby-to-development",
@@ -188,6 +200,28 @@
     },
     "development-lab": {
       "name": "개발 연구실",
+      "interactions": [
+        {
+          "id": "development-build-left",
+          "kind": "build-info",
+          "label": "빌드 정보",
+          "x": 180,
+          "y": 214,
+          "width": 112,
+          "height": 72,
+          "range": 56
+        },
+        {
+          "id": "development-build-right",
+          "kind": "build-info",
+          "label": "빌드 정보",
+          "x": 620,
+          "y": 214,
+          "width": 112,
+          "height": 72,
+          "range": 56
+        }
+      ],
       "spawn": {
         "x": 400,
         "y": 460
@@ -271,6 +305,28 @@
     },
     "server-room": {
       "name": "서버실",
+      "interactions": [
+        {
+          "id": "server-racks-left",
+          "kind": "server-status",
+          "label": "서버 상태",
+          "x": 220,
+          "y": 216,
+          "width": 168,
+          "height": 88,
+          "range": 40
+        },
+        {
+          "id": "server-racks-right",
+          "kind": "server-status",
+          "label": "서버 상태",
+          "x": 580,
+          "y": 216,
+          "width": 168,
+          "height": 88,
+          "range": 40
+        }
+      ],
       "spawn": {
         "x": 400,
         "y": 460
@@ -354,6 +410,18 @@
     },
     "meeting-room": {
       "name": "회의실",
+      "interactions": [
+        {
+          "id": "meeting-table",
+          "kind": "table-talk",
+          "label": "테이블 대화",
+          "x": 400,
+          "y": 278,
+          "width": 200,
+          "height": 64,
+          "range": 64
+        }
+      ],
       "spawn": {
         "x": 400,
         "y": 460

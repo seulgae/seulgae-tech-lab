@@ -102,6 +102,7 @@ jobs:
           context: .
           file: backend/Dockerfile
           push: true
+          build-args: GIT_COMMIT=${{ github.sha }}
           tags: ghcr.io/seulgae/seulgae-tech-lab-backend:${{ github.sha }}
           labels: |
             org.opencontainers.image.source=https://github.com/seulgae/seulgae-tech-lab

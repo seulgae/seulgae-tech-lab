@@ -4,7 +4,8 @@ import { readFileSync } from 'node:fs'
 import { createRequire, stripTypeScriptTypes } from 'node:module'
 import test from 'node:test'
 import vm from 'node:vm'
-import { ROOMS, roomObstacles } from '../src/game/maps/rooms.ts'
+import { ROOMS, nearestInteraction, roomObstacles } from '../src/game/maps/rooms.ts'
+import { LAB_EVENTS } from '../src/features/lab/labEvents.ts'
 import { isNearObject } from '../src/game/interaction.ts'
 import { RESEARCH_EVENTS } from '../src/features/research/researchEvents.ts'
 import { MOBILE_INPUT } from '../src/game/input/mobileInput.ts'
@@ -33,7 +34,7 @@ test('모서리에서도 원형 거리로 범위를 제한한다', () => {
 
 // 렌더링과 물리 엔진을 대체해 장면의 입력·이벤트 흐름만 검증한다.
 // 실제 충돌과 React 패널 표시 여부는 브라우저에서 별도로 검증한다.
-function createScene() {
+function createScene(room = 'lobby') {
   const uiEvents = new EventEmitter()
   const key = { _justDown: false }
   const state = { textFocused: false, resets: 0 }
@@ -66,13 +67,13 @@ function createScene() {
     .replace('export default class LabLobbyScene', 'class LabLobbyScene')
   const LobbyScene = vm.runInNewContext(source + '\nLabLobbyScene', {
     Phaser: { Scene, Input: { Keyboard: { JustDown } }, Scenes: { Events: { SHUTDOWN: 'shutdown' } } },
-    ROOMS, roomObstacles, setRoomObstacles() {}, Player, createLobbyMap: () => ({}), COMPUTER: computer, RESEARCH_EVENTS, isNearObject,
+    ROOMS, roomObstacles, nearestInteraction, setRoomObstacles() {}, Player, createLobbyMap: () => ({}), RESEARCH_EVENTS, LAB_EVENTS,
     hasTextInputFocus: () => state.textFocused,
     SPAWN: { x: 400, y: 400 }, MULTIPLAYER_EVENTS, MOBILE_INPUT, LobbyMultiplayer: class {
       update() {} destroy() {} stopInput() {}
     },
   })
-  const scene = new LobbyScene(uiEvents, { currentRoom() { return "lobby" }, isTravelling() { return false }, subscribe() { return () => {} }, setInput(input) { state.sentInput = input } })
+  const scene = new LobbyScene(uiEvents, { currentRoom() { return room }, isTravelling() { return false }, subscribe() { return () => {} }, setInput(input) { state.sentInput = input } })
   scene.create()
   return { scene, uiEvents, key, state }
 }
@@ -193,4 +194,65 @@ test('터치 E는 범위 밖에서 예약되지 않고 패널 동안 재실행�
   assert.equal(uiEvents.listenerCount(MOBILE_INPUT.interact), 0)
   scene.create()
   assert.equal(uiEvents.listenerCount(MOBILE_INPUT.move), 1)
+})
+
+test('모든 방에 스폰과 겹치지 않는 상호작용이 있고 위치별로 하나만 고른다', () => {
+  const kinds = new Set(['research', 'build-info', 'server-status', 'table-talk'])
+  for (const [id, room] of Object.entries(ROOMS)) {
+    assert.ok(room.interactions.length > 0, id)
+    for (const interaction of room.interactions) {
+      assert.ok(kinds.has(interaction.kind), interaction.id)
+      assert.equal(isNearObject(room.spawn.x, room.spawn.y, interaction, interaction.range), false, `${interaction.id}: spawn`)
+    }
+  }
+  assert.equal(nearestInteraction('lobby', 620, 400)?.kind, 'research')
+  assert.equal(nearestInteraction('server-room', 220, 290)?.kind, 'server-status')
+  assert.equal(nearestInteraction('development-lab', 620, 290)?.id, 'development-build-right')
+  assert.equal(nearestInteraction('meeting-room', 350, 340)?.kind, 'table-talk')
+  assert.equal(nearestInteraction('meeting-room', 400, 460), undefined)
+})
+
+test('서버실 랙과 개발 연구실 컴퓨터는 해당 패널만 열고 입력을 잠근다', () => {
+  for (const [room, x, y, kind] of [['server-room', 220, 290, 'server-status'], ['development-lab', 180, 290, 'build-info']]) {
+    const { scene, uiEvents, key } = createScene(room)
+    const opened = []
+    let research = 0
+    uiEvents.on(LAB_EVENTS.openPanel, value => opened.push(value))
+    uiEvents.on(RESEARCH_EVENTS.openResearch, () => research++)
+    scene.player.x = x; scene.player.y = y
+    scene.update()
+    assert.equal(scene.interactionHint.text, kind === 'server-status' ? 'E · 서버 상태' : 'E · 빌드 정보')
+    key._justDown = true
+    for (let frame = 0; frame < 30; frame++) scene.update()
+    assert.deepEqual(opened, [kind])
+    assert.equal(research, 0)
+    assert.equal(scene.player.movementEnabled, false)
+    uiEvents.emit(LAB_EVENTS.closePanel); scene.update()
+    assert.equal(scene.player.movementEnabled, true)
+    scene.events.emit('shutdown')
+    assert.equal(uiEvents.listenerCount(LAB_EVENTS.closePanel), 0)
+  }
+})
+
+test('회의 테이블 E는 테이블 대화를 켜고 끄며 범위를 벗어나면 자동으로 끈다', () => {
+  const { scene, uiEvents, key } = createScene('meeting-room')
+  const states = []
+  uiEvents.on(LAB_EVENTS.tableTalk, value => states.push(value))
+  scene.player.x = 350; scene.player.y = 340
+  scene.update()
+  assert.equal(scene.interactionHint.text, 'E · 테이블 대화 참여')
+  key._justDown = true; scene.update()
+  assert.deepEqual(states, [true])
+  assert.equal(scene.player.movementEnabled, true)
+  assert.equal(scene.interactionHint.text, 'E · 테이블 대화 참여')
+  scene.update()
+  assert.equal(scene.interactionHint.text, 'E · 테이블 대화 나가기')
+  key._justDown = true; scene.update()
+  assert.deepEqual(states, [true, false])
+  key._justDown = true; scene.update()
+  scene.player.y = 460; scene.update()
+  assert.deepEqual(states, [true, false, true, false])
+  key._justDown = true; scene.player.y = 340; scene.update()
+  scene.events.emit('shutdown')
+  assert.equal(states.at(-1), false)
 })

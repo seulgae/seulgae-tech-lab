@@ -10,6 +10,9 @@
 .chat-message strong { color: #d9c99e; font-size: 11px; }
 .chat-message time { color: #8ca89b; font-size: 10px; }
 .chat-message p { margin: 4px 0 0; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.chat-message.is-table { padding-left: 8px; border-left: 2px solid #d8bd87; }
+.chat-scope { color: #20383a; background: #d8bd87; font-size: 9px; padding: 1px 5px; border-radius: 2px; }
+.chat-panel-header .chat-table-badge { color: #f3d690; }
 .chat-empty { color: #a1b6a6; font-size: 11px; }
 .chat-form { padding: 9px 12px 6px; border-top: 1px solid #456359; }
 .chat-input-label { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 10px; color: #adc2ad; }

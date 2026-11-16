@@ -5,8 +5,10 @@ export type MoveInput = { x: number; y: number }
 export type MoveCommand = MoveInput & { seq: number; ms: number }
 export type PlayerState = { id: string; nickname: string; x: number; y: number; facing: Facing; moving: boolean; ack: number }
 export type ConnectionInfo = { roomId?: RoomId; roomOnline?: number; totalOnline?: number; travelling?: boolean; roomError?: string; phase: 'connecting' | 'online' | 'reconnecting'; nickname: string; online: number; maxPlayers: number; message: string }
-export type ChatMessage = { type: 'chat_message'; messageId: string; playerId: string; nickname: string; message: string; sentAt: string }
-export type ChatError = 'empty' | 'too_long' | 'rate_limited' | 'unavailable' | 'invalid'
+export type ChatMessage = { type: 'chat_message'; messageId: string; playerId: string; nickname: string; message: string; sentAt: string; scope?: ChatScope }
+/** room은 같은 방 전체, table은 서버가 확인한 회의 테이블 주변 참가자에게만 전달한다. */
+export type ChatScope = 'room' | 'table'
+export type ChatError = 'empty' | 'too_long' | 'rate_limited' | 'unavailable' | 'invalid' | 'not_at_table'
 type RoomMeta = { roomId?: RoomId; roomEpoch?: number; totalOnline?: number }
 export type ServerMessage = RoomMeta & (
   | ChatMessage
@@ -36,6 +38,7 @@ function validChat(value: unknown): value is ChatMessage {
   const message = value as ChatMessage
   return message.type === 'chat_message' && validId(message.messageId) && validId(message.playerId)
     && validNickname(message.nickname) && validChatText(message.message) && typeof message.sentAt === 'string'
+    && (message.scope === undefined || message.scope === 'room' || message.scope === 'table')
     && /^\d{4}-\d\d-\d\dT/.test(message.sentAt) && message.sentAt.endsWith('Z') && Number.isFinite(Date.parse(message.sentAt))
 }
 
@@ -60,7 +63,7 @@ export function parseServerMessage(raw: string): ServerMessage {
   if (message.type === 'chat_message' && validChat(message)) return message
   if (message.type === 'chat_history' && Array.isArray(message.messages) && message.messages.length <= 50
     && message.messages.every(validChat) && new Set(message.messages.map((item: ChatMessage) => item.messageId)).size === message.messages.length) return message
-  if (message.type === 'chat_error' && ['empty', 'too_long', 'rate_limited', 'unavailable', 'invalid'].includes(message.reason)) return message
+  if (message.type === 'chat_error' && ['empty', 'too_long', 'rate_limited', 'unavailable', 'invalid', 'not_at_table'].includes(message.reason)) return message
   if (message.type === 'room_error' && typeof message.reason === 'string' && message.reason.length <= 100) return message
   const players = message.players
   if (!Array.isArray(players) || players.length > 5 || !players.every(validPlayer) || new Set(players.map(p => p.id)).size !== players.length) throw new Error('Invalid players')

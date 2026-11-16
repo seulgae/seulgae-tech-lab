@@ -56,7 +56,8 @@ export default function createLobbyMap(scene: Phaser.Scene, roomId: RoomId = 'lo
     scene.add.rectangle(400, 110, 160, 42, 0xd5e4cd).setStrokeStyle(4, 0x557b70).setDepth(160)
     scene.add.text(400, 105, 'IDEAS / DISCUSS', {fontSize:'12px', color:'#264a4b'}).setOrigin(.5).setDepth(161)
   }
-  const computerHighlight = scene.add.rectangle(COMPUTER.x, COMPUTER.y + 2, 126, 80)
+  // 현재 가까운 상호작용 대상의 크기·위치로 장면이 매 프레임 옮겨 사용한다.
+  const interactionHighlight = scene.add.rectangle(COMPUTER.x, COMPUTER.y + 2, 126, 80)
     .setStrokeStyle(2, 0xf3d690).setFillStyle(0xf3d690, 0.08).setDepth(COMPUTER.y + COMPUTER.height / 2 + 1).setVisible(false)
-  return { obstacles, computerHighlight }
+  return { obstacles, interactionHighlight }
 }
