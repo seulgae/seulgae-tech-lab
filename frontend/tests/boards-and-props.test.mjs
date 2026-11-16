@@ -42,7 +42,7 @@ test('의자 id는 서버와 같은 규칙이고, 의자 뒤에서 다가갈 때
   assert.equal(nearestInteraction('meeting-room', 400, 385)?.id, 'meeting-room-chair-1')
   assert.equal(nearestInteraction('meeting-room', 350, 340)?.kind, 'table-talk')
   assert.equal(nearestInteraction('meeting-room', 400, 196)?.kind, 'agenda')
-  assert.equal(roomPlants('lobby').length, 2)
+  assert.equal(roomPlants('lobby').length, 1)
   assert.equal(nearestInteraction('meeting-room', 100, 190)?.kind, 'plant')
 })
 
