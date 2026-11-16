@@ -14,8 +14,8 @@
 
 [작업]
 - 로그의 번호 항목 하나당 블로그 글 1편을 쓴다(예: 2026-11-17 로그 → 6편 이내, 6번 정리 작업은 짧은 글 또는 생략 가능).
-- 저장 위치: docs/blog/<로그 날짜>-<영문-슬러그>.md (예: docs/blog/2026-11-17-hangul-canvas-rendering.md)
-- 이미 docs/blog/에 같은 주제 글이 있으면 새로 만들지 말고 건너뛴다.
+- 저장 위치: 아래 [저장] 폴더에 <front matter의 date>-<영문-슬러그>.md (예: 2026-11-16-hangul-canvas-rendering.md)
+- 이미 [저장] 폴더에 같은 주제 글이 있으면 새로 만들지 말고 건너뛴다.
 
 [글 구성 (한국어, 각 1,500~3,000자)]
 1. 제목: 문제나 결과가 드러나게(예: "Phaser 캔버스에서 한글이 깨지던 진짜 이유")
@@ -27,18 +27,29 @@
 7. 결과·남은 과제: 테스트 결과와 확인하지 못한 부분을 솔직하게
 8. 마무리: 배운 점 3줄
 
+[저장]
+C:\IdeaProjects\seulgae.github.io\src\posts
+
 [규칙]
 - 운영 정보를 노출하지 않는다: 서버 IP, 호스트 이름, Tailscale/Funnel 도메인(*.ts.net), 계정·DB 사용자명, 비밀번호 파일 경로, 접속자 닉네임은 쓰지 않거나 "홈 서버", "공개 주소"처럼 일반화한다.
 - 로그에 없는 성능 수치나 결과는 만들어 내지 않는다. 확인되지 않은 내용은 "확인하지 못함"으로 적는다.
 - 코드 블록에는 언어 태그(java, ts, sql, nginx, yaml)를 붙인다.
-- 글 맨 앞에 front matter를 둔다:
+- 글은 반드시 아래 front matter 구조로 시작한다(첫 줄이 ---). 키 이름·순서·형식을 그대로 지킨다:
   ---
-  title: "..."
-  date: <로그 날짜>
-  tags: [phaser, spring-boot, websocket, ...]
-  summary: "한 줄 요약"
-  source_prs: [#22]
+  title: 슬개기술연구소 — 회의 안건과 아이디어 일지, 공간에 쓰기와 생활감을 더하다
+  date: 2026-11-16
+  createdAt: 2026-11-16T22:36:10+09:00
+  tags: React, Phaser, Spring Boot, PostgreSQL, Flyway, WebSocket
+  summary: 방 이동 이후 회의 안건과 연구 아이디어 일지, 수정 키 기반 편집, 서버 검증 의자와 시간대 연출을 추가한 커밋을 코드와 작업 문서로 정리했다.
+  category: seulgae-tech-lab
   ---
+  - title: "슬개기술연구소 — "로 시작하고, 뒤에는 이번 글의 핵심을 한 문장으로 쓴다. 따옴표로 감싸지 않는다.
+  - date: 작업(커밋) 날짜 YYYY-MM-DD
+  - createdAt: 작업 시각, ISO 8601 + KST 오프셋(YYYY-MM-DDTHH:MM:SS+09:00)
+  - tags: 쉼표로 구분한 기술 이름 3~6개, 대괄호 없이
+  - summary: "~한 커밋을 코드와 작업 문서로 정리했다."처럼 한 문장, 따옴표 없이
+  - category: 항상 seulgae-tech-lab
+  - 로그 항목에 "블로그 front matter 초안"이 있으면 date·createdAt은 그대로 쓰고, title·tags·summary는 글 내용에 맞게 다듬어도 된다. 초안이 없으면 git log의 해당 커밋 시각(KST)으로 date·createdAt을 채운다.
 - 작업을 마치면 만든 파일 목록과 각 글의 한 줄 요약을 보고한다.
 ```
 
