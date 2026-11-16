@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Set;
+import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
@@ -28,7 +29,7 @@ import tools.jackson.databind.json.JsonMapper;
  * 제한된 입력 메시지를 받아 서버 상태를 20Hz로 전파하는 로비 소켓이다.
  *
  * @author seulgae
- * @version 1.0, 입력 검증·속도 제한·접속 정리 및 상태 방송
+ * @version 1.0, 완료 스텝 입력 검증·속도 제한·접속 정리 및 상태 방송
  * @see "None"
  */
 @Component
@@ -36,6 +37,8 @@ public class LobbySocketHandler extends TextWebSocketHandler {
     private static final Logger LOG = LoggerFactory.getLogger(LobbySocketHandler.class);
     private static final Set<String> INPUT_FIELDS = Set.of("type", "x", "y", "seq");
     private static final Set<String> CHAT_FIELDS = Set.of("type", "message");
+    private static final Set<String> MOVE_FIELDS = Set.of("type", "inputs");
+    private static final Set<String> COMMAND_FIELDS = Set.of("x", "y", "ms", "seq");
     private static final double INPUTS_PER_SECOND = 40;
     private static final double INPUT_BURST_CAPACITY = 80;
     /**
@@ -102,7 +105,7 @@ public class LobbySocketHandler extends TextWebSocketHandler {
             // 입장 기록과 실시간 방송 사이에 메시지가 빠지지 않게 같은 채팅 잠금을 사용한다.
             synchronized (chat) {
                 var peer = new Peer(socket, player.id());
-                peer.controls.add(new TextMessage(json.writeValueAsString(Map.of("type", "welcome", "selfId", player.id(), "players", room.snapshot(), "maxPlayers", LobbyRoom.MAX_PLAYERS, "protocolVersion", 3))));
+                peer.controls.add(new TextMessage(json.writeValueAsString(Map.of("type", "welcome", "selfId", player.id(), "players", room.snapshot(), "maxPlayers", LobbyRoom.MAX_PLAYERS, "protocolVersion", 4))));
                 peer.controls.add(new TextMessage(json.writeValueAsString(Map.of("type", "chat_history", "messages", chat.history()))));
                 peers.put(session.getId(), peer);
                 drain(session.getId(), peer);
@@ -114,7 +117,7 @@ public class LobbySocketHandler extends TextWebSocketHandler {
         }
     }
 
-    /** 좌표나 클라이언트 시각을 받지 않고 방향과 입력 번호만 엄격하게 검증한다. */
+    /** 좌표·절대 시각은 받지 않고 방향·번호·짧은 스텝 시간을 엄격하게 검증한다. */
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) {
         var peer = peers.get(session.getId());
@@ -142,11 +145,29 @@ public class LobbySocketHandler extends TextWebSocketHandler {
                 peer.lastSeen = now;
                 return;
             }
-            if (payloadBytes > 512) { disconnect(session.getId(), CloseStatus.TOO_BIG_TO_PROCESS); return; }
+            if (payloadBytes > 512 && !input.path("type").stringValue("").equals("move")) {
+                disconnect(session.getId(), CloseStatus.TOO_BIG_TO_PROCESS); return;
+            }
             if (!peer.allow(now)) {
                 LOG.warn("Lobby input rate exceeded: player={}, receivedInputs={}, connectedMs={}",
                     peer.playerId, peer.receivedInputs, (now - peer.connectedAt) / 1_000_000);
                 disconnect(session.getId(), CloseStatus.POLICY_VIOLATION.withReason("Input rate exceeded")); return;
+            }
+            if (input.isObject() && input.path("type").stringValue("").equals("move")) {
+                rejection = "Invalid movement command";
+                if (!Set.copyOf(input.propertyNames()).equals(MOVE_FIELDS) || !input.get("inputs").isArray()
+                    || input.get("inputs").isEmpty() || input.get("inputs").size() > 8) throw new IllegalArgumentException();
+                var commands = new ArrayList<LobbyRoom.MoveCommand>();
+                for (var command : input.get("inputs")) {
+                    if (!command.isObject() || !Set.copyOf(command.propertyNames()).equals(COMMAND_FIELDS)
+                        || !command.get("x").isInt() || !command.get("y").isInt() || !command.get("ms").isNumber()
+                        || !command.get("seq").isIntegralNumber() || !command.get("seq").canConvertToLong()) throw new IllegalArgumentException();
+                    commands.add(new LobbyRoom.MoveCommand(command.get("x").asInt(), command.get("y").asInt(),
+                        command.get("ms").asDouble(), command.get("seq").asLong()));
+                }
+                room.commands(peer.playerId, commands, now);
+                peer.lastSeen = now;
+                return;
             }
             rejection = "Invalid input: fields";
             if (!input.isObject() || !Set.copyOf(input.propertyNames()).equals(INPUT_FIELDS)
@@ -166,7 +187,9 @@ public class LobbySocketHandler extends TextWebSocketHandler {
             }
             peer.lastSeen = now;
         } catch (RuntimeException exception) {
-            if (payloadBytes > 512) { disconnect(session.getId(), CloseStatus.TOO_BIG_TO_PROCESS); return; }
+            if (payloadBytes > 512 && rejection.equals("Invalid input: JSON")) {
+                disconnect(session.getId(), CloseStatus.TOO_BIG_TO_PROCESS); return;
+            }
             LOG.warn("Lobby input rejected: player={}, validation={}, receivedInputs={}, connectedMs={}",
                 peer.playerId, rejection, peer.receivedInputs, (now - peer.connectedAt) / 1_000_000);
             disconnect(session.getId(), CloseStatus.POLICY_VIOLATION.withReason(rejection));
@@ -179,7 +202,7 @@ public class LobbySocketHandler extends TextWebSocketHandler {
         if (peer != null) peer.lastSeen = System.nanoTime();
     }
 
-    /** 서버 시계로만 이동하고, 느린 연결에는 낡은 스냅샷을 쌓지 않는다. */
+    /** 구형 이동과 원격 대기 상태를 갱신하고, 느린 연결에는 낡은 스냅샷을 쌓지 않는다. */
     @Scheduled(fixedRate = 50)
     public void updateRoom() {
         long now = System.nanoTime();

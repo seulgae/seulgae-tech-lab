@@ -6,6 +6,7 @@ import { EventEmitter } from 'node:events'
 import vm from 'node:vm'
 import test from 'node:test'
 import LocalReconciliation from '../src/game/multiplayer/LocalReconciliation.ts'
+import AcknowledgedMovement from '../src/game/multiplayer/AcknowledgedMovement.ts'
 import { constrainedPosition, translateBody } from '../src/game/multiplayer/networkPosition.ts'
 
 const require = createRequire(import.meta.url)
@@ -165,17 +166,18 @@ test('수신 콜백은 위치를 쓰지 않고 postUpdate에서만 보정하며 
   let callbacks
   class Client {
     subscribe(value) { callbacks = value; return () => { this.unsubscribed = true } }
-    start() {} destroy() {} setInput() {}
+    start() {} destroy() {} setInput() {} usesCommands() { return false } recordStep() {}
   }
   const label = { setOrigin() { return this }, setResolution() { return this }, setPosition() { return this }, destroy() {} }
-  const scene = { add: { text: () => label }, events: new EventEmitter() }
+  const scene = { add: { text: () => label }, events: new EventEmitter(), physics: { world: new EventEmitter() } }
   const player = { x: 400, y: 400, changes: 0, getInput: () => ({ x: 1, y: 0 }),
     correctPosition(x, y) { const delta = { x: x-this.x, y: y-this.y }; this.x=x;this.y=y;this.changes++;return delta },
   }
   const source = stripTypeScriptTypes(readFileSync(new URL('../src/game/multiplayer/LobbyMultiplayer.ts', import.meta.url), 'utf8'))
     .replace(/^import .*$/gm, '').replace('export default class LobbyMultiplayer', 'class LobbyMultiplayer')
   const Bridge = vm.runInNewContext(source+'\nLobbyMultiplayer', {
-    MultiplayerClient: Client, LocalReconciliation, Phaser: { Scenes: { Events: { POST_UPDATE: 'postupdate' } } },
+    MultiplayerClient: Client, LocalReconciliation, AcknowledgedMovement,
+    Phaser: { Scenes: { Events: { POST_UPDATE: 'postupdate' } }, Physics: { Arcade: { Events: { WORLD_STEP: 'worldstep' } } } },
     MovementDiagnostics: class { sent() {} received() {} frame() {} corrected() {} }, Date,
   })
   const connection = new Client()
@@ -200,4 +202,26 @@ test('수신 콜백은 위치를 쓰지 않고 postUpdate에서만 보정하며 
   const changes = player.changes
   scene.events.emit('postupdate')
   assert.equal(player.changes, changes)
+  assert.equal(scene.physics.world.listenerCount('worldstep'), 0)
+
+  // 30Hz 렌더 프레임에 물리 스텝이 두 번 돌아도 각각 기록하고 ack 뒤의 한 스텝만 재생한다.
+  let sequence = 0
+  connection.usesCommands = () => true
+  connection.recordStep = (input, ms) => {
+    player.x += input.x * 200 * ms / 1000
+    callbacks.predicted({ ...input, ms, seq: ++sequence })
+  }
+  const commandBridge = new Bridge(scene, player, connection)
+  callbacks.snapshot([{ id: 'new', x: 400, y: 400, ack: -1 }], 'new')
+  scene.events.emit('postupdate')
+  const spawnChanges = player.changes
+  scene.physics.world.emit('worldstep', 1 / 60)
+  scene.physics.world.emit('worldstep', 1 / 60)
+  callbacks.snapshot([{ id: 'new', x: 400 + 200 / 60, y: 400, ack: 1 }], 'new')
+  scene.events.emit('postupdate')
+  assert.equal(sequence, 2)
+  assert.equal(player.changes, spawnChanges)
+  assert.ok(Math.abs(player.x - (400 + 400 / 60)) < 1e-8)
+  commandBridge.destroy()
+  assert.equal(scene.physics.world.listenerCount('worldstep'), 0)
 })

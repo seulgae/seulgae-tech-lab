@@ -1,5 +1,6 @@
 export type Facing = 'down' | 'up' | 'left' | 'right'
 export type MoveInput = { x: number; y: number }
+export type MoveCommand = MoveInput & { seq: number; ms: number }
 export type PlayerState = { id: string; nickname: string; x: number; y: number; facing: Facing; moving: boolean; ack: number }
 export type ConnectionInfo = { phase: 'connecting' | 'online' | 'reconnecting'; nickname: string; online: number; maxPlayers: number; message: string }
 export type ChatMessage = { type: 'chat_message'; messageId: string; playerId: string; nickname: string; message: string; sentAt: string }

@@ -62,6 +62,26 @@ class LobbySocketTest {
     }
 
     private int port() { return environment.getProperty("local.server.port", Integer.class); }
+
+    /** 실제 WebSocket에서도 처리 완료 ack와 정지 끝점이 두 방문자에게 같아야 한다. */
+    @Test void broadcastsCompletedCommandAckWithoutServerTickDrift() throws Exception {
+        var a = connect(""); var welcome = a.type("welcome");
+        assertEquals(4, welcome.get("protocolVersion").asInt());
+        String id = welcome.get("selfId").stringValue();
+        double initialX = room.player(id).x();
+        var b = connect(""); b.type("welcome");
+        String move = "{\"type\":\"move\",\"inputs\":[{\"x\":1,\"y\":0,\"ms\":50,\"seq\":1},{\"x\":0,\"y\":0,\"ms\":0,\"seq\":2}]}";
+        a.send(move);
+        b.await(frame -> frame.path("type").stringValue("").equals("state") && frame.get("players").valueStream()
+            .anyMatch(player -> player.get("id").stringValue().equals(id) && player.get("ack").asLong() == 2));
+        assertEquals(initialX + 10, room.player(id).x(), 1e-8);
+        a.send(move);
+        Thread.sleep(150);
+        assertEquals(initialX + 10, room.player(id).x(), 1e-8);
+        assertFalse(a.closed.isDone());
+        a.send("{\"type\":\"move\",\"inputs\":[{\"x\":2,\"y\":0,\"ms\":16,\"seq\":3}]}");
+        assertEquals(1008, a.closed.get(3, TimeUnit.SECONDS));
+    }
     private Client connect(String query) throws Exception {
         var client = new Client();
         client.socket = http.newWebSocketBuilder().header("Origin", "http://localhost:5173")

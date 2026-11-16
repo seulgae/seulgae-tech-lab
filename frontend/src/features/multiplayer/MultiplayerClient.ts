@@ -1,14 +1,15 @@
 import { INITIAL_CONNECTION, lobbySocketUrl, parseServerMessage, normalizeChat, validChatText } from './model/protocol.ts'
-import type { ConnectionInfo, MoveInput, PlayerState, ChatMessage, ChatError, ServerMessage } from './model/protocol'
+import type { ConnectionInfo, MoveInput, MoveCommand, PlayerState, ChatMessage, ChatError, ServerMessage } from './model/protocol'
 
 type Callbacks = { snapshot?: (players: PlayerState[], selfId: string | null) => void; status?: (info: ConnectionInfo) => void;
-  chat?: (event: ChatMessage) => void; history?: (messages: ChatMessage[]) => void; chatError?: (reason: ChatError) => void; inputSent?: (sequence: number) => void }
+  chat?: (event: ChatMessage) => void; history?: (messages: ChatMessage[]) => void; chatError?: (reason: ChatError) => void; inputSent?: (sequence: number) => void;
+  predicted?: (command: MoveCommand) => void }
 
 /**
  * 소켓 상태와 입력 전송을 관리하고 끊김 시 제한된 지수 지연으로 재접속한다.
  *
  * @author seulgae
- * @version 1.0, 임시 세션 연결과 입력·재시도 자원 정리
+ * @version 1.0, 임시 세션 연결과 완료 스텝 묶음 전송·재시도 자원 정리
  * @see "None"
  */
 export default class MultiplayerClient {
@@ -19,6 +20,9 @@ export default class MultiplayerClient {
   private started = false
   private attempts = 0
   private sequence = 0
+  private commandMode = false
+  private commands: MoveCommand[] = []
+  private lastQueuedInput: MoveInput | null = null
   private lastInputSent = -Infinity
   private lastSentInput: MoveInput | null = null
   private lastChatSent = -Infinity
@@ -71,12 +75,44 @@ export default class MultiplayerClient {
   setInput(input: MoveInput) {
     if (this.input.x === input.x && this.input.y === input.y) return
     this.input = input
+    if (this.commandMode && !input.x && !input.y) this.recordStep(input, 0)
     this.sendInput()
   }
+
+  usesCommands() { return this.commandMode && !!this.selfId }
+
+  /**
+   * 완료된 물리 스텝만 기록한다. 좌표는 전송하지 않으며 정지 명령은 한 번만 보낸다.
+   * @param input 해당 물리 스텝에 사용한 방향
+   * @param ms 실제 Arcade 스텝의 밀리초, 정지 명령은 0
+   */
+  recordStep(input: MoveInput, ms: number) {
+    if (!this.usesCommands() || this.socket?.readyState !== 1) return
+    if (!input.x && !input.y && !this.lastQueuedInput?.x && !this.lastQueuedInput?.y) return
+    if (this.commands.length >= 120) { this.restartMovement(); return }
+    const command = { x: input.x, y: input.y, ms: input.x || input.y ? ms : 0, seq: ++this.sequence }
+    this.commands.push(command); this.lastQueuedInput = { ...input }
+    this.notify(callbacks => callbacks.predicted?.(command))
+    this.sendInput()
+  }
+
+  /** 10초 이상 확인되지 않은 예측은 무한히 쌓지 않고 새 세션으로 복구한다. */
+  restartMovement() { this.socket?.close(4004, 'Movement acknowledgement timeout') }
 
   private sendInput() {
     const socket = this.socket
     if (!this.selfId || socket?.readyState !== 1) return
+    if (this.commandMode) {
+      const now = Date.now()
+      if (!this.commands.length || now - this.lastInputSent < 50) return
+      if (socket.bufferedAmount > 4096) { socket.close(4003, 'Input backpressure'); return }
+      socket.send(JSON.stringify({ type: 'move', inputs: this.commands.slice(0, 8) }))
+      this.commands.splice(0, 8); this.lastInputSent = now
+      this.recentInputSends = this.recentInputSends.filter(sentAt => now - sentAt < 1000)
+      this.recentInputSends.push(now)
+      this.notify(callbacks => callbacks.inputSent?.(this.sequence))
+      return
+    }
     // 정지는 한 번만 알린다. 유휴 연결 유지에는 서버 ping/pong을 사용한다.
     if (this.input.x === 0 && this.input.y === 0 && this.lastSentInput?.x === 0 && this.lastSentInput.y === 0) return
     // 방향 변경과 정기 전송을 합쳐 최대 20Hz로 보낸다. 대기 중에는 최신 방향만 유지한다.
@@ -125,6 +161,7 @@ export default class MultiplayerClient {
     try { socket = new WebSocket(lobbySocketUrl(window.location, nickname)) }
     catch { this.retry(); return }
     this.socket = socket
+    this.commandMode = false; this.commands = []; this.lastQueuedInput = null
     this.chatEnabled = false
     this.connectedAt = 0; this.sequence = 0; this.recentInputSends = []
     socket.onopen = () => { this.lastMessage = Date.now() }
@@ -144,7 +181,12 @@ export default class MultiplayerClient {
           this.selfId = message.selfId; this.sequence = 0; this.lastInputSent = -Infinity; this.lastTick = -1; this.attempts = 0
           this.connectedAt = Date.now(); this.recentInputSends = []
           this.lastSentInput = null; this.lastChatSent = -Infinity
-          this.chatEnabled = message.protocolVersion === 3
+          this.chatEnabled = message.protocolVersion === 3 || message.protocolVersion === 4
+          this.commandMode = message.protocolVersion === 4; this.commands = []; this.lastQueuedInput = null
+          if (new URLSearchParams(window.location.search).get('netDebug') === '1') {
+            console.info('[multiplayer] 이동 프로토콜', { version: message.protocolVersion,
+              mode: this.commandMode ? 'completed-steps' : 'legacy' })
+          }
           this.players = new Map(message.players.map(player => [player.id, player]))
           const own = this.players.get(this.selfId)!
           this.updateStatus({ phase: 'online', nickname: own.nickname, online: this.players.size, message: '로비에 연결됐어요.' })
@@ -185,6 +227,7 @@ export default class MultiplayerClient {
       })
       socket.onmessage = null; socket.onclose = null; socket.onerror = null; socket.onopen = null
       this.socket = null; this.selfId = null; this.players.clear()
+      this.commands = []; this.commandMode = false; this.lastQueuedInput = null
       this.notify(callbacks => callbacks.snapshot?.([], null))
       if (event.code === 1008) {
         try { sessionStorage.removeItem('lab.nickname') } catch { }
@@ -220,6 +263,7 @@ export default class MultiplayerClient {
       this.socket.close()
     }
     this.socket = null; this.players.clear()
+    this.commands = []; this.commandMode = false; this.lastQueuedInput = null
     this.listeners.clear(); this.messages = []; this.seenMessages.clear()
   }
 }
