@@ -3,12 +3,14 @@ import { createPlayerAnimations, getFacing } from './PlayerAnimation'
 import type { Facing } from './PlayerAnimation'
 import { PLAYER_FOOT } from './maps/lobbyLayout'
 import { constrainedPosition, translateBody } from './multiplayer/networkPosition'
+import { combineDirections } from './input/mobileInput'
+import type { DirectionInput } from './input/mobileInput'
 
 /**
- * 키보드 이동과 발밑 물리 영역을 관리하는 연구원 캐릭터이다.
+ * 키보드·터치 이동과 발밑 물리 영역을 관리하는 연구원 캐릭터이다.
  *
  * @author seulgae
- * @version 1.0, 픽셀 캐릭터와 방향별 애니메이션 연결
+ * @version 1.0, 정규화된 키보드·터치 입력과 픽셀 캐릭터 애니메이션 연결
  * @see "None"
  */
 export default class Player extends Phaser.GameObjects.Sprite {
@@ -49,7 +51,12 @@ export default class Player extends Phaser.GameObjects.Sprite {
     }
   }
 
-  update(movementEnabled = true) {
+  /**
+   * 키보드와 터치 방향을 합쳐 일정 속도로 이동하고 충돌 상태에 맞게 애니메이션을 갱신한다.
+   * @param movementEnabled 패널·채팅 입력 중 이동 허용 여부
+   * @param touch 조이스틱의 정수 방향
+   */
+  update(movementEnabled = true, touch: DirectionInput = { x: 0, y: 0 }) {
     this.setDepth(this.y)
     if (!movementEnabled) {
       this.movementInput = { x: 0, y: 0 }
@@ -58,11 +65,12 @@ export default class Player extends Phaser.GameObjects.Sprite {
       return
     }
 
-    const left = this.cursors.left.isDown || this.wasd.left.isDown
-    const right = this.cursors.right.isDown || this.wasd.right.isDown
-    const up = this.cursors.up.isDown || this.wasd.up.isDown
-    const down = this.cursors.down.isDown || this.wasd.down.isDown
-    this.movementInput = { x: Number(right) - Number(left), y: Number(down) - Number(up) }
+    this.movementInput = combineDirections({
+      x: Number(this.cursors.right.isDown || this.wasd.right.isDown) - Number(this.cursors.left.isDown || this.wasd.left.isDown),
+      y: Number(this.cursors.down.isDown || this.wasd.down.isDown) - Number(this.cursors.up.isDown || this.wasd.up.isDown),
+    }, touch)
+    const left = this.movementInput.x < 0, right = this.movementInput.x > 0
+    const up = this.movementInput.y < 0, down = this.movementInput.y > 0
 
     // 속도(px/초)만 전달하고 시간 적용과 충돌 후 좌표 계산은 Arcade Physics에 맡긴다.
     this.direction.set(this.movementInput.x, this.movementInput.y)
