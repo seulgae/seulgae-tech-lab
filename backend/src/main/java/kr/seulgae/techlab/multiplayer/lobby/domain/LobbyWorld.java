@@ -11,7 +11,7 @@ import tools.jackson.databind.json.JsonMapper;
  * 클라이언트와 공유한 로비 데이터로 발밑 충돌과 맵 경계를 계산한다.
  *
  * @author seulgae
- * @version 1.0, 서버 기준 이동 및 공통 맵 로딩
+ * @version 1.0, 공유 방별 충돌·출입구·안전 스폰 로딩
  * @see "None"
  */
 @Component
@@ -33,11 +33,13 @@ public class LobbyWorld {
     private final double halfWidth;
     private final double footHeight;
     private final List<Position> spawns = new ArrayList<>();
+    private JsonNode rooms;
 
     public LobbyWorld() {
         try (var stream = getClass().getResourceAsStream("/shared/lobby-world.json")) {
             if (stream == null) throw new IllegalStateException("Missing shared lobby geometry");
             var data = JsonMapper.builder().build().readTree(stream);
+            rooms = data.get("rooms");
             width = data.get("world").get("width").asDouble();
             height = data.get("world").get("height").asDouble();
             halfWidth = data.get("player").get("halfWidth").asDouble();
@@ -72,6 +74,17 @@ public class LobbyWorld {
      * @return 충돌과 경계를 반영한 위치
      */
     public Position move(double x, double y, double dx, double dy) {
+        return moveIn("lobby", x, y, dx, dy);
+    }
+
+    /** 방별 공유 가구 배치로 동일한 축별 충돌 계산을 수행한다. */
+    public Position moveIn(String roomId, double x, double y, double dx, double dy) {
+        var obstacles = new ArrayList<Area>();
+        if (roomId.equals("lobby")) obstacles.addAll(this.obstacles);
+        else {
+            obstacles.addAll(this.obstacles.subList(0, 4));
+            rooms.get(roomId).get("objects").forEach(node -> obstacles.add(area(node.get("body"))));
+        }
         double nextX = Math.max(halfWidth, Math.min(width - halfWidth, x + dx));
         for (var a : obstacles) {
             if (y <= a.y - a.height / 2 || y - footHeight >= a.y + a.height / 2) continue;
@@ -87,5 +100,22 @@ public class LobbyWorld {
             if (dy < 0 && y - footHeight >= bottom && nextY - footHeight < bottom) nextY = Math.max(nextY, bottom + footHeight);
         }
         return new Position(nextX, nextY);
+    }
+
+    /** 현재 방의 출입구와 서버 좌표를 검증하고 연결된 목적지만 반환한다. */
+    public String destination(String roomId, String doorId, double x, double y) {
+        for (var door : rooms.get(roomId).get("doors")) {
+            if (door.get("id").stringValue().equals(doorId)
+                    && Math.hypot(x - door.get("x").asDouble(), y - door.get("y").asDouble()) <= 56) {
+                return door.get("target").stringValue();
+            }
+        }
+        throw new IllegalArgumentException("Door unavailable");
+    }
+
+    /** 목적지 방의 가구 밖 안전 지점을 사용한다. */
+    public Position roomSpawn(String roomId) {
+        var spawn = rooms.get(roomId).get("spawn");
+        return new Position(spawn.get("x").asDouble(), spawn.get("y").asDouble());
     }
 }

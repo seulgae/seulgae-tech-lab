@@ -196,7 +196,10 @@ test('수신 콜백은 위치를 쓰지 않고 postUpdate에서만 보정하며 
   assert.equal(player.x, 430)
   scene.events.emit('postupdate')
   assert.ok(player.x < 430 && player.x >= 428.999)
+  const stoppedWorld = scene.physics.world
+  scene.physics.world = null
   bridge.destroy()
+  scene.physics.world = stoppedWorld
   assert.equal(connection.unsubscribed, true)
   assert.equal(scene.events.listenerCount('postupdate'), 0)
   const changes = player.changes

@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
  * 최대 5명의 임시 방문자와 서버 기준 이동 상태를 메모리에서 관리한다.
  *
  * @author seulgae
- * @version 1.0, 단일 로비의 접속 및 검증된 물리 스텝 재생
+ * @version 1.0, 방별 접속 분리·서버 출입구 검증·방 세대 초기화
  * @see "None"
  */
 @Component
@@ -41,6 +41,8 @@ public class LobbyRoom {
      */
     private static final class Member {
         String id, nickname, facing = "down";
+        String roomId = "lobby";
+        long roomEpoch, movedAt;
         double x, y;
         int inputX, inputY;
         long sequence = -1, inputAt;
@@ -168,7 +170,7 @@ public class LobbyRoom {
             member.timeBudget = Math.max(0, member.timeBudget - command.ms());
             member.pendingMs = Math.max(0, member.pendingMs - command.ms());
             double length = Math.hypot(command.x(), command.y());
-            var position = world.move(member.x, member.y,
+            var position = world.moveIn(member.roomId, member.x, member.y,
                 length == 0 ? 0 : command.x() / length * 200 * command.ms() / 1000,
                 length == 0 ? 0 : command.y() / length * 200 * command.ms() / 1000);
             member.moving = Math.hypot(position.x() - member.x, position.y() - member.y) > 0.001;
@@ -199,7 +201,7 @@ public class LobbyRoom {
             if (y != 0) member.facing = y < 0 ? "up" : "down";
             else if (x != 0) member.facing = x < 0 ? "left" : "right";
             double length = Math.hypot(x, y);
-            var position = world.move(member.x, member.y, length == 0 ? 0 : x / length * 200 * elapsed, length == 0 ? 0 : y / length * 200 * elapsed);
+            var position = world.moveIn(member.roomId, member.x, member.y, length == 0 ? 0 : x / length * 200 * elapsed, length == 0 ? 0 : y / length * 200 * elapsed);
             member.moving = Math.hypot(position.x() - member.x, position.y() - member.y) > 0.001;
             member.x = position.x(); member.y = position.y();
         }
@@ -207,6 +209,26 @@ public class LobbyRoom {
 
     /** @return 내부 가변 객체를 노출하지 않는 현재 접속자 상태 목록 */
     public synchronized List<PlayerView> snapshot() { return members.values().stream().map(Member::view).toList(); }
+
+    /** 연결 내 방 세대를 대조해 이전 방의 지연 입력을 배제한다. */
+    public synchronized long epoch(String id) { return members.get(id).roomEpoch; }
+    public synchronized String roomId(String id) { return members.get(id).roomId; }
+    public synchronized List<PlayerView> snapshot(String roomId) {
+        return members.values().stream().filter(m -> m.roomId.equals(roomId)).map(Member::view).toList();
+    }
+
+    /** 출입구 검증 후 대기 명령·ACK·속도를 함께 초기화하며 소켓 ID는 유지한다. */
+    public synchronized PlayerView changeRoom(String id, String doorId, long now) {
+        var m = members.get(id);
+        if (m == null || m.movedAt != 0 && now - m.movedAt < 1_000_000_000L) throw new IllegalArgumentException("Room transition cooldown");
+        String target = world.destination(m.roomId, doorId, m.x, m.y);
+        var spawn = world.roomSpawn(target);
+        m.roomId = target; m.roomEpoch++; m.movedAt = now;
+        m.x = spawn.x(); m.y = spawn.y(); m.facing = "down"; m.moving = false;
+        m.inputX = 0; m.inputY = 0; m.sequence = -1; m.receivedSequence = -1;
+        m.pending.clear(); m.pendingMs = 0; m.timeBudget = 250; m.budgetAt = now;
+        return m.view();
+    }
 
     /** @return 현재 접속 중인 플레이어의 읽기 전용 상태 또는 null */
     public synchronized PlayerView player(String id) { var member = members.get(id); return member == null ? null : member.view(); }

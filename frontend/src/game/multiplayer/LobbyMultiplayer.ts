@@ -24,6 +24,7 @@ export default class LobbyMultiplayer {
   private selfId: string | null = null
   private readonly player: Player
   private readonly scene: Phaser.Scene
+  private readonly world: Phaser.Physics.Arcade.World
   private readonly reconciliation = new LocalReconciliation()
   private readonly acknowledged = new AcknowledgedMovement()
   /** Arcade가 실제로 완료한 스텝의 시간만 서버와 공유한다. 렌더 프레임 delta를 대입하지 않는다. */
@@ -64,6 +65,7 @@ export default class LobbyMultiplayer {
 
   constructor(scene: Phaser.Scene, player: Player, client: MultiplayerClient) {
     this.scene = scene; this.player = player
+    this.world = scene.physics.world
     this.client = client
     this.ownLabel = scene.add.text(player.x, player.y - 55, '나 · 로컬 연구원', {
       fontFamily: 'Arial, sans-serif', fontSize: '16px', color: '#fff0bd', backgroundColor: '#20383a', padding: { x: 4, y: 2 },
@@ -81,7 +83,7 @@ export default class LobbyMultiplayer {
       },
     })
     scene.events.on(Phaser.Scenes.Events.POST_UPDATE, this.afterPhysics)
-    scene.physics.world.on(Phaser.Physics.Arcade.Events.WORLD_STEP, this.physicsStep)
+    this.world.on(Phaser.Physics.Arcade.Events.WORLD_STEP, this.physicsStep)
   }
 
   private applySnapshot(players: PlayerState[], selfId: string | null, serverTime?: number) {
@@ -136,7 +138,8 @@ export default class LobbyMultiplayer {
 
   destroy() {
     this.scene.events.off(Phaser.Scenes.Events.POST_UPDATE, this.afterPhysics)
-    this.scene.physics.world.off(Phaser.Physics.Arcade.Events.WORLD_STEP, this.physicsStep)
+    // Scene shutdown에서는 Physics 플러그인이 먼저 world 참조를 비울 수 있다.
+    this.world.off(Phaser.Physics.Arcade.Events.WORLD_STEP, this.physicsStep)
     this.reconciliation.reset()
     this.acknowledged.reset()
     this.unsubscribe()

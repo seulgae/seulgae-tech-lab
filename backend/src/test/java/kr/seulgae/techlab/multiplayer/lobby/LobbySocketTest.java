@@ -71,6 +71,39 @@ class LobbySocketTest {
 
     private int port() { return environment.getProperty("local.server.port", Integer.class); }
 
+    /** 동일 소켓으로 방을 이동하고 다른 방의 상태·채팅 및 이전 입력이 섞이지 않음을 검증한다. */
+    @Test void changesRoomsOnSameSocketAndIsolatesChatAndStaleInputs() throws Exception {
+        var a = connect(""); String id = a.type("welcome").get("selfId").stringValue();
+        a.type("chat_history");
+        var b = connect(""); b.type("welcome"); b.type("chat_history");
+        a.send("{\"type\":\"room_change\",\"doorId\":\"missing\",\"roomEpoch\":0}");
+        a.type("room_error");
+        long now = System.nanoTime();
+        room.input(id, 0, 1, 1, now);
+        for (int i = 0; i < 6; i++) room.step(.1, now);
+        a.send("{\"type\":\"room_change\",\"doorId\":\"lobby-to-development\",\"roomEpoch\":0}");
+        var changed = a.type("room_changed");
+        assertEquals("development-lab", changed.get("roomId").stringValue());
+        assertEquals(id, changed.get("selfId").stringValue());
+        assertEquals(1, changed.get("players").size());
+        assertEquals(1, changed.get("roomEpoch").asLong());
+        assertTrue(a.type("chat_history").get("messages").isEmpty());
+        b.await(f -> f.path("type").stringValue("").equals("left") && f.get("id").stringValue().equals(id));
+        double x = room.player(id).x();
+        a.send("{\"type\":\"move\",\"roomEpoch\":0,\"inputs\":[{\"x\":1,\"y\":0,\"ms\":50,\"seq\":999}]}");
+        a.send("{\"type\":\"chat\",\"roomEpoch\":1,\"message\":\"개발 연구실 대화\"}");
+        assertEquals("개발 연구실 대화", a.type("chat_message").get("message").stringValue());
+        assertEquals(x, room.player(id).x(), .001);
+        assertTrue(b.frames.stream().noneMatch(f -> f.path("type").stringValue("").equals("chat_message")));
+        assertEquals(1, room.snapshot("lobby").size());
+        assertEquals(1, room.snapshot("development-lab").size());
+        a.send("{\"type\":\"move\",\"roomEpoch\":1,\"inputs\":[{\"x\":1,\"y\":0,\"ms\":50,\"seq\":1}]}");
+        a.await(f -> f.path("type").stringValue("").equals("state") && f.get("roomEpoch").asLong() == 1
+            && f.get("players").get(0).get("ack").asLong() == 1);
+        assertEquals(x + 10, room.player(id).x(), .001);
+        assertFalse(a.closed.isDone());
+    }
+
     /** 실제 WebSocket에서도 처리 완료 ack와 정지 끝점이 두 방문자에게 같아야 한다. */
     @Test void broadcastsCompletedCommandAckWithoutServerTickDrift() throws Exception {
         var a = connect(""); var welcome = a.type("welcome");

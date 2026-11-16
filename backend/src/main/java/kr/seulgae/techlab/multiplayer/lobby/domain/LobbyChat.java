@@ -9,9 +9,9 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 /**
- * 로비의 최근 일반 텍스트 50개와 이동 입력과 독립적인 채팅 전송 제한을 관리한다.
+ * 각 방의 최근 일반 텍스트 50개와 이동 입력과 독립적인 채팅 전송 제한을 관리한다.
  * @author seulgae
- * @version 1.0, 서버 발신자 검증과 메모리 채팅 기록
+ * @version 1.0, 방별 50개 메모리 기록과 연결별 전송 제한 유지
  * @see "None"
  */
 @Component
@@ -44,7 +44,7 @@ public class LobbyChat {
         Budget(long now) { updated = now; }
     }
     private final LobbyRoom room;
-    private final ArrayDeque<Message> messages = new ArrayDeque<>();
+    private final Map<String, ArrayDeque<Message>> histories = new HashMap<>();
     private final Map<String, Budget> budgets = new HashMap<>();
     public LobbyChat(LobbyRoom room) { this.room = room; }
 
@@ -70,13 +70,16 @@ public class LobbyChat {
         if (message.codePointCount(0, message.length()) > 150) throw new Rejected("too_long");
         if (message.codePoints().anyMatch(c -> Character.isISOControl(c) && c != '\n' && c != '\t' || c >= 0xd800 && c <= 0xdfff)) throw new Rejected("invalid");
         var result = new Message("chat_message", UUID.randomUUID().toString(), player.id(), player.nickname(), message, Instant.now().toString());
+        var messages = histories.computeIfAbsent(room.roomId(playerId), ignored -> new ArrayDeque<>());
         messages.addLast(result);
         while (messages.size() > 50) messages.removeFirst();
         return result;
     }
 
     /** @return 변경할 수 없는 최근 50개 이하의 시간순 기록 */
-    public synchronized List<Message> history() { return List.copyOf(messages); }
+    public synchronized List<Message> history() { return history("lobby"); }
+    /** 현재 방의 최근 기록만 조회한다. */
+    public synchronized List<Message> history(String roomId) { return List.copyOf(histories.getOrDefault(roomId, new ArrayDeque<>())); }
 
     /** 퇴장한 세션의 제한 상태는 최근 대화와 별개로 제거한다. */
     public synchronized void leave(String playerId) { budgets.remove(playerId); }

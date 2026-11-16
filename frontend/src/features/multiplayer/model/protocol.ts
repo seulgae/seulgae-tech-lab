@@ -1,11 +1,14 @@
+import { isRoomId } from '../../../game/maps/rooms.ts'
+import type { RoomId } from '../../../game/maps/rooms'
 export type Facing = 'down' | 'up' | 'left' | 'right'
 export type MoveInput = { x: number; y: number }
 export type MoveCommand = MoveInput & { seq: number; ms: number }
 export type PlayerState = { id: string; nickname: string; x: number; y: number; facing: Facing; moving: boolean; ack: number }
-export type ConnectionInfo = { phase: 'connecting' | 'online' | 'reconnecting'; nickname: string; online: number; maxPlayers: number; message: string }
+export type ConnectionInfo = { roomId?: RoomId; roomOnline?: number; totalOnline?: number; travelling?: boolean; roomError?: string; phase: 'connecting' | 'online' | 'reconnecting'; nickname: string; online: number; maxPlayers: number; message: string }
 export type ChatMessage = { type: 'chat_message'; messageId: string; playerId: string; nickname: string; message: string; sentAt: string }
 export type ChatError = 'empty' | 'too_long' | 'rate_limited' | 'unavailable' | 'invalid'
-export type ServerMessage =
+type RoomMeta = { roomId?: RoomId; roomEpoch?: number; totalOnline?: number }
+export type ServerMessage = RoomMeta & (
   | ChatMessage
   | { type: 'chat_history'; messages: ChatMessage[] }
   | { type: 'chat_error'; reason: ChatError }
@@ -13,6 +16,9 @@ export type ServerMessage =
   | { type: 'state'; tick: number; players: PlayerState[]; time?: number }
   | { type: 'joined'; player: PlayerState }
   | { type: 'left'; id: string }
+  | { type: 'room_changed'; selfId: string; players: PlayerState[] }
+  | { type: 'room_error'; reason: string }
+)
 
 export const MULTIPLAYER_EVENTS = { dispose: 'multiplayer:dispose' } as const
 export const INITIAL_CONNECTION: ConnectionInfo = { phase: 'connecting', nickname: '', online: 0, maxPlayers: 5, message: '로비 연결 중…' }
@@ -46,6 +52,7 @@ export function parseServerMessage(raw: string): ServerMessage {
   if (raw.length > 65536) throw new Error('Frame too large')
   const message = JSON.parse(raw)
   if (!message || typeof message !== 'object') throw new Error('Invalid frame')
+  if (message.roomId !== undefined && (!isRoomId(message.roomId) || !Number.isSafeInteger(message.roomEpoch) || message.roomEpoch < 0)) throw new Error('Invalid room')
   if ((message.type === 'state' || message.type === 'welcome') && message.time !== undefined
     && (!Number.isFinite(message.time) || message.time < 0)) throw new Error('Invalid server time')
   if (message.type === 'joined' && validPlayer(message.player)) return message
@@ -54,8 +61,10 @@ export function parseServerMessage(raw: string): ServerMessage {
   if (message.type === 'chat_history' && Array.isArray(message.messages) && message.messages.length <= 50
     && message.messages.every(validChat) && new Set(message.messages.map((item: ChatMessage) => item.messageId)).size === message.messages.length) return message
   if (message.type === 'chat_error' && ['empty', 'too_long', 'rate_limited', 'unavailable', 'invalid'].includes(message.reason)) return message
+  if (message.type === 'room_error' && typeof message.reason === 'string' && message.reason.length <= 100) return message
   const players = message.players
   if (!Array.isArray(players) || players.length > 5 || !players.every(validPlayer) || new Set(players.map(p => p.id)).size !== players.length) throw new Error('Invalid players')
+  if (message.type === 'room_changed' && isRoomId(message.roomId) && Number.isSafeInteger(message.roomEpoch) && validId(message.selfId) && players.some(p => p.id === message.selfId)) return message
   if (message.type === 'welcome' && validId(message.selfId) && players.some(p => p.id === message.selfId) && message.maxPlayers === 5) return message
   if (message.type === 'state' && Number.isSafeInteger(message.tick) && message.tick >= 0) return message
   throw new Error('Invalid frame')

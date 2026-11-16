@@ -1,3 +1,6 @@
+import { useState } from 'react'
+import { ROOMS } from './game/maps/rooms'
+import type { RoomId } from './game/maps/rooms'
 import GameCanvas from './components/GameCanvas'
 import './App.css'
 
@@ -5,11 +8,12 @@ import './App.css'
  * 픽셀 로비와 조작 안내를 반응형으로 배치하는 최상위 React 컴포넌트이다.
  *
  * @author seulgae
- * @version 1.0, 픽셀 로비 안내와 반응형 게임 UI 구성
+ * @version 1.0, 현재 공간 이름과 반응형 연구소 UI 구성
  * @see "None"
  * @returns 게임 화면을 포함한 메인 영역
  */
 function App() {
+  const [roomId, setRoomId] = useState<RoomId>('lobby')
   return (
     <main className="lab-shell">
       <header className="lab-header">
@@ -17,15 +21,15 @@ function App() {
           <span className="brand-mark" aria-hidden="true">S<span /></span>
           <span><span className="eyebrow">SEULGAE TECH LAB</span><strong>슬개기술연구소</strong></span>
         </a>
-        <span className="location-badge"><i aria-hidden="true" /> 메인 로비 <span>01</span></span>
+        <span className="location-badge"><i aria-hidden="true" /> {ROOMS[roomId].name} <span>LAB</span></span>
       </header>
       <div className="lab-layout">
         <section className="game-card" id="lobby" aria-labelledby="lobby-title">
           <header className="game-card-header">
             <div><span className="eyebrow">YOUR LITTLE PLACE TO EXPLORE</span><h1 id="lobby-title">작은 발견이 시작되는 곳</h1></div>
-            <span className="room-label">LOBBY / 01</span>
+            <span className="room-label">{roomId.toUpperCase()}</span>
           </header>
-          <GameCanvas />
+          <GameCanvas onRoomChange={setRoomId} />
           <footer className="game-controls">
             <span><kbd>W A S D</kbd><span className="control-or">/</span><kbd>↑ ← ↓ →</kbd> 이동</span>
             <span><kbd>E</kbd> 상호작용</span>

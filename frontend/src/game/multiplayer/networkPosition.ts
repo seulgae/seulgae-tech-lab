@@ -1,7 +1,9 @@
 import type Phaser from 'phaser'
 import { WORLD, WALLS, LOBBY_OBJECTS, PLAYER_FOOT } from '../maps/lobbyLayout.ts'
 
-const obstacles = [...WALLS, ...LOBBY_OBJECTS.map(object => object.body)]
+let obstacles = [...WALLS, ...LOBBY_OBJECTS.map(object => object.body)]
+/** 승인된 방의 공유 충돌 데이터로 예측 경로를 전환한다. */
+export function setRoomObstacles(areas: typeof obstacles) { obstacles = areas }
 
 /** 서버와 같은 발밑 모양을 기준으로 보정 경로가 벽과 가구를 통과하지 않도록 축별로 제한한다. */
 export function constrainedPosition(x: number, y: number, dx: number, dy: number) {
