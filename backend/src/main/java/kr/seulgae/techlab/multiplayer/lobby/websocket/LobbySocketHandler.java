@@ -42,6 +42,14 @@ public class LobbySocketHandler extends TextWebSocketHandler {
     private static final double INPUTS_PER_SECOND = 40;
     private static final double INPUT_BURST_CAPACITY = 80;
     /**
+     * 운영 Funnel 경로는 왕복이 약 1초라 1초 송신 제한으로는 정상 연결도 끊긴다.
+     * 이동 상태는 최신 1건만 남기므로 느린 연결은 갱신 빈도만 줄어든다.
+     */
+    static final int SEND_TIME_LIMIT_MS = 5000;
+    static final int SEND_BUFFER_LIMIT_BYTES = 131072;
+    /** 방 이동 때 승인·기록·입장 알림이 한꺼번에 쌓여도 넘치지 않는 제어 메시지 대기열 */
+    static final int CONTROL_QUEUE_CAPACITY = 64;
+    /**
      * 연결별 송신 큐와 입력 제한·진단 정보를 보관한다.
      * @author seulgae
      * @version 1.0, 로비 연결 수명과 제한 상태
@@ -51,7 +59,7 @@ public class LobbySocketHandler extends TextWebSocketHandler {
         final WebSocketSession socket;
         final String playerId;
         final AtomicBoolean sending = new AtomicBoolean();
-        final ArrayBlockingQueue<WebSocketMessage<?>> controls = new ArrayBlockingQueue<>(16);
+        final ArrayBlockingQueue<WebSocketMessage<?>> controls = new ArrayBlockingQueue<>(CONTROL_QUEUE_CAPACITY);
         final AtomicReference<WebSocketMessage<?>> latestState = new AtomicReference<>();
         final AtomicReference<CloseStatus> closing = new AtomicReference<>();
         volatile long lastSeen = System.nanoTime(), lastPing = lastSeen;
@@ -100,7 +108,7 @@ public class LobbySocketHandler extends TextWebSocketHandler {
             session.close(new CloseStatus(1013, "Lobby full"));
             return;
         }
-        var socket = new ConcurrentWebSocketSessionDecorator(session, 1000, 65536);
+        var socket = new ConcurrentWebSocketSessionDecorator(session, SEND_TIME_LIMIT_MS, SEND_BUFFER_LIMIT_BYTES);
         try {
             // 입장 기록과 실시간 방송 사이에 메시지가 빠지지 않게 같은 채팅 잠금을 사용한다.
             synchronized (chat) {
@@ -247,7 +255,7 @@ public class LobbySocketHandler extends TextWebSocketHandler {
         tick++;
         peers.forEach((id, peer) -> sendScoped(id, peer, Map.of("type", "state", "tick", tick, "time", now / 1_000_000d, "players", room.snapshot(room.roomId(peer.playerId)), "totalOnline", room.snapshot().size())));
         peers.forEach((id, peer) -> {
-            boolean slowSend = peer.socket instanceof ConcurrentWebSocketSessionDecorator decorated && decorated.getTimeSinceSendStarted() > 1000;
+            boolean slowSend = peer.socket instanceof ConcurrentWebSocketSessionDecorator decorated && decorated.getTimeSinceSendStarted() > SEND_TIME_LIMIT_MS;
             if (slowSend || now - peer.lastSeen > 15_000_000_000L) disconnect(id, CloseStatus.SESSION_NOT_RELIABLE);
             else if (now - peer.lastPing > 5_000_000_000L) {
                 peer.lastPing = now;
