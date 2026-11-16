@@ -11,3 +11,4 @@
 *.key
 *.log
 **/__pycache__/
+.claude/launch.json
