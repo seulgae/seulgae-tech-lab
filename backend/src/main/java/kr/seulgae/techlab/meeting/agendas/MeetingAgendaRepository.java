@@ -6,6 +6,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import kr.seulgae.techlab.common.write.Ownership;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
@@ -28,15 +29,17 @@ public class MeetingAgendaRepository {
             .param("limit", limit).param("offset", offset).query((rs, row) -> map(rs)).list();
     }
 
-    public MeetingAgenda create(String title, String content, String editTokenHash) {
-        return jdbc.sql("INSERT INTO lab.meeting_agendas (id, title, content, edit_token_hash) VALUES (:id, :title, :content, :hash) RETURNING " + COLUMNS)
-            .param("id", UUID.randomUUID()).param("title", title).param("content", content).param("hash", editTokenHash)
+    /** @param authorId 로그인 회원 작성자, 로그인이 꺼져 있으면 null */
+    public MeetingAgenda create(String title, String content, String editTokenHash, UUID authorId) {
+        return jdbc.sql("INSERT INTO lab.meeting_agendas (id, title, content, edit_token_hash, author_id) VALUES (:id, :title, :content, :hash, :author) RETURNING " + COLUMNS)
+            .param("id", UUID.randomUUID()).param("title", title).param("content", content).param("hash", editTokenHash).param("author", authorId)
             .query((rs, row) -> map(rs)).single();
     }
 
-    /** @return 수정 키 해시, 행이 없으면 빈 Optional */
-    public Optional<String> editTokenHash(UUID id) {
-        return jdbc.sql("SELECT edit_token_hash FROM lab.meeting_agendas WHERE id = :id").param("id", id).query(String.class).optional();
+    /** @return 수정 키 해시와 작성자, 행이 없으면 빈 Optional */
+    public Optional<Ownership> ownership(UUID id) {
+        return jdbc.sql("SELECT edit_token_hash, author_id FROM lab.meeting_agendas WHERE id = :id").param("id", id)
+            .query((rs, row) -> new Ownership(rs.getString("edit_token_hash"), rs.getObject("author_id", UUID.class))).optional();
     }
 
     public MeetingAgenda update(UUID id, String title, String content) {

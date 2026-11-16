@@ -172,6 +172,16 @@ V2는 `lab.meeting_agendas` 테이블을 만들고, `lab.research_records`에 `e
 
 V2로 올린 뒤에는 `db_schema`가 1..1인 이전 릴리스로 롤백할 수 없다. 스키마 자체는 이전 이미지와 호환되지만, 이전 릴리스의 선언 범위를 바꾸지 않기 위해서다.
 
+### V3 마이그레이션 (카카오 로그인 회원, 2026-11-17)
+
+V3는 `lab.members`를 만들고, 안건·연구 기록에 `author_id`(작성 회원)를 추가한다. 추가만 하는 변경이다. V3 이후 main 릴리스의 `db_schema`는 **3..3**이므로, 배포 전에 위 V2와 같은 순서로 실행한다.
+
+1. `python3 deploy/ops.py check`
+2. `python3 deploy/migrate-prod.py`: V1·V2 → V3, 백업 포함
+3. 배포
+
+카카오 키를 설정하기 전까지는 로그인이 꺼진 채(현재와 같은 동작)로 돈다. 키 설정은 [kakao-login.md](kakao-login.md)를 따른다.
+
 ## 운영 상태와 진단
 
 상태 파일은 `/opt/homeserver/config/seulgae-tech-lab/ops`에 기록한다. 새 상태 파일은 기본 0600이다. 변경 작업은 비차단 flock으로 중복 실행을 거부한다.

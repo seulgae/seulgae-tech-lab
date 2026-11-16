@@ -33,7 +33,7 @@ export const countChars = (value: string) => Array.from(value.replace(/\r\n?/g, 
 export class BoardError extends Error {
   readonly status: number
   constructor(status: number) {
-    super(status === 429 ? '잠시 후 다시 시도해 주세요. (작성 횟수 제한)' : status === 403 ? '이 브라우저에서 쓴 글만 고칠 수 있어요.'
+    super(status === 401 ? '카카오 로그인 후 쓸 수 있어요.' : status === 429 ? '잠시 후 다시 시도해 주세요. (작성 횟수 제한)' : status === 403 ? '내가 쓴 글만 고칠 수 있어요.'
       : status === 400 ? '제목과 내용의 글자 수를 확인해 주세요.' : status === 404 ? '이미 삭제된 글이에요.' : '잠시 후 다시 시도해 주세요.')
     this.status = status
   }

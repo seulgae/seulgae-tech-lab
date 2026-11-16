@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import java.net.URI;
 import java.util.UUID;
+import kr.seulgae.techlab.auth.AuthService;
 import kr.seulgae.techlab.common.write.WriteRateLimiter;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,7 +22,8 @@ import org.springframework.web.bind.annotation.*;
 public class MeetingAgendaController {
     private final MeetingAgendaService service;
     private final WriteRateLimiter limiter;
-    public MeetingAgendaController(MeetingAgendaService service, WriteRateLimiter limiter) { this.service = service; this.limiter = limiter; }
+    private final AuthService auth;
+    public MeetingAgendaController(MeetingAgendaService service, WriteRateLimiter limiter, AuthService auth) { this.service = service; this.limiter = limiter; this.auth = auth; }
 
     @GetMapping
     public MeetingAgendaService.Page list(@RequestParam(defaultValue = "20") @Min(1) @Max(50) int limit,
@@ -31,23 +33,26 @@ public class MeetingAgendaController {
 
     @PostMapping
     public ResponseEntity<MeetingAgendaService.Created> create(@RequestBody(required = false) MeetingAgendaService.Request body, HttpServletRequest request) {
+        var author = auth.writer(request);
         limiter.check(request);
-        var created = service.create(body);
+        var created = service.create(body, author);
         return ResponseEntity.created(URI.create("/api/meeting-agendas/" + created.agenda().id())).body(created);
     }
 
     @PutMapping("/{id}")
     public MeetingAgenda update(@PathVariable UUID id, @RequestBody(required = false) MeetingAgendaService.Request body,
                                 @RequestHeader(name = "X-Edit-Token", required = false) String token, HttpServletRequest request) {
+        var member = auth.writer(request);
         limiter.check(request);
-        return service.update(id, body, token);
+        return service.update(id, body, token, member);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id, @RequestHeader(name = "X-Edit-Token", required = false) String token,
                                        HttpServletRequest request) {
+        var member = auth.writer(request);
         limiter.check(request);
-        service.delete(id, token);
+        service.delete(id, token, member);
         return ResponseEntity.noContent().build();
     }
 }
