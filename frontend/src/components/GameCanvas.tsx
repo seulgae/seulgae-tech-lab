@@ -1,3 +1,5 @@
+import { ROOMS } from '../game/maps/rooms'
+import type { RoomId } from '../game/maps/rooms'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Phaser from 'phaser'
 import LabLobbyScene from '../game/scenes/LabLobbyScene'
@@ -16,11 +18,11 @@ import type { DirectionInput } from '../game/input/mobileInput'
  * Phaser 게임의 생성·정리와 연구 기록 패널의 이벤트 연결을 관리한다.
  *
  * @author seulgae
- * @version 1.0, 모바일 조작과 채팅·연구 패널 입력 잠금 연결
+ * @version 1.0, 현재 방·채팅 패널과 기존 모바일 입력 잠금 연결
  * @see "None"
  * @returns 게임 캔버스와 조건부 연구 기록 패널
  */
-export default function GameCanvas() {
+export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: RoomId) => void } = {}) {
   const containerRef = useRef<HTMLDivElement>(null)
   const eventRef = useRef<Phaser.Events.EventEmitter | null>(null)
   const [researchOpen, setResearchOpen] = useState(false)
@@ -59,7 +61,7 @@ export default function GameCanvas() {
     let resizeObserver: ResizeObserver | null = null
     const uiEvents = new Phaser.Events.EventEmitter()
     const client = new MultiplayerClient({
-      status: info => { setConnection(info); setChatAvailable(client.canChat()) },
+      status: info => { setConnection(info); setChatAvailable(client.canChat()); onRoomChange?.(info.roomId ?? "lobby") },
       history: setMessages,
       chat: message => setMessages(previous => [...previous, message].slice(-50)),
       chatError: setChatError,
@@ -106,7 +108,7 @@ export default function GameCanvas() {
       eventRef.current = null
       game?.destroy(true)
     }
-  }, [])
+  }, [onRoomChange])
 
   return (
     <>
@@ -114,11 +116,11 @@ export default function GameCanvas() {
         onPointerDown={() => containerRef.current?.focus({ preventScroll: true })}
         aria-label="슬개기술연구소 게임 화면. WASD 또는 방향키 이동, E 연구 기록 열기" />
       <MultiplayerStatus connection={connection} />
-      <ChatPanel messages={messages} connected={connection.phase === 'online' && chatAvailable}
+      <ChatPanel roomName={ROOMS[connection.roomId ?? "lobby"].name} messages={messages} connected={connection.phase === 'online' && chatAvailable}
         error={chatError} onSend={message => clientRef.current?.sendChat(message) ?? false}
         onInputFocus={focused => { setChatFocused(focused); eventRef.current?.emit('chat:focus') }}
         onExit={() => containerRef.current?.focus({ preventScroll: true })} onEdit={() => setChatError(null)} />
-      <MobileControls disabled={researchOpen || chatFocused} resetToken={controlsReset}
+      <MobileControls disabled={researchOpen || chatFocused || connection.travelling === true} resetToken={controlsReset}
         onMove={moveMobile} onInteract={interactMobile} />
       {researchOpen && <ResearchPanel onClose={closeResearch} />}
     </>

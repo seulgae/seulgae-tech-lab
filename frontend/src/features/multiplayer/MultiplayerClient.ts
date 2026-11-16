@@ -1,7 +1,8 @@
+import type { RoomId } from '../../game/maps/rooms'
 import { INITIAL_CONNECTION, lobbySocketUrl, parseServerMessage, normalizeChat, validChatText } from './model/protocol.ts'
 import type { ConnectionInfo, MoveInput, MoveCommand, PlayerState, ChatMessage, ChatError, ServerMessage } from './model/protocol'
 
-type Callbacks = { snapshot?: (players: PlayerState[], selfId: string | null, serverTime?: number) => void; status?: (info: ConnectionInfo) => void;
+type Callbacks = { room?: (roomId: RoomId, pending: boolean) => void; snapshot?: (players: PlayerState[], selfId: string | null, serverTime?: number) => void; status?: (info: ConnectionInfo) => void;
   chat?: (event: ChatMessage) => void; history?: (messages: ChatMessage[]) => void; chatError?: (reason: ChatError) => void; inputSent?: (sequence: number) => void;
   predicted?: (command: MoveCommand) => void }
 
@@ -9,10 +10,15 @@ type Callbacks = { snapshot?: (players: PlayerState[], selfId: string | null, se
  * 소켓 상태와 입력 전송을 관리하고 끊김 시 제한된 지수 지연으로 재접속한다.
  *
  * @author seulgae
- * @version 1.0, 임시 세션 연결과 완료 스텝 묶음 전송·재시도 자원 정리
+ * @version 1.0, 단일 소켓의 방 세대 검증·예측 초기화·방별 채팅과 재연결
  * @see "None"
  */
 export default class MultiplayerClient {
+  private roomId: RoomId = 'lobby'
+  private roomEpoch = 0
+  private scoped = false
+  private travelling = false
+  private travelTimer: ReturnType<typeof setTimeout> | undefined
   private socket: WebSocket | null = null
   private retryTimer: ReturnType<typeof setTimeout> | undefined
   private inputTimer: ReturnType<typeof setInterval> | undefined
@@ -49,6 +55,7 @@ export default class MultiplayerClient {
   subscribe(callbacks: Callbacks) {
     this.listeners.add(callbacks)
     try {
+      callbacks.room?.(this.roomId, this.travelling)
       callbacks.status?.(this.info)
       callbacks.snapshot?.([...this.players.values()], this.selfId, this.serverTime)
       callbacks.history?.([...this.messages])
@@ -89,7 +96,7 @@ export default class MultiplayerClient {
    * @param ms 실제 Arcade 스텝의 밀리초, 정지 명령은 0
    */
   recordStep(input: MoveInput, ms: number) {
-    if (!this.usesCommands() || this.socket?.readyState !== 1) return
+    if (this.travelling || !this.usesCommands() || this.socket?.readyState !== 1) return
     if (!input.x && !input.y && !this.lastQueuedInput?.x && !this.lastQueuedInput?.y) return
     if (this.commands.length >= 120) { this.restartMovement(); return }
     const command = { x: input.x, y: input.y, ms: input.x || input.y ? ms : 0, seq: ++this.sequence }
@@ -103,13 +110,13 @@ export default class MultiplayerClient {
 
   private sendInput() {
     const socket = this.socket
-    if (!this.selfId || socket?.readyState !== 1) return
+    if (this.travelling || !this.selfId || socket?.readyState !== 1) return
     if (this.commandMode) {
       const now = Date.now()
       if (!this.commands.length || now - this.lastInputSent < 50) return
       if (socket.bufferedAmount > 4096) { socket.close(4003, 'Input backpressure'); return }
       this.lastMovementBatch = this.commands.slice(0, 8)
-      socket.send(JSON.stringify({ type: 'move', inputs: this.lastMovementBatch }))
+      socket.send(JSON.stringify({ type: 'move', inputs: this.lastMovementBatch, ...(this.scoped ? {roomEpoch:this.roomEpoch} : {}) }))
       this.commands.splice(0, 8); this.lastInputSent = now
       this.recentInputSends = this.recentInputSends.filter(sentAt => now - sentAt < 1000)
       this.recentInputSends.push(now)
@@ -122,7 +129,7 @@ export default class MultiplayerClient {
     const now = Date.now()
     if (now - this.lastInputSent < 50) return
     if (socket.bufferedAmount > 4096) { socket.close(4003, 'Input backpressure'); return }
-    socket.send(JSON.stringify({ type: 'input', x: this.input.x, y: this.input.y, seq: ++this.sequence }))
+    socket.send(JSON.stringify({ type: 'input', x: this.input.x, y: this.input.y, seq: ++this.sequence, ...(this.scoped ? {roomEpoch:this.roomEpoch} : {}) }))
     this.lastInputSent = now
     this.lastSentInput = { ...this.input }
     this.recentInputSends = this.recentInputSends.filter(sentAt => now - sentAt < 1000)
@@ -139,12 +146,26 @@ export default class MultiplayerClient {
     if (reason) { this.notify(callbacks => callbacks.chatError?.(reason)); return false }
     if (this.socket!.bufferedAmount > 4096) { this.notify(callbacks => callbacks.chatError?.('unavailable')); return false }
     this.lastChatSent = Date.now()
-    try { this.socket!.send(JSON.stringify({ type: 'chat', message })) }
+    try { this.socket!.send(JSON.stringify({ type: 'chat', message, ...(this.scoped ? {roomEpoch:this.roomEpoch} : {}) })) }
     catch { this.notify(callbacks => callbacks.chatError?.('unavailable')); return false }
     return true
   }
 
-  canChat() { return this.chatEnabled && !!this.selfId && this.socket?.readyState === 1 }
+  canChat() { return !this.travelling && this.chatEnabled && !!this.selfId && this.socket?.readyState === 1 }
+
+  currentRoom() { return this.roomId }
+  isTravelling() { return this.travelling }
+  /** 소켓을 재생성하지 않고 현재 방 세대와 출입구만 요청한다. */
+  changeRoom(doorId: string) {
+    if (!this.scoped || this.travelling || this.socket?.readyState !== 1 || !this.selfId) return false
+    this.setInput({x:0,y:0})
+    this.travelling = true
+    this.updateStatus({travelling:true, roomError:undefined, message:'방을 이동하고 있어요…'})
+    this.notify(c => c.room?.(this.roomId, true))
+    this.socket.send(JSON.stringify({type:'room_change', doorId, roomEpoch:this.roomEpoch}))
+    this.travelTimer = setTimeout(() => { this.socket?.close(4005, 'Room response timeout') }, 5000)
+    return true
+  }
 
   private remember(message: ChatMessage) {
     if (this.seenMessages.has(message.messageId)) return false
@@ -181,7 +202,32 @@ export default class MultiplayerClient {
       }
       try {
         this.lastMessage = Date.now()
+        if (message.type !== 'welcome' && message.type !== 'room_changed' && message.roomId !== undefined
+            && (message.roomId !== this.roomId || message.roomEpoch !== this.roomEpoch)) return
+        if (message.type === 'room_error') {
+          clearTimeout(this.travelTimer); this.travelling = false
+          this.updateStatus({travelling:false, roomError:message.reason, message:message.reason})
+          this.notify(c => c.room?.(this.roomId, false)); return
+        }
+        if (message.type === 'room_changed') {
+          if (!this.travelling || message.roomEpoch! <= this.roomEpoch || message.selfId !== this.selfId) return
+          clearTimeout(this.travelTimer)
+          this.roomId = message.roomId!; this.roomEpoch = message.roomEpoch!; this.travelling = false
+          this.sequence = 0; this.lastTick = -1; this.commands = []; this.lastMovementBatch = []; this.lastQueuedInput = null
+          this.input = {x:0,y:0}; this.lastSentInput = null; this.lastInputSent = -Infinity; this.serverTime = message.time
+          this.messages = []; this.seenMessages.clear(); this.notify(c => c.history?.([]))
+          this.players = new Map(message.players.map(p => [p.id,p]))
+          this.notify(c => c.snapshot?.([], null))
+          this.updateStatus({roomId:this.roomId, roomOnline:this.players.size, travelling:false, roomError:undefined})
+          this.notify(c => c.room?.(this.roomId, false))
+          this.notify(c => c.snapshot?.([...this.players.values()], this.selfId, this.serverTime))
+          return
+        }
         if (message.type === 'welcome') {
+          this.scoped = message.roomId !== undefined; this.roomId = message.roomId ?? 'lobby'; this.roomEpoch = message.roomEpoch ?? 0
+          this.travelling = false; clearTimeout(this.travelTimer)
+          this.updateStatus({roomId:this.roomId, travelling:false, roomError:undefined})
+          this.notify(c => c.room?.(this.roomId, false))
           this.serverTime = message.time
           this.selfId = message.selfId; this.sequence = 0; this.lastInputSent = -Infinity; this.lastTick = -1; this.attempts = 0
           this.connectedAt = Date.now(); this.recentInputSends = []
@@ -218,7 +264,7 @@ export default class MultiplayerClient {
         } else if (message.type === 'joined') this.players.set(message.player.id, message.player)
         else if (message.type === 'left') this.players.delete(message.id)
         this.notify(callbacks => callbacks.snapshot?.([...this.players.values()], this.selfId, this.serverTime))
-        this.updateStatus({ online: this.players.size })
+        this.updateStatus({ online: this.players.size, roomOnline:this.players.size, totalOnline:message.totalOnline ?? this.info.totalOnline })
       } catch (error) {
         console.warn('[multiplayer] 화면 상태 반영 실패 (연결 유지)', error)
       }
@@ -238,6 +284,8 @@ export default class MultiplayerClient {
           lastBatch: this.lastMovementBatch, pendingCommands: this.commands.length }))
       }
       socket.onmessage = null; socket.onclose = null; socket.onerror = null; socket.onopen = null
+      clearTimeout(this.travelTimer); this.travelling = false
+      this.notify(c => c.room?.(this.roomId, false))
       this.socket = null; this.selfId = null; this.players.clear()
       this.commands = []; this.commandMode = false; this.lastQueuedInput = null
       this.notify(callbacks => callbacks.snapshot?.([], null))
@@ -267,7 +315,7 @@ export default class MultiplayerClient {
   /** 재시도·입력 타이머와 브라우저 이벤트를 먼저 해제한 뒤 소켓을 닫는다. */
   destroy() {
     this.disposed = true
-    clearTimeout(this.retryTimer); clearInterval(this.inputTimer)
+    clearTimeout(this.travelTimer); clearTimeout(this.retryTimer); clearInterval(this.inputTimer)
     window.removeEventListener('blur', this.stopInput)
     document.removeEventListener('visibilitychange', this.onVisibility)
     if (this.socket) {

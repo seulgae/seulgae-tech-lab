@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs'
 import { createRequire, stripTypeScriptTypes } from 'node:module'
 import test from 'node:test'
 import vm from 'node:vm'
+import { ROOMS, roomObstacles } from '../src/game/maps/rooms.ts'
 import { isNearObject } from '../src/game/interaction.ts'
 import { RESEARCH_EVENTS } from '../src/features/research/researchEvents.ts'
 import { MOBILE_INPUT } from '../src/game/input/mobileInput.ts'
@@ -39,7 +40,7 @@ function createScene() {
   class Scene {
     constructor() {
       this.events = new EventEmitter()
-      this.cameras = { main: { setBackgroundColor() {} } }
+      this.cameras = { main: { setBackgroundColor() {}, fadeIn() {}, fadeOut() {} } }
       this.physics = { add: { collider() {} } }
       this.input = { keyboard: { addKey: () => key, resetKeys: () => { state.resets++ } } }
       this.add = {
@@ -65,13 +66,13 @@ function createScene() {
     .replace('export default class LabLobbyScene', 'class LabLobbyScene')
   const LobbyScene = vm.runInNewContext(source + '\nLabLobbyScene', {
     Phaser: { Scene, Input: { Keyboard: { JustDown } }, Scenes: { Events: { SHUTDOWN: 'shutdown' } } },
-    Player, createLobbyMap: () => ({}), COMPUTER: computer, RESEARCH_EVENTS, isNearObject,
+    ROOMS, roomObstacles, setRoomObstacles() {}, Player, createLobbyMap: () => ({}), COMPUTER: computer, RESEARCH_EVENTS, isNearObject,
     hasTextInputFocus: () => state.textFocused,
     SPAWN: { x: 400, y: 400 }, MULTIPLAYER_EVENTS, MOBILE_INPUT, LobbyMultiplayer: class {
       update() {} destroy() {} stopInput() {}
     },
   })
-  const scene = new LobbyScene(uiEvents, { setInput(input) { state.sentInput = input } })
+  const scene = new LobbyScene(uiEvents, { currentRoom() { return "lobby" }, isTravelling() { return false }, subscribe() { return () => {} }, setInput(input) { state.sentInput = input } })
   scene.create()
   return { scene, uiEvents, key, state }
 }

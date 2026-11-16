@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ChatMessage, ChatError } from '../model/protocol'
 import './ChatPanel.css'
 
-type Props = { messages: ChatMessage[]; connected: boolean; error: ChatError | null;
+type Props = { roomName?: string; messages: ChatMessage[]; connected: boolean; error: ChatError | null;
   onSend: (message: string) => boolean; onInputFocus: (focused: boolean) => void; onExit: () => void; onEdit: () => void }
 const errors: Record<ChatError, string> = { empty: '내용을 입력해 주세요.', too_long: '150자까지 보낼 수 있어요.',
   invalid: '보낼 수 없는 문자가 포함되어 있어요.', unavailable: '채팅 연결을 기다려 주세요.', rate_limited: '잠시 후 다시 보내 주세요.' }
@@ -10,12 +10,12 @@ const errors: Record<ChatError, string> = { empty: '내용을 입력해 주세�
 /**
  * 기존 로비 소켓의 일반 텍스트 내역과 입력만 관리하는 접이식 채팅 패널이다.
  * @author seulgae
- * @version 1.0, IME·게임 키 및 터치 입력 잠금과 최근 50개 채팅
+ * @version 1.0, 현재 방 채팅 표시와 기존 입력 잠금 유지
  * @see "None"
  * @param props 내역과 연결 상태, 전송 및 게임 입력 제어 콜백
  * @returns 오른쪽 하단 채팅 패널
  */
-export default function ChatPanel({ messages, connected, error, onSend, onInputFocus, onExit, onEdit }: Props) {
+export default function ChatPanel({ roomName, messages, connected, error, onSend, onInputFocus, onExit, onEdit }: Props) {
   const [collapsed, setCollapsed] = useState(() => window.innerWidth <= 560)
   const [draft, setDraft] = useState('')
   const input = useRef<HTMLTextAreaElement>(null)
@@ -50,7 +50,7 @@ export default function ChatPanel({ messages, connected, error, onSend, onInputF
   }
   const count = Array.from(draft).length
   return <aside className={`chat-panel${collapsed ? ' is-collapsed' : ''}`} aria-label="로비 채팅" onKeyDown={event => event.stopPropagation()}>
-    <header className="chat-panel-header"><span>LOBBY CHAT <small>{connected ? '연결됨' : '연결 대기'}</small></span>
+    <header className="chat-panel-header"><span>{roomName ?? "LOBBY"} CHAT <small>{connected ? '연결됨' : '연결 대기'}</small></span>
       <button type="button" aria-expanded={!collapsed} aria-controls="lobby-chat-body" onClick={() => setCollapsed(value => !value)}>{collapsed ? '펼치기' : '접기'}</button></header>
     {!collapsed && <div id="lobby-chat-body">
       <div ref={list} className="chat-messages" role="log" aria-label="최근 채팅 내역" aria-live="polite" onScroll={() => {

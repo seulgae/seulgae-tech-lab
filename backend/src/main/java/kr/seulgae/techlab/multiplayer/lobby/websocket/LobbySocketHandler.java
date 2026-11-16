@@ -29,7 +29,7 @@ import tools.jackson.databind.json.JsonMapper;
  * 제한된 입력 메시지를 받아 서버 상태를 20Hz로 전파하는 로비 소켓이다.
  *
  * @author seulgae
- * @version 1.0, 완료 스텝 입력 검증·속도 제한·접속 정리 및 상태 방송
+ * @version 1.0, 동일 연결의 방 이동·세대 검증과 방별 상태·채팅 방송
  * @see "None"
  */
 @Component
@@ -82,7 +82,7 @@ public class LobbySocketHandler extends TextWebSocketHandler {
 
     /** 검증된 임시 이름으로 접속시키고 본인 ID와 전체 스냅샷을 먼저 전송한다. */
     @Override
-    public void afterConnectionEstablished(WebSocketSession session) throws Exception {
+    public synchronized void afterConnectionEstablished(WebSocketSession session) throws Exception {
         session.setTextMessageSizeLimit(1024);
         session.setBinaryMessageSizeLimit(128);
         LobbyRoom.PlayerView player;
@@ -105,12 +105,12 @@ public class LobbySocketHandler extends TextWebSocketHandler {
             // 입장 기록과 실시간 방송 사이에 메시지가 빠지지 않게 같은 채팅 잠금을 사용한다.
             synchronized (chat) {
                 var peer = new Peer(socket, player.id());
-                peer.controls.add(new TextMessage(json.writeValueAsString(Map.of("type", "welcome", "selfId", player.id(), "players", room.snapshot(), "maxPlayers", LobbyRoom.MAX_PLAYERS, "protocolVersion", 4, "time", System.nanoTime() / 1_000_000d))));
+                peer.controls.add(new TextMessage(json.writeValueAsString(Map.of("type", "welcome", "selfId", player.id(), "players", room.snapshot("lobby"), "maxPlayers", LobbyRoom.MAX_PLAYERS, "protocolVersion", 4, "time", System.nanoTime() / 1_000_000d, "roomId", "lobby", "roomEpoch", 0))));
                 peer.controls.add(new TextMessage(json.writeValueAsString(Map.of("type", "chat_history", "messages", chat.history()))));
                 peers.put(session.getId(), peer);
                 drain(session.getId(), peer);
             }
-            broadcast(Map.of("type", "joined", "player", player));
+            broadcastIn("lobby", Map.of("type", "joined", "player", player));
         } catch (Exception exception) {
             room.leave(player.id());
             session.close(CloseStatus.SERVER_ERROR);
@@ -119,7 +119,7 @@ public class LobbySocketHandler extends TextWebSocketHandler {
 
     /** 좌표·절대 시각은 받지 않고 방향·번호·짧은 스텝 시간을 엄격하게 검증한다. */
     @Override
-    protected void handleTextMessage(WebSocketSession session, TextMessage message) {
+    protected synchronized void handleTextMessage(WebSocketSession session, TextMessage message) {
         var peer = peers.get(session.getId());
         if (peer == null) return;
         long now = System.nanoTime();
@@ -130,17 +130,39 @@ public class LobbySocketHandler extends TextWebSocketHandler {
         String rejection = "Invalid input: JSON";
         try {
             var input = json.readTree(message.getPayload());
+            if (input.isObject() && input.path("type").stringValue("").equals("room_change")) {
+                try {
+                    if (!peer.allow(now) || !Set.copyOf(input.propertyNames()).equals(Set.of("type", "doorId", "roomEpoch"))
+                            || !input.path("doorId").isString() || !input.path("roomEpoch").isIntegralNumber()
+                            || input.path("roomEpoch").asLong() != room.epoch(peer.playerId)) throw new IllegalArgumentException("Invalid room request");
+                    synchronized (chat) {
+                        String previous = room.roomId(peer.playerId);
+                        room.changeRoom(peer.playerId, input.get("doorId").stringValue(), now);
+                        peer.latestState.set(null);
+                        sendScoped(session.getId(), peer, Map.of("type", "room_changed", "players", room.snapshot(room.roomId(peer.playerId)), "selfId", peer.playerId, "time", now / 1_000_000d));
+                        sendScoped(session.getId(), peer, Map.of("type", "chat_history", "messages", chat.history(room.roomId(peer.playerId))));
+                        broadcastIn(previous, Map.of("type", "left", "id", peer.playerId));
+                        broadcastIn(room.roomId(peer.playerId), Map.of("type", "joined", "player", room.player(peer.playerId)));
+                    }
+                } catch (IllegalArgumentException exception) {
+                    sendScoped(session.getId(), peer, Map.of("type", "room_error", "reason", "출입구와 거리를 확인해 주세요."));
+                }
+                peer.lastSeen = now;
+                return;
+            }
+            long expectedEpoch = room.epoch(peer.playerId);
+            if (input.has("roomEpoch") ? !input.get("roomEpoch").isIntegralNumber() || input.get("roomEpoch").asLong() != expectedEpoch : expectedEpoch != 0) return;
             if (input.isObject() && input.path("type").stringValue("").equals("chat")) {
                 try {
                     synchronized (chat) {
                         if (peers.get(session.getId()) != peer) return;
                         // 부정한 필드 요청도 채팅 제한을 소비하게 해 반복 오류 방송을 막는다.
-                        String text = Set.copyOf(input.propertyNames()).equals(CHAT_FIELDS) && input.get("message").isString()
+                        String text = fields(input, CHAT_FIELDS) && input.get("message").isString()
                             ? input.get("message").stringValue() : null;
-                        broadcast(chat.post(peer.playerId, text, now));
+                        broadcastIn(room.roomId(peer.playerId), chat.post(peer.playerId, text, now));
                     }
                 } catch (LobbyChat.Rejected exception) {
-                    dispatch(session.getId(), peer, new TextMessage(json.writeValueAsString(Map.of("type", "chat_error", "reason", exception.getMessage()))), true);
+                    sendScoped(session.getId(), peer, Map.of("type", "chat_error", "reason", exception.getMessage()));
                 }
                 peer.lastSeen = now;
                 return;
@@ -155,7 +177,7 @@ public class LobbySocketHandler extends TextWebSocketHandler {
             }
             if (input.isObject() && input.path("type").stringValue("").equals("move")) {
                 rejection = "Invalid movement: fields";
-                if (!Set.copyOf(input.propertyNames()).equals(MOVE_FIELDS) || !input.get("inputs").isArray()
+                if (!fields(input, MOVE_FIELDS) || !input.get("inputs").isArray()
                     || input.get("inputs").isEmpty() || input.get("inputs").size() > 8) throw new IllegalArgumentException();
                 var commands = new ArrayList<LobbyRoom.MoveCommand>();
                 for (var command : input.get("inputs")) {
@@ -174,7 +196,7 @@ public class LobbySocketHandler extends TextWebSocketHandler {
                 return;
             }
             rejection = "Invalid input: fields";
-            if (!input.isObject() || !Set.copyOf(input.propertyNames()).equals(INPUT_FIELDS)
+            if (!input.isObject() || !fields(input, INPUT_FIELDS)
                 || !input.get("type").isString() || !input.get("type").stringValue().equals("input")) throw new IllegalArgumentException();
             rejection = "Invalid input: axes";
             if (!input.get("x").isInt() || !input.get("y").isInt()
@@ -208,12 +230,13 @@ public class LobbySocketHandler extends TextWebSocketHandler {
 
     /** 구형 이동과 원격 대기 상태를 갱신하고, 느린 연결에는 낡은 스냅샷을 쌓지 않는다. */
     @Scheduled(fixedRate = 50)
-    public void updateRoom() {
+    public synchronized void updateRoom() {
         long now = System.nanoTime();
         room.step((now - lastTick) / 1_000_000_000d, now);
         lastTick = now;
         if (peers.isEmpty()) return;
-        broadcast(Map.of("type", "state", "tick", ++tick, "time", now / 1_000_000d, "players", room.snapshot()));
+        tick++;
+        peers.forEach((id, peer) -> sendScoped(id, peer, Map.of("type", "state", "tick", tick, "time", now / 1_000_000d, "players", room.snapshot(room.roomId(peer.playerId)), "totalOnline", room.snapshot().size())));
         peers.forEach((id, peer) -> {
             boolean slowSend = peer.socket instanceof ConcurrentWebSocketSessionDecorator decorated && decorated.getTimeSinceSendStarted() > 1000;
             if (slowSend || now - peer.lastSeen > 15_000_000_000L) disconnect(id, CloseStatus.SESSION_NOT_RELIABLE);
@@ -224,10 +247,24 @@ public class LobbySocketHandler extends TextWebSocketHandler {
         });
     }
 
-    private void broadcast(Object payload) {
-        var message = new TextMessage(json.writeValueAsString(payload));
-        boolean reliable = !(payload instanceof Map<?, ?> map && "state".equals(map.get("type")));
-        peers.forEach((id, peer) -> dispatch(id, peer, message, reliable));
+    /** 이동 입력 필드에는 선택적인 방 세대만 추가할 수 있다. */
+    private boolean fields(tools.jackson.databind.JsonNode input, Set<String> expected) {
+        var keys = new java.util.HashSet<>(input.propertyNames());
+        keys.remove("roomEpoch");
+        return keys.equals(expected);
+    }
+
+    /** 모든 방 이벤트에 수신자의 방 세대를 붙여 오래된 이벤트를 구분한다. */
+    private void sendScoped(String id, Peer peer, Object payload) {
+        var node = json.valueToTree(payload);
+        var envelope = (tools.jackson.databind.node.ObjectNode) node;
+        envelope.put("roomId", room.roomId(peer.playerId));
+        envelope.put("roomEpoch", room.epoch(peer.playerId));
+        dispatch(id, peer, new TextMessage(json.writeValueAsString(envelope)), !node.path("type").stringValue("").equals("state"));
+    }
+
+    private void broadcastIn(String roomId, Object payload) {
+        peers.forEach((id, peer) -> { if (roomId.equals(room.roomId(peer.playerId))) sendScoped(id, peer, payload); });
     }
 
     private void dispatch(String id, Peer peer, WebSocketMessage<?> message, boolean reliable) {
@@ -266,12 +303,13 @@ public class LobbySocketHandler extends TextWebSocketHandler {
         } catch (java.util.concurrent.RejectedExecutionException exception) { peer.sending.set(false); }
     }
 
-    private void disconnect(String id, CloseStatus status) {
+    private synchronized void disconnect(String id, CloseStatus status) {
         var peer = peers.remove(id);
         if (peer == null) return;
         LOG.info("Lobby connection closed: player={}, code={}, reason={}, receivedInputs={}, connectedMs={}",
             peer.playerId, status.getCode(), status.getReason(), peer.receivedInputs,
             (System.nanoTime() - peer.connectedAt) / 1_000_000);
+        String previousRoom = room.roomId(peer.playerId);
         room.leave(peer.playerId);
         chat.leave(peer.playerId);
         peer.controls.clear();
@@ -284,7 +322,7 @@ public class LobbySocketHandler extends TextWebSocketHandler {
             peer.closing.set(status);
             drain(id, peer);
         }
-        broadcast(Map.of("type", "left", "id", peer.playerId));
+        broadcastIn(previousRoom, Map.of("type", "left", "id", peer.playerId));
     }
 
     @Override public void afterConnectionClosed(WebSocketSession session, CloseStatus status) { disconnect(session.getId(), status); }

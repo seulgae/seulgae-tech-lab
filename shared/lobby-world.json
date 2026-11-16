@@ -157,5 +157,283 @@
       "y": 512,
       "x": 496
     }
-  ]
+  ],
+  "rooms": {
+    "lobby": {
+      "name": "중앙 로비",
+      "doors": [
+        {
+          "id": "lobby-to-development",
+          "target": "development-lab",
+          "x": 400,
+          "y": 540
+        },
+        {
+          "id": "lobby-to-server",
+          "target": "server-room",
+          "x": 70,
+          "y": 520
+        },
+        {
+          "id": "lobby-to-meeting",
+          "target": "meeting-room",
+          "x": 730,
+          "y": 520
+        }
+      ],
+      "spawn": {
+        "x": 400,
+        "y": 460
+      }
+    },
+    "development-lab": {
+      "name": "개발 연구실",
+      "spawn": {
+        "x": 400,
+        "y": 460
+      },
+      "doors": [
+        {
+          "id": "development-to-lobby",
+          "target": "lobby",
+          "x": 400,
+          "y": 540
+        }
+      ],
+      "objects": [
+        {
+          "texture": "computer",
+          "x": 180,
+          "bottom": 250,
+          "body": {
+            "x": 180,
+            "y": 214,
+            "width": 112,
+            "height": 72
+          }
+        },
+        {
+          "texture": "computer",
+          "x": 620,
+          "bottom": 250,
+          "body": {
+            "x": 620,
+            "y": 214,
+            "width": 112,
+            "height": 72
+          }
+        },
+        {
+          "texture": "chair",
+          "x": 180,
+          "bottom": 315,
+          "body": {
+            "x": 180,
+            "y": 303,
+            "width": 28,
+            "height": 24
+          }
+        },
+        {
+          "texture": "chair",
+          "x": 620,
+          "bottom": 315,
+          "body": {
+            "x": 620,
+            "y": 303,
+            "width": 28,
+            "height": 24
+          }
+        },
+        {
+          "texture": "equipment",
+          "x": 140,
+          "bottom": 420,
+          "body": {
+            "x": 140,
+            "y": 392,
+            "width": 96,
+            "height": 56
+          }
+        },
+        {
+          "texture": "plant",
+          "x": 730,
+          "bottom": 160,
+          "body": {
+            "x": 730,
+            "y": 150,
+            "width": 24,
+            "height": 20
+          }
+        }
+      ]
+    },
+    "server-room": {
+      "name": "서버실",
+      "spawn": {
+        "x": 400,
+        "y": 460
+      },
+      "doors": [
+        {
+          "id": "server-to-lobby",
+          "target": "lobby",
+          "x": 400,
+          "y": 540
+        }
+      ],
+      "objects": [
+        {
+          "texture": "rack",
+          "x": 160,
+          "bottom": 260,
+          "body": {
+            "x": 160,
+            "y": 216,
+            "width": 48,
+            "height": 88
+          }
+        },
+        {
+          "texture": "rack",
+          "x": 280,
+          "bottom": 260,
+          "body": {
+            "x": 280,
+            "y": 216,
+            "width": 48,
+            "height": 88
+          }
+        },
+        {
+          "texture": "rack",
+          "x": 520,
+          "bottom": 260,
+          "body": {
+            "x": 520,
+            "y": 216,
+            "width": 48,
+            "height": 88
+          }
+        },
+        {
+          "texture": "rack",
+          "x": 640,
+          "bottom": 260,
+          "body": {
+            "x": 640,
+            "y": 216,
+            "width": 48,
+            "height": 88
+          }
+        },
+        {
+          "texture": "equipment",
+          "x": 180,
+          "bottom": 400,
+          "body": {
+            "x": 180,
+            "y": 372,
+            "width": 96,
+            "height": 56
+          }
+        },
+        {
+          "texture": "equipment",
+          "x": 620,
+          "bottom": 400,
+          "body": {
+            "x": 620,
+            "y": 372,
+            "width": 96,
+            "height": 56
+          }
+        }
+      ]
+    },
+    "meeting-room": {
+      "name": "회의실",
+      "spawn": {
+        "x": 400,
+        "y": 460
+      },
+      "doors": [
+        {
+          "id": "meeting-to-lobby",
+          "target": "lobby",
+          "x": 400,
+          "y": 540
+        }
+      ],
+      "objects": [
+        {
+          "texture": "reception",
+          "x": 400,
+          "bottom": 310,
+          "body": {
+            "x": 400,
+            "y": 278,
+            "width": 200,
+            "height": 64
+          }
+        },
+        {
+          "texture": "chair",
+          "x": 300,
+          "bottom": 365,
+          "body": {
+            "x": 300,
+            "y": 353,
+            "width": 28,
+            "height": 24
+          }
+        },
+        {
+          "texture": "chair",
+          "x": 400,
+          "bottom": 365,
+          "body": {
+            "x": 400,
+            "y": 353,
+            "width": 28,
+            "height": 24
+          }
+        },
+        {
+          "texture": "chair",
+          "x": 500,
+          "bottom": 365,
+          "body": {
+            "x": 500,
+            "y": 353,
+            "width": 28,
+            "height": 24
+          }
+        },
+        {
+          "texture": "equipment",
+          "x": 400,
+          "bottom": 150,
+          "body": {
+            "x": 400,
+            "y": 122,
+            "width": 96,
+            "height": 56
+          }
+        },
+        {
+          "texture": "plant",
+          "x": 100,
+          "bottom": 170,
+          "body": {
+            "x": 100,
+            "y": 160,
+            "width": 24,
+            "height": 20
+          }
+        }
+      ]
+    }
+  }
 }
