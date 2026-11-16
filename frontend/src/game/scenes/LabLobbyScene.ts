@@ -5,6 +5,10 @@ import { RESEARCH_EVENTS } from '../../features/research/researchEvents'
 import { LAB_EVENTS } from '../../features/lab/labEvents'
 import { hasTextInputFocus } from '../interaction'
 import { createPixelAssets } from '../assets/pixelAssets'
+import { createRoomAssets } from '../assets/roomAssets'
+import { createRoomFx } from '../rooms/RoomFx'
+import type { RoomFx } from '../rooms/RoomFx'
+import { ROOM_THEMES } from '../rooms/roomThemes'
 import LobbyMultiplayer from '../multiplayer/LobbyMultiplayer'
 import { SPAWN } from '../maps/lobbyLayout'
 import { MULTIPLAYER_EVENTS } from '../../features/multiplayer/model/protocol'
@@ -19,7 +23,7 @@ import { setRoomObstacles } from '../multiplayer/networkPosition'
  * 방의 표시·충돌·출입구와 방별 상호작용(연구 기록·빌드 정보·서버 상태·테이블 대화)을 연결하는 게임 장면이다.
  *
  * @author seulgae
- * @version 1.1, 공유 맵 기반 방별 상호작용과 테이블 대화 범위 관리
+ * @version 1.2, 방별 테마·문 열림 연출·방 이벤트 연결
  * @see "None"
  */
 export default class LabLobbyScene extends Phaser.Scene {
@@ -34,6 +38,9 @@ export default class LabLobbyScene extends Phaser.Scene {
   private tableTalk = false
   private interactionHighlight?: Phaser.GameObjects.Rectangle
   private multiplayer?: LobbyMultiplayer
+  private fx?: RoomFx
+  /** 서버 승인을 기다리며 열어 둔 출입구 */
+  private openingDoor?: string
   private readonly uiEvents: Phaser.Events.EventEmitter
   private readonly client: MultiplayerClient
   private touchInput: DirectionInput = { x: 0, y: 0 }
@@ -71,9 +78,11 @@ export default class LabLobbyScene extends Phaser.Scene {
 
   preload() {
     createPixelAssets(this)
+    createRoomAssets(this)
   }
 
-  create() {
+  /** @param data 방 전환으로 재시작할 때 지나온 방. 도착 문 닫힘 연출에 쓴다. */
+  create(data: { from?: RoomId } = {}) {
     this.panelOpen = false
     this.tableTalk = false
     this.uiEvents.emit(LAB_EVENTS.tableTalk, false)
@@ -84,9 +93,11 @@ export default class LabLobbyScene extends Phaser.Scene {
     this.cameras.main.fadeIn(180)
     this.touchInput = { x: 0, y: 0 }
     this.touchInteraction = false
-    this.cameras.main.setBackgroundColor('#263238')
+    this.openingDoor = undefined
+    this.cameras.main.setBackgroundColor(ROOM_THEMES[this.activeRoom].camera)
     const { obstacles, interactionHighlight } = createLobbyMap(this, this.activeRoom)
     this.interactionHighlight = interactionHighlight
+    this.fx = createRoomFx(this, this.activeRoom, { from: data.from, client: this.client })
     this.player = new Player(this, SPAWN.x, SPAWN.y)
     this.physics.add.collider(this.player, obstacles)
     this.multiplayer = new LobbyMultiplayer(this, this.player, this.client)
@@ -94,9 +105,17 @@ export default class LabLobbyScene extends Phaser.Scene {
       this.transition = pending || roomId !== this.activeRoom
       if (this.transition) { this.resetChatInput(); this.setTableTalk(false) }
       if (roomId !== this.activeRoom && !this.restartPending) {
+        // 승인이 빨리 와도 문이 다 열린 뒤 페이드한다.
         this.restartPending = true
-        this.cameras.main.fadeOut(150)
-        this.time.delayedCall(160, () => this.scene.restart())
+        const from = this.activeRoom
+        this.time.delayedCall(this.fx?.doors.remainingOpenMs() ?? 0, () => {
+          this.cameras.main.fadeOut(200)
+          this.time.delayedCall(210, () => this.scene.restart({ from }))
+        })
+      } else if (!pending && this.openingDoor) {
+        // 거부·시간 초과로 같은 방에 남으면 문을 다시 닫는다.
+        this.fx?.doors.close(this.openingDoor)
+        this.openingDoor = undefined
       }
     } })
     this.uiEvents.once(MULTIPLAYER_EVENTS.dispose, this.stopMultiplayer)
@@ -123,6 +142,8 @@ export default class LabLobbyScene extends Phaser.Scene {
       this.touchInteraction = false
       this.uiEvents.emit(MOBILE_INPUT.reset)
       this.setTableTalk(false)
+      this.fx?.destroy()
+      this.fx = undefined
       this.uiEvents.off(MULTIPLAYER_EVENTS.dispose, this.stopMultiplayer)
       this.uiEvents.off(RESEARCH_EVENTS.closeResearch, this.closePanel)
       this.uiEvents.off(LAB_EVENTS.closePanel, this.closePanel)
@@ -143,7 +164,7 @@ export default class LabLobbyScene extends Phaser.Scene {
     if (this.tableTalk && target?.kind !== 'table-talk') this.setTableTalk(false)
     const enabled = !this.panelOpen && !this.transition && !textFocused
     if (door) this.interactionHint?.setPosition(door.x, door.y - 70).setText('E · ' + ROOMS[door.target as RoomId].name + ' 입장')
-    else if (target) this.interactionHint?.setPosition(target.x, target.y - target.height / 2 - 30).setText(this.hintFor(target))
+    else if (target) this.interactionHint?.setPosition(target.x, target.y - target.height / 2 - 30).setText(this.fx?.hint(target) ?? this.hintFor(target))
     this.interactionHint?.setVisible(enabled && (!!door || !!target))
     if (target) this.interactionHighlight?.setPosition(target.x, target.y + 2).setSize(target.width + 14, target.height + 8)
       .setDepth(target.y + target.height / 2 + 1)
@@ -156,10 +177,14 @@ export default class LabLobbyScene extends Phaser.Scene {
     if (!(pressed || touchPressed) || !enabled) return
     if (door) {
       this.resetChatInput()
-      this.client.changeRoom(door.id)
+      if (this.client.changeRoom(door.id)) {
+        this.openingDoor = door.id
+        this.fx?.doors.open(door.id)
+      }
       return
     }
     if (!target) return
+    if (this.fx?.intercept(target)) return
     if (target.kind === 'table-talk') {
       this.setTableTalk(!this.tableTalk)
       return
@@ -177,6 +202,7 @@ export default class LabLobbyScene extends Phaser.Scene {
     if (this.tableTalk === active) return
     this.tableTalk = active
     this.uiEvents.emit(LAB_EVENTS.tableTalk, active)
+    this.fx?.setTableTalk(active)
   }
 
   private hintFor(target: RoomInteraction) {

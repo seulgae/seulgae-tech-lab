@@ -1,13 +1,13 @@
 import type Phaser from 'phaser'
 
-type Paint = (color: string, x: number, y: number, width: number, height: number) => void
+export type Paint = (color: string, x: number, y: number, width: number, height: number) => void
 const ink = '#1b292f'
 const wood = '#c49a70'
 const lightWood = '#e4c49a'
 const teal = '#65b3a5'
 
 /** 정수 좌표로만 그린 원본 픽셀 텍스처를 등록한다. 외부 이미지나 폰트를 사용하지 않는다. */
-function texture(scene: Phaser.Scene, key: string, width: number, height: number, draw: (paint: Paint) => void) {
+export function texture(scene: Phaser.Scene, key: string, width: number, height: number, draw: (paint: Paint) => void) {
   if (scene.textures.exists(key)) return
   const canvas = document.createElement('canvas')
   canvas.width = width

@@ -6,6 +6,7 @@ import test from 'node:test'
 import vm from 'node:vm'
 import { ROOMS, nearestInteraction, roomObstacles } from '../src/game/maps/rooms.ts'
 import { LAB_EVENTS } from '../src/features/lab/labEvents.ts'
+import { ROOM_THEMES } from '../src/game/rooms/roomThemes.ts'
 import { isNearObject } from '../src/game/interaction.ts'
 import { RESEARCH_EVENTS } from '../src/features/research/researchEvents.ts'
 import { MOBILE_INPUT } from '../src/game/input/mobileInput.ts'
@@ -38,6 +39,16 @@ function createScene(room = 'lobby') {
   const uiEvents = new EventEmitter()
   const key = { _justDown: false }
   const state = { textFocused: false, resets: 0 }
+  // 방 연출은 별도 모듈이므로 호출 기록만 남기는 대역을 쓴다.
+  const fx = {
+    calls: [], intercepting: false, hintText: undefined,
+    doors: { open: id => fx.calls.push(['open', id]), close: id => fx.calls.push(['close', id]), remainingOpenMs: () => 0 },
+    intercept: target => { fx.calls.push(['intercept', target.kind]); return fx.intercepting },
+    hint: () => fx.hintText,
+    setTableTalk: active => fx.calls.push(['tableTalk', active]),
+    destroy: () => fx.calls.push(['destroy']),
+  }
+  state.fx = fx
   class Scene {
     constructor() {
       this.events = new EventEmitter()
@@ -68,12 +79,13 @@ function createScene(room = 'lobby') {
   const LobbyScene = vm.runInNewContext(source + '\nLabLobbyScene', {
     Phaser: { Scene, Input: { Keyboard: { JustDown } }, Scenes: { Events: { SHUTDOWN: 'shutdown' } } },
     ROOMS, roomObstacles, nearestInteraction, setRoomObstacles() {}, Player, createLobbyMap: () => ({}), RESEARCH_EVENTS, LAB_EVENTS,
+    createRoomAssets() {}, ROOM_THEMES, createRoomFx: () => fx,
     hasTextInputFocus: () => state.textFocused,
     SPAWN: { x: 400, y: 400 }, MULTIPLAYER_EVENTS, MOBILE_INPUT, LobbyMultiplayer: class {
       update() {} destroy() {} stopInput() {}
     },
   })
-  const scene = new LobbyScene(uiEvents, { currentRoom() { return room }, isTravelling() { return false }, subscribe() { return () => {} }, setInput(input) { state.sentInput = input } })
+  const scene = new LobbyScene(uiEvents, { currentRoom() { return room }, isTravelling() { return false }, subscribe() { return () => {} }, setInput(input) { state.sentInput = input }, changeRoom(id) { state.changed = id; return true } })
   scene.create()
   return { scene, uiEvents, key, state }
 }
@@ -255,4 +267,39 @@ test('회의 테이블 E는 테이블 대화를 켜고 끄며 범위를 벗어�
   key._justDown = true; scene.player.y = 340; scene.update()
   scene.events.emit('shutdown')
   assert.equal(states.at(-1), false)
+})
+
+test('출입구 E는 문을 열고 이동을 요청하며, 장면 종료 시 방 연출을 정리한다', () => {
+  const { scene, key, state } = createScene('lobby')
+  scene.player.x = 400; scene.player.y = 530
+  scene.update()
+  assert.equal(scene.interactionHint.text, 'E · 개발 연구실 입장')
+  key._justDown = true; scene.update()
+  assert.equal(state.changed, 'lobby-to-development')
+  assert.deepEqual(state.fx.calls.at(-1), ['open', 'lobby-to-development'])
+  scene.events.emit('shutdown')
+  assert.deepEqual(state.fx.calls.at(-1), ['destroy'])
+})
+
+test('방 이벤트가 E를 가로채면 패널을 열지 않고 안내 문구도 이벤트가 정한다', () => {
+  const { scene, uiEvents, key, state } = createScene('server-room')
+  const opened = []
+  uiEvents.on(LAB_EVENTS.openPanel, value => opened.push(value))
+  state.fx.intercepting = true; state.fx.hintText = 'E · 냉각 시스템 가동'
+  scene.player.x = 220; scene.player.y = 290
+  scene.update()
+  assert.equal(scene.interactionHint.text, 'E · 냉각 시스템 가동')
+  key._justDown = true; scene.update()
+  assert.deepEqual(opened, [])
+  assert.equal(scene.player.movementEnabled, true)
+  state.fx.intercepting = false; state.fx.hintText = undefined
+  key._justDown = true; scene.update()
+  assert.deepEqual(opened, ['server-status'])
+})
+
+test('테이블 대화 상태는 방 연출(회의 모드)에도 전달된다', () => {
+  const { scene, key, state } = createScene('meeting-room')
+  scene.player.x = 350; scene.player.y = 340
+  key._justDown = true; scene.update()
+  assert.deepEqual(state.fx.calls.filter(call => call[0] === 'tableTalk'), [['tableTalk', true]])
 })

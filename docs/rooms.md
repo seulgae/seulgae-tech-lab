@@ -48,3 +48,5 @@ Scene 종료에서 방 구독, UI 이벤트와 물리 이벤트, 원격 캐릭�
 - 장시간 반복 전환의 메모리·이벤트 리스너 증가 여부
 
 방별 E 상호작용(빌드 정보·서버 상태·테이블 대화)은 [room-interactions.md](room-interactions.md)를 참고한다.
+
+방별 색·장식·문 애니메이션·방 이벤트는 [room-atmosphere.md](room-atmosphere.md)를 참고한다.
