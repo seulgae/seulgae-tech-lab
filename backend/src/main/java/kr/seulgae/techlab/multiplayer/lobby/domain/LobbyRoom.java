@@ -3,6 +3,9 @@ package kr.seulgae.techlab.multiplayer.lobby.domain;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.UUID;
+import java.util.ArrayDeque;
+import java.util.function.LongSupplier;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
@@ -43,13 +46,25 @@ public class LobbyRoom {
         long sequence = -1, inputAt;
         boolean moving;
         boolean commandMode;
-        long budgetAt = System.nanoTime();
+        long budgetAt;
         double timeBudget = 250;
+        long receivedSequence = -1;
+        double pendingMs;
+        final ArrayDeque<MoveCommand> pending = new ArrayDeque<>();
         PlayerView view() { return new PlayerView(id, nickname, x, y, facing, moving, sequence); }
     }
     private final LinkedHashMap<String, Member> members = new LinkedHashMap<>();
     private final LobbyWorld world;
-    public LobbyRoom(LobbyWorld world) { this.world = world; }
+    private final LongSupplier clock;
+    @Autowired
+    public LobbyRoom(LobbyWorld world) { this(world, System::nanoTime); }
+
+    /**
+     * 접속 시각도 서버 단조 시계를 사용하며, 검증에서는 같은 시계를 고정할 수 있다.
+     * @param world 충돌과 스폰을 계산할 공통 맵
+     * @param clock 서버 단조 시각 공급자
+     */
+    public LobbyRoom(LobbyWorld world, LongSupplier clock) { this.world = world; this.clock = clock; }
 
     /**
      * 고유 식별자와 검증된 임시 이름으로 방문자를 생성한다.
@@ -69,6 +84,7 @@ public class LobbyRoom {
             name = name.substring(0, name.offsetByCodePoints(0, Math.min(name.codePointCount(0, name.length()), 11))) + "-" + id.substring(0, 4);
         }
         var member = new Member();
+        member.budgetAt = clock.getAsLong();
         member.id = id; member.nickname = name;
         // 퇴장 후 빈 슬롯도 재사용해 스폰 위치가 가구로 밀려가지 않도록 한다.
         int slot = 0;
@@ -102,35 +118,55 @@ public class LobbyRoom {
     }
 
     /**
-     * 명령 전체를 검증한 뒤 동일한 짧은 스텝으로 충돌을 계산하고 처리 완료 번호를 확정한다.
-     * 서버 단조 시계로 충전하는 시간 예산은 지연된 묶음을 허용하되 지속적인 가속을 막는다.
+     * 명령을 검증하고 시간 예산만큼 처리한다. 지연 후 몰린 나머지는 제한된 큐에서 기다린다.
      * @param id 방문자 식별자
      * @param commands 순서대로 완료할 최대 8개 물리 스텝
      * @param now 수신 시점의 서버 단조 시각
-     * @return 새로운 입력을 적용했으면 true
+     * @return 새로운 입력을 수신했으면 true. ack는 실제 처리가 완료된 번호이다.
      * @throws IllegalArgumentException 방향·시간·번호·시간 예산이 유효하지 않은 경우
      */
     public synchronized boolean commands(String id, List<MoveCommand> commands, long now) {
         var member = members.get(id);
         if (member == null) return false;
         if (commands.isEmpty() || commands.size() > 8) throw new IllegalArgumentException("Movement batch");
-        long expected = member.sequence < 0 ? 1 : member.sequence + 1;
+        long received = Math.max(member.sequence, member.receivedSequence);
+        long expected = received < 0 ? 1 : received + 1;
         double total = 0;
         for (var command : commands) {
-            if (command.x() < -1 || command.x() > 1 || command.y() < -1 || command.y() > 1
-                || !Double.isFinite(command.ms()) || command.ms() < 0 || command.ms() > 50
-                || command.ms() == 0 && (command.x() != 0 || command.y() != 0)
-                || command.seq() < 1 || command.seq() > 9_007_199_254_740_991L) throw new IllegalArgumentException("Movement command");
-            if (command.seq() <= member.sequence) continue;
+            if (command.x() < -1 || command.x() > 1 || command.y() < -1 || command.y() > 1) throw new IllegalArgumentException("Movement axes");
+            if (!Double.isFinite(command.ms()) || command.ms() < 0 || command.ms() > 50
+                || command.ms() == 0 && (command.x() != 0 || command.y() != 0)) throw new IllegalArgumentException("Movement duration");
+            if (command.seq() < 1 || command.seq() > 9_007_199_254_740_991L) throw new IllegalArgumentException("Movement sequence");
+            if (command.seq() <= received) continue;
             if (command.seq() != expected++) throw new IllegalArgumentException("Movement sequence");
             total += command.ms();
         }
-        if (expected == (member.sequence < 0 ? 1 : member.sequence + 1)) return false;
-        double budget = Math.min(2000, member.timeBudget + Math.max(0, now - member.budgetAt) / 1_000_000d);
-        if (total > budget + 0.001) throw new IllegalArgumentException("Movement time exceeded");
-        member.timeBudget = Math.max(0, budget - total); member.budgetAt = now; member.commandMode = true;
+        int fresh = (int) (expected - (received < 0 ? 1 : received + 1));
+        if (fresh == 0) return false;
+        drainCommands(member, now);
+        if (member.pendingMs + total > 2000.001 || member.pending.size() + fresh > 240) {
+            throw new IllegalArgumentException("Movement backlog exceeded");
+        }
+        member.commandMode = true;
         for (var command : commands) {
-            if (command.seq() <= member.sequence) continue;
+            if (command.seq() <= received) continue;
+            member.pending.addLast(command); member.receivedSequence = command.seq();
+        }
+        member.pendingMs += total;
+        drainCommands(member, now);
+        return true;
+    }
+
+    /** 서버 단조 시계로 예산을 보충해, 대기한 명령도 가속 없이 순서대로 완료한다. */
+    private void drainCommands(Member member, long now) {
+        // 잠금을 기다린 수신 콜백의 시각이 이전 갱신보다 오래돼도 예산 시계를 되돌리지 않는다.
+        now = Math.max(now, member.budgetAt);
+        member.timeBudget = Math.min(2000, member.timeBudget + Math.max(0, now - member.budgetAt) / 1_000_000d);
+        member.budgetAt = now;
+        while (!member.pending.isEmpty() && member.pending.peekFirst().ms() <= member.timeBudget + 0.001) {
+            var command = member.pending.removeFirst();
+            member.timeBudget = Math.max(0, member.timeBudget - command.ms());
+            member.pendingMs = Math.max(0, member.pendingMs - command.ms());
             double length = Math.hypot(command.x(), command.y());
             var position = world.move(member.x, member.y,
                 length == 0 ? 0 : command.x() / length * 200 * command.ms() / 1000,
@@ -140,7 +176,6 @@ public class LobbyRoom {
             if (command.y() != 0) member.facing = command.y() < 0 ? "up" : "down";
             else if (command.x() != 0) member.facing = command.x() < 0 ? "left" : "right";
         }
-        return true;
     }
 
     /**
@@ -154,8 +189,9 @@ public class LobbyRoom {
         double elapsed = Math.max(0, Math.min(0.1, seconds));
         for (var member : members.values()) {
             if (member.commandMode) {
-                // 명령을 받지 않은 시간의 좌표를 추측해서 적분하지 않는다.
-                if (now - member.inputAt > 300_000_000L) member.moving = false;
+                drainCommands(member, now);
+                // 이미 검증한 대기 명령만 처리하고, 받지 않은 이동은 추측하지 않는다.
+                if (member.pending.isEmpty() && now - member.inputAt > 300_000_000L) member.moving = false;
                 continue;
             }
             int x = now - member.inputAt <= 300_000_000L ? member.inputX : 0;

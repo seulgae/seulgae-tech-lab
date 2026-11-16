@@ -36,11 +36,18 @@ class LobbySocketTest {
     private final List<Client> clients = new ArrayList<>();
     private static final JsonMapper JSON = JsonMapper.builder().build();
 
+    /**
+     * 통합 검증의 수신 프레임과 종료 코드·사유를 보관하는 소켓 방문자이다.
+     * @author seulgae
+     * @version 1.0, 실제 연결의 상태 및 진단 사유 검증
+     * @see "None"
+     */
     private static final class Client implements WebSocket.Listener {
         final BlockingQueue<JsonNode> frames = new LinkedBlockingQueue<>();
         final CompletableFuture<Integer> closed = new CompletableFuture<>();
         final StringBuilder pending = new StringBuilder();
         WebSocket socket;
+        volatile String closeReason;
         @Override public void onOpen(WebSocket socket) { socket.request(1); }
         @Override public CompletionStage<?> onText(WebSocket socket, CharSequence data, boolean last) {
             pending.append(data);
@@ -48,7 +55,7 @@ class LobbySocketTest {
             socket.request(1);
             return null;
         }
-        @Override public CompletionStage<?> onClose(WebSocket socket, int status, String reason) { closed.complete(status); return null; }
+        @Override public CompletionStage<?> onClose(WebSocket socket, int status, String reason) { closeReason = reason; closed.complete(status); return null; }
         JsonNode await(Predicate<JsonNode> predicate) throws Exception {
             long deadline = System.nanoTime() + 5_000_000_000L;
             while (System.nanoTime() < deadline) {
@@ -81,6 +88,23 @@ class LobbySocketTest {
         assertFalse(a.closed.isDone());
         a.send("{\"type\":\"move\",\"inputs\":[{\"x\":2,\"y\":0,\"ms\":16,\"seq\":3}]}");
         assertEquals(1008, a.closed.get(3, TimeUnit.SECONDS));
+        assertEquals("Invalid movement: Movement axes", a.closeReason);
+    }
+
+    /** 실제 소켓에서 3초 입력 몰림을 받은 뒤에도 연결을 유지하고 stop까지 ack한다. */
+    @Test void keepsConnectionForMovementBurstBeyondImmediateTimeBudget() throws Exception {
+        var a = connect(""); var welcome = a.type("welcome");
+        String id = welcome.get("selfId").stringValue();
+        Thread.sleep(3100);
+        for (int start = 1; start <= 180; start += 8) {
+            var commands = new ArrayList<LobbyRoom.MoveCommand>();
+            for (int seq = start; seq < Math.min(start + 8, 181); seq++) commands.add(new LobbyRoom.MoveCommand(1, 0, 1000d / 60, seq));
+            a.send(JSON.writeValueAsString(java.util.Map.of("type", "move", "inputs", commands)));
+        }
+        a.send("{\"type\":\"move\",\"inputs\":[{\"x\":0,\"y\":0,\"ms\":0,\"seq\":181}]}");
+        a.await(frame -> frame.path("type").stringValue("").equals("state") && frame.get("players").valueStream()
+            .anyMatch(player -> player.get("id").stringValue().equals(id) && player.get("ack").asLong() == 181));
+        assertFalse(a.closed.isDone()); assertFalse(room.player(id).moving());
     }
     private Client connect(String query) throws Exception {
         var client = new Client();

@@ -27,8 +27,11 @@ test('스냅샷 크기·플레이어 수·ID·좌표·방향·본인 ID를 검�
     { ...welcome(), players: [{ ...first, x: 99999 }] },
     { ...welcome(), players: [{ ...first, facing: 'north' }] },
     { ...welcome(), players: [{ ...first, ack: 1.5 }] },
+    { ...welcome(), time: -1 },
+    { ...welcome(), time: '123' },
     { type: 'unknown', players: [first] },
   ]) assert.throws(() => parseServerMessage(JSON.stringify(invalid)))
+  assert.equal(parseServerMessage(JSON.stringify({ ...welcome(), time: 123.5 })).time, 123.5)
   assert.throws(() => parseServerMessage('x'.repeat(65537)))
   assert.deepEqual(parseServerMessage(JSON.stringify(chat())), chat())
   assert.equal(validChatText('👋'.repeat(150)), true)
@@ -57,7 +60,7 @@ test('연결·목록 변경·재연결·입력 전송·종료 정리를 중복 �
     open() { this.readyState = 1; this.onopen?.() }
     receive(message) { this.onmessage?.({ data: JSON.stringify(message) }) }
     send(message) { this.sent.push(JSON.parse(message)) }
-    drop(code) { this.readyState = 3; this.onclose?.({ code }) }
+    drop(code, reason = '') { this.readyState = 3; this.onclose?.({ code, reason, wasClean: true }) }
     close(code = 1000) {
       assert.ok(code === 1000 || code >= 3000 && code <= 4999)
       this.lastCloseCode = code
@@ -175,14 +178,23 @@ test('연결·목록 변경·재연결·입력 전송·종료 정리를 중복 �
     t.mock.timers.tick(200)
     assert.equal(b.sent.length, stoppedCount)
     unsubscribePrediction()
-    b.receive({ type: 'state', tick: 1, players: [{ ...second, x: 10000 }] })
-    assert.equal(b.lastCloseCode, 4002)
-    const sentCount = b.sent.length
+    b.drop(1008, 'Invalid movement: Movement duration')
+    const diagnostic = JSON.parse(warnings.mock.calls.at(-1).arguments[1])
+    assert.equal(diagnostic.reason, 'Invalid movement: Movement duration')
+    assert.deepEqual(diagnostic.lastBatch, batches.at(-1).inputs)
+    t.mock.timers.tick(500)
+    const c = Socket.instances[2]
+    c.open(); c.receive({ ...welcome(second), protocolVersion: 4 })
+    client.recordStep({ x: 1, y: 0 }, 1000/60)
+    assert.equal(c.sent.at(-1).inputs[0].seq, 1)
+    c.receive({ type: 'state', tick: 1, players: [{ ...second, x: 10000 }] })
+    assert.equal(c.lastCloseCode, 4002)
+    const sentCount = c.sent.length
     client.destroy()
     t.mock.timers.tick(30000)
-    assert.equal(b.sent.length, sentCount)
-    assert.equal(Socket.instances.length, 2)
-    assert.equal(b.onmessage, null)
+    assert.equal(c.sent.length, sentCount)
+    assert.equal(Socket.instances.length, 3)
+    assert.equal(c.onmessage, null)
   } finally {
     client.destroy()
     for (const [key, value] of Object.entries(originals)) {
