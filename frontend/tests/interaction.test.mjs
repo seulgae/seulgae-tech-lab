@@ -6,6 +6,7 @@ import test from 'node:test'
 import vm from 'node:vm'
 import { isNearObject } from '../src/game/interaction.ts'
 import { RESEARCH_EVENTS } from '../src/features/research/researchEvents.ts'
+import { MOBILE_INPUT } from '../src/game/input/mobileInput.ts'
 import { MULTIPLAYER_EVENTS } from '../src/features/multiplayer/model/protocol.ts'
 
 const require = createRequire(import.meta.url)
@@ -56,7 +57,8 @@ function createScene() {
   }
   class Player {
     constructor(_scene, x, y) { this.x = x; this.y = y; this.movementEnabled = true }
-    update(enabled = true) { this.movementEnabled = enabled }
+    update(enabled = true, touch = { x: 0, y: 0 }) { this.movementEnabled = enabled; this.touch = enabled ? touch : { x: 0, y: 0 } }
+    getInput() { return this.touch }
   }
   const source = stripTypeScriptTypes(readFileSync(new URL('../src/game/scenes/LabLobbyScene.ts', import.meta.url), 'utf8'))
     .replace(/^import .*$/gm, '')
@@ -65,11 +67,11 @@ function createScene() {
     Phaser: { Scene, Input: { Keyboard: { JustDown } }, Scenes: { Events: { SHUTDOWN: 'shutdown' } } },
     Player, createLobbyMap: () => ({}), COMPUTER: computer, RESEARCH_EVENTS, isNearObject,
     hasTextInputFocus: () => state.textFocused,
-    SPAWN: { x: 400, y: 400 }, MULTIPLAYER_EVENTS, LobbyMultiplayer: class {
+    SPAWN: { x: 400, y: 400 }, MULTIPLAYER_EVENTS, MOBILE_INPUT, LobbyMultiplayer: class {
       update() {} destroy() {} stopInput() {}
     },
   })
-  const scene = new LobbyScene(uiEvents)
+  const scene = new LobbyScene(uiEvents, { setInput(input) { state.sentInput = input } })
   scene.create()
   return { scene, uiEvents, key, state }
 }
@@ -154,4 +156,40 @@ test('20회 개폐해도 리스너가 늘지 않고 장면 종료 시 제거한�
   assert.equal(uiEvents.listenerCount(RESEARCH_EVENTS.closeResearch), 1)
   scene.events.emit('shutdown')
   assert.equal(uiEvents.listenerCount(RESEARCH_EVENTS.closeResearch), 0)
+})
+
+test('터치 이동은 채팅 포커스 전환 때 초기화되고 정지를 서버에 전달한다', () => {
+  const { scene, uiEvents, state } = createScene()
+  uiEvents.emit(MOBILE_INPUT.move, { x: 1, y: -1 }); scene.update()
+  assert.deepEqual({ ...scene.player.touch }, { x: 1, y: -1 })
+  let resets = 0
+  uiEvents.on(MOBILE_INPUT.reset, () => resets++)
+  uiEvents.emit('chat:focus'); scene.update()
+  assert.deepEqual({ ...scene.player.touch }, { x: 0, y: 0 })
+  assert.equal(resets, 1)
+  uiEvents.emit(MOBILE_INPUT.move, { x: 0, y: 0 })
+  assert.deepEqual({ ...state.sentInput }, { x: 0, y: 0 })
+})
+
+test('터치 E는 범위 밖에서 예약되지 않고 패널 동안 재실행되지 않는다', () => {
+  const { scene, uiEvents } = createScene()
+  let opens = 0
+  uiEvents.on(RESEARCH_EVENTS.openResearch, () => opens++)
+  uiEvents.emit(MOBILE_INPUT.interact); scene.update()
+  scene.player.x = 620; scene.update()
+  assert.equal(opens, 0)
+  uiEvents.emit(MOBILE_INPUT.move, { x: 1, y: 0 })
+  uiEvents.emit(MOBILE_INPUT.interact)
+  for (let i = 0; i < 120; i++) scene.update()
+  assert.equal(opens, 1)
+  assert.equal(scene.player.movementEnabled, false)
+  uiEvents.emit(MOBILE_INPUT.interact); scene.update()
+  uiEvents.emit(RESEARCH_EVENTS.closeResearch); scene.update()
+  assert.equal(opens, 1)
+  assert.deepEqual({ ...scene.player.touch }, { x: 0, y: 0 })
+  scene.events.emit('shutdown')
+  assert.equal(uiEvents.listenerCount(MOBILE_INPUT.move), 0)
+  assert.equal(uiEvents.listenerCount(MOBILE_INPUT.interact), 0)
+  scene.create()
+  assert.equal(uiEvents.listenerCount(MOBILE_INPUT.move), 1)
 })

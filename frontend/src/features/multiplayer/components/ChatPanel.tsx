@@ -3,14 +3,14 @@ import type { ChatMessage, ChatError } from '../model/protocol'
 import './ChatPanel.css'
 
 type Props = { messages: ChatMessage[]; connected: boolean; error: ChatError | null;
-  onSend: (message: string) => boolean; onInputFocus: () => void; onExit: () => void; onEdit: () => void }
+  onSend: (message: string) => boolean; onInputFocus: (focused: boolean) => void; onExit: () => void; onEdit: () => void }
 const errors: Record<ChatError, string> = { empty: '내용을 입력해 주세요.', too_long: '150자까지 보낼 수 있어요.',
   invalid: '보낼 수 없는 문자가 포함되어 있어요.', unavailable: '채팅 연결을 기다려 주세요.', rate_limited: '잠시 후 다시 보내 주세요.' }
 
 /**
  * 기존 로비 소켓의 일반 텍스트 내역과 입력만 관리하는 접이식 채팅 패널이다.
  * @author seulgae
- * @version 1.0, IME·게임 키 입력 분리와 읽는 위치를 보존하는 최근 50개 채팅
+ * @version 1.0, IME·게임 키 및 터치 입력 잠금과 최근 50개 채팅
  * @see "None"
  * @param props 내역과 연결 상태, 전송 및 게임 입력 제어 콜백
  * @returns 오른쪽 하단 채팅 패널
@@ -67,7 +67,7 @@ export default function ChatPanel({ messages, connected, error, onSend, onInputF
         <label className="chat-input-label" htmlFor="lobby-chat-input">메시지 <small>{count}/150</small></label>
         <div className="chat-compose"><textarea ref={input} id="lobby-chat-input" rows={2} maxLength={300} disabled={!connected}
           placeholder={connected ? 'Enter로 대화 · ESC로 돌아가기' : '로비에 연결되면 채팅할 수 있어요'}
-          value={draft} onChange={event => { setDraft(event.target.value); onEdit() }} onFocus={onInputFocus} onBlur={onInputFocus}
+          value={draft} onChange={event => { setDraft(event.target.value); onEdit() }} onFocus={() => onInputFocus(true)} onBlur={() => onInputFocus(false)}
           onCompositionStart={() => { composing.current = true }} onCompositionEnd={() => { composing.current = false }}
           onKeyDown={event => {
             if (event.nativeEvent.isComposing || composing.current || event.keyCode === 229) return
