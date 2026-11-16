@@ -49,6 +49,8 @@ Allowed defaults are exactly:
 - `http://localhost:5188`, `http://127.0.0.1:5188`
 - the existing HTTPS service origin recorded in the project configuration
 
+Production Compose explicitly sets `LAB_MULTIPLAYER_ALLOWED_ORIGINS` to `https://seulgae-home-server.tailac4b36.ts.net,http://127.0.0.1:5188,http://localhost:5188`. These override the Java development defaults above; the old public domain is not allowed in this deployment. The integration tests verify welcome frames for all three allowed origins and HTTP 403 for the old domain, foreign/missing origins, lookalike hosts and wrong schemes/ports. See [safe server updates](operations.md).
+
 Override with Spring property `lab.multiplayer.allowed-origins` / environment `LAB_MULTIPLAYER_ALLOWED_ORIGINS` if the actual public URL differs. Use comma-separated exact origins without paths or trailing slashes; wildcards and absent Origin are rejected. Origin checking is not authentication and cannot identify a trusted non-browser client.
 
 `LAB_DEV_BACKEND_URL` optionally changes the local Vite HTTP/WS proxy target (default `http://127.0.0.1:8080`). Production always uses same-origin `/api` and `/ws/lobby`. No secrets are needed or embedded in frontend code.

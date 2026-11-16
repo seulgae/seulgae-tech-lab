@@ -102,9 +102,29 @@ ssh -N -T -o ExitOnForwardFailure=yes -L 5188:127.0.0.1:18082 seulgae@192.168.0.
 # 브라우저에서 http://127.0.0.1:5188 접속. 이미 사용 중인 로컬 5188 포트는 먼저 확인한다.
 ```
 
-로컬 터널의 5188은 기존 WebSocket Origin 허용 목록에 있는 포트다. 서버의 18082 직접 HTTP health 확인과 구분한다. 현재 `LobbyWebSocketConfig`의 기본 공개 Origin은 옛 호스트이므로 새 공개 주소가 결정되면 backend의 `lab.multiplayer.allowed-origins` 설정을 그 주소에 맞게 별도로 구성해야 한다. 호스트 셸에 환경변수를 export하는 것만으로는 Compose backend에 전달되지 않는다. 실제 공개 Origin을 확인하고 Compose backend environment의 `LAB_MULTIPLAYER_ALLOWED_ORIGINS`에 정확한 `https://호스트` 목록을 명시한 뒤 반영한다. wildcard는 사용하지 않는다. 이번 작업은 미확정 공개 주소를 추측해 추가하지 않는다.
+Compose backend의 `LAB_MULTIPLAYER_ALLOWED_ORIGINS`는 다음 3개 Origin으로 고정한다. 새 HTTPS 주소와 SSH 터널의 5188을 허용하고 옛 공개 도메인·와일드카드는 허용하지 않는다. Java 개발용 기본값과 별개로 운영 Compose 설정이 우선한다.
+
+- `https://seulgae-home-server.tailac4b36.ts.net`
+- `http://127.0.0.1:5188`
+- `http://localhost:5188`
+
+Origin 설정 변경은 아래 업데이트 절차로 새 검증 이미지와 함께 반영한다. `restart.sh`만으로 환경변수 변경을 적용하지 않는다. 호스트 셸에서 export만 하는 것도 컨테이너 설정을 바꾸지 않는다.
 
 새 공개 주소, DNS, Tailscale Serve/Funnel, 라우터는 별도 확인 대상이다. 스크립트는 기존 Funnel을 reset하지 않는다. 개발 DB 프록시의 새 서버 설치는 확인되지 않았으므로 옛 `deploy/dev-tunnel.ps1`을 신규 서버 설정으로 간주하지 않는다.
+
+## 기존 물리 서버 업데이트
+
+GitHub에서 이 변경이 포함된 main CI의 이미지·manifest 게시 완료를 확인한 후 새 서버에서 직접 실행한다. 자동 배포 변수는 계속 false로 유지한다. 작업 트리에 기존 수정이 있으면 먼저 조사하며 덮어쓰지 않는다.
+
+```bash
+cd /opt/homeserver/apps/seulgae-tech-lab
+git status --short
+git switch main && git pull --ff-only origin main
+python3 deploy/ops.py check && ./deploy.sh && ./status.sh
+./logs.sh backend
+```
+
+DB 및 Kafka를 중지하거나 마이그레이션을 재실행하지 않는다. 브라우저는 새 HTTPS 주소에서 새로고침해 로비 연결과 온라인 인원을 확인한다. 이미지 게시 전에 `deploy.sh`를 실행하면 기존 검증 릴리스를 선택할 수 있으므로 새 이미지 게시 여부를 먼저 확인한다.
 
 ## 검증 버전 선정과 상태 기록
 

@@ -223,7 +223,8 @@ class PreflightTests(unittest.TestCase):
         self.config = {'services': {'backend': {'environment': {
             'DB_URL': 'jdbc:postgresql://postgres-postgres-1:5432/stlab_prod?currentSchema=lab',
             'DB_USERNAME': 'stlab_prod_app', 'SPRING_SQL_INIT_MODE': 'never',
-            'SPRING_FLYWAY_ENABLED': 'false', 'SPRING_CONFIG_IMPORT': 'configtree:/run/secrets/'}}, 'frontend': {}},
+            'SPRING_FLYWAY_ENABLED': 'false', 'SPRING_CONFIG_IMPORT': 'configtree:/run/secrets/',
+            'LAB_MULTIPLAYER_ALLOWED_ORIGINS': 'https://seulgae-home-server.tailac4b36.ts.net,http://127.0.0.1:5188,http://localhost:5188'}}, 'frontend': {}},
             'secrets': {'prod_db_password': {'file': str(self.secret / 'prod-app-password')}}}
         self.enterContext(patch.object(ops, 'shared_snapshot', return_value={}))
         self.database = container(ops.DATABASE)

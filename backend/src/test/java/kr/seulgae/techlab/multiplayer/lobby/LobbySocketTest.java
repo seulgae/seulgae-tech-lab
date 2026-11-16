@@ -25,10 +25,11 @@ import static org.junit.jupiter.api.Assertions.*;
  * 실제 로컬 Tomcat의 핸드셰이크·방송·퇴장·입력 제한을 검증한다.
  *
  * @author seulgae
- * @version 1.0, DB 없는 HTTP 및 WebSocket 통합 검증
+ * @version 1.0, 물리 홈서버·SSH 터널 Origin 허용 및 위장 Origin 거부 검증
  * @see "None"
  */
-@SpringBootTest(classes = LocalLobbyTestApplication.class, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(classes = LocalLobbyTestApplication.class, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+    properties = "lab.multiplayer.allowed-origins=https://seulgae-home-server.tailac4b36.ts.net,http://127.0.0.1:5188,http://localhost:5188")
 class LobbySocketTest {
     @Autowired Environment environment;
     @Autowired LobbyRoom room;
@@ -107,8 +108,19 @@ class LobbySocketTest {
         assertFalse(a.closed.isDone()); assertFalse(room.player(id).moving());
     }
     private Client connect(String query) throws Exception {
+        return connect(query, "http://localhost:5188");
+    }
+
+    /**
+     * 지정 Origin으로 실제 핸드셰이크를 수행하고 종료 정리 대상에 등록한다.
+     * @param query 연결 URL에 붙일 테스트 쿼리
+     * @param origin 핸드셰이크에 전달할 Origin
+     * @return 연결된 테스트 방문자
+     * @throws Exception 연결 실패 또는 시간 초과
+     */
+    private Client connect(String query, String origin) throws Exception {
         var client = new Client();
-        client.socket = http.newWebSocketBuilder().header("Origin", "http://localhost:5173")
+        client.socket = http.newWebSocketBuilder().header("Origin", origin)
             .buildAsync(URI.create("ws://127.0.0.1:" + port() + "/ws/lobby" + query), client).get(5, TimeUnit.SECONDS);
         clients.add(client);
         return client;
@@ -241,8 +253,21 @@ class LobbySocketTest {
         assertFalse(client.closed.isDone());
     }
 
+    /** 운영 HTTPS 및 두 SSH 터널 Origin은 welcome 프레임까지 수신해야 한다. */
+    @Test void acceptsHomeServerAndTunnelOrigins() throws Exception {
+        for (String origin : List.of("https://seulgae-home-server.tailac4b36.ts.net",
+                "http://127.0.0.1:5188", "http://localhost:5188")) {
+            assertEquals("welcome", connect("", origin).type("welcome").get("type").stringValue());
+        }
+    }
+
+    /** 예전 도메인·위장 호스트·잘못된 스킴/포트·누락 Origin은 403으로 거부한다. */
     @Test void rejectsForeignAndMissingOrigins() {
-        for (String origin : List.of("https://example.invalid", "")) {
+        for (String origin : List.of("https://example.invalid", "", "null", "*",
+                "https://seulgae-server.tailac4b36.ts.net",
+                "https://seulgae-home-server.tailac4b36.ts.net.evil.invalid",
+                "http://seulgae-home-server.tailac4b36.ts.net",
+                "https://seulgae-home-server.tailac4b36.ts.net:8443", "http://localhost:5189")) {
             var builder = http.newWebSocketBuilder();
             if (!origin.isEmpty()) builder.header("Origin", origin);
             var exception = assertThrows(ExecutionException.class, () -> builder.buildAsync(URI.create("ws://127.0.0.1:" + port() + "/ws/lobby"), new Client()).get(5, TimeUnit.SECONDS));
