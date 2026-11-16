@@ -98,9 +98,11 @@ curl --fail --silent --show-error http://127.0.0.1:18082/api/health
 Windows에서 웹을 확인하려면 별도 PowerShell 창에서 터널을 유지한다.
 
 ```powershell
-ssh -N -T -o ExitOnForwardFailure=yes -L 18082:127.0.0.1:18082 seulgae@192.168.0.191
-# 브라우저에서 http://127.0.0.1:18082 접속
+ssh -N -T -o ExitOnForwardFailure=yes -L 5188:127.0.0.1:18082 seulgae@192.168.0.191
+# 브라우저에서 http://127.0.0.1:5188 접속. 이미 사용 중인 로컬 5188 포트는 먼저 확인한다.
 ```
+
+로컬 터널의 5188은 기존 WebSocket Origin 허용 목록에 있는 포트다. 서버의 18082 직접 HTTP health 확인과 구분한다. 현재 `LobbyWebSocketConfig`의 기본 공개 Origin은 옛 호스트이므로 새 공개 주소가 결정되면 backend의 `lab.multiplayer.allowed-origins` 설정을 그 주소에 맞게 별도로 구성해야 한다. 호스트 셸에 환경변수를 export하는 것만으로는 Compose backend에 전달되지 않는다. 실제 공개 Origin을 확인하고 Compose backend environment의 `LAB_MULTIPLAYER_ALLOWED_ORIGINS`에 정확한 `https://호스트` 목록을 명시한 뒤 반영한다. wildcard는 사용하지 않는다. 이번 작업은 미확정 공개 주소를 추측해 추가하지 않는다.
 
 새 공개 주소, DNS, Tailscale Serve/Funnel, 라우터는 별도 확인 대상이다. 스크립트는 기존 Funnel을 reset하지 않는다. 개발 DB 프록시의 새 서버 설치는 확인되지 않았으므로 옛 `deploy/dev-tunnel.ps1`을 신규 서버 설정으로 간주하지 않는다.
 
