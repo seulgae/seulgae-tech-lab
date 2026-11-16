@@ -78,7 +78,7 @@ export default class LobbyMultiplayer {
     if (own) {
       // 수신 콜백에서는 Body를 변경하지 않는다. ack 기준 오차만 기록한다.
       if (this.selfId !== selfId) this.reconciliation.reset(own)
-      else this.reconciliation.receive(own, this.player, Date.now())
+      else this.reconciliation.receive(own, this.player, Date.now(), this.player.getInput())
     }
     else if (!selfId) this.reconciliation.reset()
     this.selfId = selfId

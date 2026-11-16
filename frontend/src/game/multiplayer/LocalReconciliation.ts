@@ -1,4 +1,4 @@
-import type { PlayerState } from '../../features/multiplayer/model/protocol'
+import type { MoveInput, PlayerState } from '../../features/multiplayer/model/protocol'
 
 type Point = { x: number; y: number }
 
@@ -27,8 +27,11 @@ export default class LocalReconciliation {
     this.lastAck = -1; this.missingSince = null; this.lastError = 0
   }
 
-  /** 이미 처리한 입력 이후의 로컬 이동은 보존하고, 같은 이동 ack의 반복 보정은 피한다. */
-  receive(state: PlayerState, current: Point, now: number) {
+  /**
+   * ack 이후의 로컬 이동을 보존하며 허용 오차를 초과한 거리만 보정한다.
+   * @param input 현재 로컬 방향 입력. 지연된 정지 스냅샷과 새 이동을 구분한다.
+   */
+  receive(state: PlayerState, current: Point, now: number, input: MoveInput = { x: 0, y: 0 }) {
     if (state.ack < this.lastAck || state.ack === this.lastAck && state.moving) return
     const predicted = this.history.get(state.ack)
     if (!predicted) {
@@ -42,8 +45,10 @@ export default class LocalReconciliation {
     this.lastError = Math.hypot(x, y)
     if (this.lastError > 128) { this.reset(state); return }
     // 서버 고정 틱의 최대 10px 이동과 렌더링 프레임 차이를 허용한다.
-    const tolerance = state.moving ? 16 : 2
-    this.pending = this.lastError > tolerance ? { x, y } : { x: 0, y: 0 }
+    const tolerance = state.moving || input.x !== 0 || input.y !== 0 ? 16 : 2
+    // 경계 밖에서 전체 오차를 켜면 16px 부근의 작은 흔들림도 최대 보정 속도를 유발한다.
+    const excess = this.lastError > tolerance ? (this.lastError - tolerance) / this.lastError : 0
+    this.pending = excess > 0 ? { x: x * excess, y: y * excess } : { x: 0, y: 0 }
     for (const sequence of this.history.keys()) if (sequence < state.ack) this.history.delete(sequence)
   }
 
