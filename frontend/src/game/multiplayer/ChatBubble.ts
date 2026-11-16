@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { UI_FONT, crispText } from '../render/renderScale.ts'
 
 /**
  * 일반 텍스트를 픽셀 테두리 말풍선으로 표시하고 같은 캐릭터의 새 메시지에 재사용한다.
@@ -16,10 +17,10 @@ export default class ChatBubble {
   constructor(scene: Phaser.Scene, message: string) {
     this.scene = scene
     this.border = scene.add.graphics()
-    this.label = scene.add.text(0, 0, '', {
-      fontFamily: 'Arial, "Segoe UI Emoji", sans-serif', fontSize: '16px', color: '#243f43',
+    this.label = crispText(scene, 0, 0, '', {
+      fontFamily: `${UI_FONT}, "Segoe UI Emoji"`, fontSize: '16px', color: '#243f43',
       padding: { x: 9, y: 7 }, wordWrap: { width: 220, useAdvancedWrap: true },
-    }).setResolution(2)
+    })
     this.container = scene.add.container(0, 0, [this.border, this.label]).setDepth(1100)
     this.setMessage(message)
   }

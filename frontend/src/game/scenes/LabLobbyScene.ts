@@ -9,6 +9,7 @@ import { createRoomAssets } from '../assets/roomAssets'
 import { createRoomFx } from '../rooms/RoomFx'
 import type { RoomFx } from '../rooms/RoomFx'
 import { ROOM_THEMES } from '../rooms/roomThemes'
+import { applyRenderZoom, crispText } from '../render/renderScale'
 import LobbyMultiplayer from '../multiplayer/LobbyMultiplayer'
 import { SPAWN } from '../maps/lobbyLayout'
 import { MULTIPLAYER_EVENTS } from '../../features/multiplayer/model/protocol'
@@ -62,6 +63,7 @@ export default class LabLobbyScene extends Phaser.Scene {
     this.uiEvents.emit(MOBILE_INPUT.reset)
   }
 
+  private readonly resizeRender = () => applyRenderZoom(this)
   private readonly closePanel = () => {
     this.panelOpen = false
   }
@@ -120,10 +122,13 @@ export default class LabLobbyScene extends Phaser.Scene {
     } })
     this.uiEvents.once(MULTIPLAYER_EVENTS.dispose, this.stopMultiplayer)
     this.interactKey = this.input.keyboard?.addKey('E')
-    this.interactionHint = this.add.text(0, 0, '', {
-      fontFamily: 'monospace', fontSize: '14px', color: '#fff2d2',
+    this.interactionHint = crispText(this, 0, 0, '', {
+      fontSize: '14px', fontStyle: 'bold', color: '#fff2d2',
       backgroundColor: '#243f43', padding: { x: 12, y: 8 },
-    }).setOrigin(0.5).setResolution(2).setDepth(1000).setVisible(false)
+    }).setOrigin(0.5).setDepth(1000).setVisible(false)
+    // 렌더 캔버스 크기가 바뀌면 카메라 줌과 글자 해상도를 다시 맞춘다.
+    applyRenderZoom(this)
+    this.scale.on('resize', this.resizeRender)
 
     this.uiEvents.on(RESEARCH_EVENTS.closeResearch, this.closePanel)
     this.uiEvents.on(LAB_EVENTS.closePanel, this.closePanel)
@@ -144,6 +149,7 @@ export default class LabLobbyScene extends Phaser.Scene {
       this.setTableTalk(false)
       this.fx?.destroy()
       this.fx = undefined
+      this.scale.off('resize', this.resizeRender)
       this.uiEvents.off(MULTIPLAYER_EVENTS.dispose, this.stopMultiplayer)
       this.uiEvents.off(RESEARCH_EVENTS.closeResearch, this.closePanel)
       this.uiEvents.off(LAB_EVENTS.closePanel, this.closePanel)

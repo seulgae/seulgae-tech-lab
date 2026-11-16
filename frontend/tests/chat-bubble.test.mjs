@@ -3,6 +3,7 @@ import test from 'node:test'
 import vm from 'node:vm'
 import { readFileSync } from 'node:fs'
 import { stripTypeScriptTypes } from 'node:module'
+import { UI_FONT, crispText } from '../src/game/render/renderScale.ts'
 
 test('채팅 말풍선은 객체를 재사용하고 카메라 안에서 따라다니며 5초 후 소멸한다', t => {
   t.mock.timers.enable({ apis: ['Date'], now: 1000 })
@@ -16,7 +17,7 @@ test('채팅 말풍선은 객체를 재사용하고 카메라 안에서 따라�
   } }
   const source=stripTypeScriptTypes(readFileSync(new URL('../src/game/multiplayer/ChatBubble.ts',import.meta.url),'utf8'))
     .replace(/^import .*$/gm,'').replace('export default class ChatBubble','class ChatBubble')
-  const Bubble=vm.runInNewContext(source+'\nChatBubble',{Date,Math})
+  const Bubble=vm.runInNewContext(source+'\nChatBubble',{Date,Math,UI_FONT,crispText})
   const bubble=new Bubble(scene,'처음')
   assert.equal(created,3)
   assert.equal(bubble.update(790,80),true)

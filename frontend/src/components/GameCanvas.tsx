@@ -3,6 +3,7 @@ import type { RoomId } from '../game/maps/rooms'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Phaser from 'phaser'
 import LabLobbyScene from '../game/scenes/LabLobbyScene'
+import { RENDER_ZOOM_KEY, canvasSizeFor, renderZoomFor } from '../game/render/renderScale'
 import { RESEARCH_EVENTS } from '../features/research/researchEvents'
 import ResearchPanel from '../features/research/components/ResearchPanel'
 import LabInfoPanel from '../features/lab/components/LabInfoPanel'
@@ -89,10 +90,13 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
 
     // StrictMode의 첫 setup/cleanup에서는 생성 예약만 취소한다.
     const frameId = requestAnimationFrame(() => {
+      // 내부 해상도를 표시 크기×DPR에 맞춰 브라우저 확대·축소 없이 기기 픽셀과 1:1로 그린다.
+      const measure = () => canvasSizeFor(renderZoomFor(container.getBoundingClientRect().width, window.devicePixelRatio))
+      let size = measure()
       game = new Phaser.Game({
         type: Phaser.AUTO,
-        width: 800,
-        height: 600,
+        width: size.width,
+        height: size.height,
         parent: container,
         backgroundColor: '#ddd5bf',
         pixelArt: true,
@@ -103,8 +107,16 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
           arcade: { gravity: { x: 0, y: 0 } },
         },
         scene: [new LabLobbyScene(uiEvents, client)],
+        callbacks: { preBoot: booted => { booted.registry.set(RENDER_ZOOM_KEY, size.zoom) } },
       })
-      resizeObserver = new ResizeObserver(() => game?.scale.refresh())
+      resizeObserver = new ResizeObserver(() => {
+        if (!game) return
+        const next = measure()
+        if (next.width === size.width) { game.scale.refresh(); return }
+        size = next
+        game.registry.set(RENDER_ZOOM_KEY, size.zoom)
+        game.scale.resize(size.width, size.height)
+      })
       resizeObserver.observe(container)
       client.start()
     })

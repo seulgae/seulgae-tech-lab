@@ -7,6 +7,7 @@ import vm from 'node:vm'
 import { ROOMS, nearestInteraction, roomObstacles } from '../src/game/maps/rooms.ts'
 import { LAB_EVENTS } from '../src/features/lab/labEvents.ts'
 import { ROOM_THEMES } from '../src/game/rooms/roomThemes.ts'
+import { crispText } from '../src/game/render/renderScale.ts'
 import { isNearObject } from '../src/game/interaction.ts'
 import { RESEARCH_EVENTS } from '../src/features/research/researchEvents.ts'
 import { MOBILE_INPUT } from '../src/game/input/mobileInput.ts'
@@ -53,6 +54,7 @@ function createScene(room = 'lobby') {
     constructor() {
       this.events = new EventEmitter()
       this.cameras = { main: { setBackgroundColor() {}, fadeIn() {}, fadeOut() {} } }
+      this.scale = { listeners: new Set(), on(_event, fn) { this.listeners.add(fn) }, off(_event, fn) { this.listeners.delete(fn) } }
       this.physics = { add: { collider() {} } }
       this.input = { keyboard: { addKey: () => key, resetKeys: () => { state.resets++ } } }
       this.add = {
@@ -79,7 +81,8 @@ function createScene(room = 'lobby') {
   const LobbyScene = vm.runInNewContext(source + '\nLabLobbyScene', {
     Phaser: { Scene, Input: { Keyboard: { JustDown } }, Scenes: { Events: { SHUTDOWN: 'shutdown' } } },
     ROOMS, roomObstacles, nearestInteraction, setRoomObstacles() {}, Player, createLobbyMap: () => ({}), RESEARCH_EVENTS, LAB_EVENTS,
-    createRoomAssets() {}, ROOM_THEMES, createRoomFx: () => fx,
+    createRoomAssets() {}, ROOM_THEMES, createRoomFx: () => fx, crispText,
+    applyRenderZoom: () => { state.zoomApplied = (state.zoomApplied ?? 0) + 1 },
     hasTextInputFocus: () => state.textFocused,
     SPAWN: { x: 400, y: 400 }, MULTIPLAYER_EVENTS, MOBILE_INPUT, LobbyMultiplayer: class {
       update() {} destroy() {} stopInput() {}

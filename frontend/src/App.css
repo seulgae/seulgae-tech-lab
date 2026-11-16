@@ -14,7 +14,8 @@
 .game-card h1 { font-size: 18px; margin: 4px 0 0; font-weight: 500; letter-spacing: -.5px; }
 .room-label { font: 10px monospace; color: var(--room-accent, #a3b49a); white-space: nowrap; padding: 7px 9px; border: 1px solid var(--room-border, #496057); }
 .game-canvas { position: relative; width: 100%; aspect-ratio: 4 / 3; background: var(--room-background, #ddd5bf); overflow: hidden; }
-.game-canvas canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
+/* 캔버스 내부 해상도를 표시 크기×DPR에 맞추므로 브라우저 재샘플링이 없다. 픽셀아트는 Phaser(pixelArt)가 최근접으로 그린다. */
+.game-canvas canvas { display: block; image-rendering: auto; }
 .game-canvas:focus-visible { outline: 2px solid #e5c28b; outline-offset: -2px; }
 .game-controls { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 15px 20px; font-size: 11px; color: #a2b6a5; }
 .game-controls > span { display: flex; align-items: center; gap: 7px; }
