@@ -226,7 +226,7 @@ export default class MultiplayerClient {
         if (message.type === 'welcome') {
           this.scoped = message.roomId !== undefined; this.roomId = message.roomId ?? 'lobby'; this.roomEpoch = message.roomEpoch ?? 0
           this.travelling = false; clearTimeout(this.travelTimer)
-          this.updateStatus({roomId:this.roomId, travelling:false})
+          this.updateStatus({roomId:this.roomId, travelling:false, roomError:undefined})
           this.notify(c => c.room?.(this.roomId, false))
           this.serverTime = message.time
           this.selfId = message.selfId; this.sequence = 0; this.lastInputSent = -Infinity; this.lastTick = -1; this.attempts = 0
