@@ -156,6 +156,25 @@ test('연결·목록 변경·재연결·입력 전송·종료 정리를 중복 �
     assert.equal(client.sendChat('이전 서버'), false)
     assert.equal(client.canChat(), false)
     assert.equal(b.sent.filter(message => message.type === 'chat').length, 0)
+    // 새 프로토콜은 물리 스텝을 순서대로 묶고 같은 프레임의 방향 변경도 버리지 않는다.
+    b.receive({ ...welcome(second, [first, second]), protocolVersion: 4 })
+    assert.equal(client.usesCommands(), true)
+    const predicted = []
+    const unsubscribePrediction = client.subscribe({ predicted: command => predicted.push(command) })
+    const beforeCommands = b.sent.length
+    client.recordStep({ x: 1, y: 0 }, 1000 / 60)
+    client.recordStep({ x: -1, y: 0 }, 1000 / 60)
+    client.setInput({ x: 0, y: 0 })
+    t.mock.timers.tick(50)
+    const batches = b.sent.slice(beforeCommands)
+    assert.ok(batches.every(message => message.type === 'move' && message.inputs.length <= 8))
+    assert.deepEqual(batches.flatMap(message => message.inputs), predicted)
+    assert.deepEqual(predicted.map(command => command.x), [1, -1, 0])
+    assert.equal(predicted.at(-1).ms, 0)
+    const stoppedCount = b.sent.length
+    t.mock.timers.tick(200)
+    assert.equal(b.sent.length, stoppedCount)
+    unsubscribePrediction()
     b.receive({ type: 'state', tick: 1, players: [{ ...second, x: 10000 }] })
     assert.equal(b.lastCloseCode, 4002)
     const sentCount = b.sent.length

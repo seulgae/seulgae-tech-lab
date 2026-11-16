@@ -6,12 +6,13 @@ import RemotePlayer from './RemotePlayer'
 import ChatBubble from './ChatBubble'
 import LocalReconciliation from './LocalReconciliation'
 import MovementDiagnostics from './MovementDiagnostics'
+import AcknowledgedMovement from './AcknowledgedMovement'
 
 /**
  * 공유 소켓을 장면에서 구독하고 본인 예측 위치와 채팅 말풍선을 연결한다.
  *
  * @author seulgae
- * @version 1.0, 서버 스냅샷·로컬 예측·원격 캐릭터 및 채팅 구독
+ * @version 1.0, 완료 물리 스텝 재생·로컬 예측·원격 캐릭터 및 채팅 구독
  * @see "None"
  */
 export default class LobbyMultiplayer {
@@ -24,20 +25,32 @@ export default class LobbyMultiplayer {
   private readonly player: Player
   private readonly scene: Phaser.Scene
   private readonly reconciliation = new LocalReconciliation()
+  private readonly acknowledged = new AcknowledgedMovement()
+  /** Arcade가 실제로 완료한 스텝의 시간만 서버와 공유한다. 렌더 프레임 delta를 대입하지 않는다. */
+  private readonly physicsStep = (seconds: number) => {
+    this.client.recordStep(this.player.getInput(), seconds * 1000)
+  }
   private frameDelta = 16.67
   private readonly diagnostics = new MovementDiagnostics()
   private readonly afterPhysics = () => {
-    const hard = this.reconciliation.takeHardPosition()
-    if (hard) {
-      const actual = this.player.correctPosition(hard.x, hard.y, true)
-      this.diagnostics.corrected(Math.hypot(actual.x, actual.y), true)
-    }
-    else {
-      const requested = this.reconciliation.step(this.frameDelta)
-      if (requested.x || requested.y) {
-        const actual = this.player.correctPosition(this.player.x + requested.x, this.player.y + requested.y)
-        this.reconciliation.applied(actual, requested)
-        this.diagnostics.corrected(Math.hypot(actual.x, actual.y))
+    if (this.client.usesCommands()) {
+      const target = this.acknowledged.reconcile(this.player)
+      if (target) {
+        const actual = this.player.correctPosition(target.x, target.y, true)
+        this.diagnostics.corrected(Math.hypot(actual.x, actual.y), Math.hypot(actual.x, actual.y) > 128)
+      }
+    } else {
+      const hard = this.reconciliation.takeHardPosition()
+      if (hard) {
+        const actual = this.player.correctPosition(hard.x, hard.y, true)
+        this.diagnostics.corrected(Math.hypot(actual.x, actual.y), true)
+      } else {
+        const requested = this.reconciliation.step(this.frameDelta)
+        if (requested.x || requested.y) {
+          const actual = this.player.correctPosition(this.player.x + requested.x, this.player.y + requested.y)
+          this.reconciliation.applied(actual, requested)
+          this.diagnostics.corrected(Math.hypot(actual.x, actual.y))
+        }
       }
     }
     this.ownLabel.setPosition(this.player.x, this.player.y - 55)
@@ -45,7 +58,8 @@ export default class LobbyMultiplayer {
       const actor = id === this.selfId ? this.player : this.remotes.get(id)
       if (!actor || !bubble.update(actor.x, actor.y)) { bubble.destroy(); this.bubbles.delete(id) }
     }
-    this.diagnostics.frame(this.player.x, this.player.y, this.player.getInput(), this.frameDelta, this.reconciliation.lastError)
+    this.diagnostics.frame(this.player.x, this.player.y, this.player.getInput(), this.frameDelta,
+      this.client.usesCommands() ? this.acknowledged.lastError : this.reconciliation.lastError)
   }
 
   constructor(scene: Phaser.Scene, player: Player, client: MultiplayerClient) {
@@ -56,9 +70,10 @@ export default class LobbyMultiplayer {
     }).setOrigin(0.5).setResolution(2)
     this.unsubscribe = client.subscribe({
       inputSent: sequence => {
-        this.reconciliation.record(sequence, { x: this.player.x, y: this.player.y })
+        if (!client.usesCommands()) this.reconciliation.record(sequence, { x: this.player.x, y: this.player.y })
         this.diagnostics.sent()
       },
+      predicted: command => { if (!this.acknowledged.record(command)) client.restartMovement() },
       snapshot: (players, selfId) => this.applySnapshot(players, selfId),
       chat: message => this.showChat(message),
       status: info => {
@@ -66,6 +81,7 @@ export default class LobbyMultiplayer {
       },
     })
     scene.events.on(Phaser.Scenes.Events.POST_UPDATE, this.afterPhysics)
+    scene.physics.world.on(Phaser.Physics.Arcade.Events.WORLD_STEP, this.physicsStep)
   }
 
   private applySnapshot(players: PlayerState[], selfId: string | null) {
@@ -77,10 +93,13 @@ export default class LobbyMultiplayer {
     const own = players.find(player => player.id === selfId)
     if (own) {
       // 수신 콜백에서는 Body를 변경하지 않는다. ack 기준 오차만 기록한다.
-      if (this.selfId !== selfId) this.reconciliation.reset(own)
+      if (this.client.usesCommands()) {
+        if (this.selfId !== selfId) this.acknowledged.reset(own)
+        else this.acknowledged.receive(own)
+      } else if (this.selfId !== selfId) this.reconciliation.reset(own)
       else this.reconciliation.receive(own, this.player, Date.now(), this.player.getInput())
     }
-    else if (!selfId) this.reconciliation.reset()
+    else if (!selfId) { this.reconciliation.reset(); this.acknowledged.reset() }
     this.selfId = selfId
     const otherIds = new Set(players.filter(player => player.id !== selfId).map(player => player.id))
     for (const [id, remote] of this.remotes) {
@@ -117,7 +136,9 @@ export default class LobbyMultiplayer {
 
   destroy() {
     this.scene.events.off(Phaser.Scenes.Events.POST_UPDATE, this.afterPhysics)
+    this.scene.physics.world.off(Phaser.Physics.Arcade.Events.WORLD_STEP, this.physicsStep)
     this.reconciliation.reset()
+    this.acknowledged.reset()
     this.unsubscribe()
     for (const remote of this.remotes.values()) remote.destroy()
     this.remotes.clear(); this.ownLabel.destroy()

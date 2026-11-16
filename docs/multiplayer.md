@@ -81,3 +81,20 @@ Browser checks performed: two-player display, A movement visible in B, departure
 ## User-owned deployment checks
 
 No production server access, manual deploy, GitHub Actions execution/result monitoring, or production DB operation is part of this task. After deployment, the user should check same-origin WSS through nginx/Tailscale, the exact public Origin, multiple browser engines/networks, long-lived connections, ordinary research reads and reconnect after a real deployment. Local Docker/nginx execution depends on available tools; where Docker/nginx are unavailable, container/proxy runtime verification remains a user/CI check.
+# 완료 스텝 이동 프로토콜 v4 (2026-11-16)
+
+새 서버의 welcome은 `protocolVersion: 4`를 보낸다. 새 클라이언트는 Arcade `WORLD_STEP`이 실제로 완료한 각 스텝을 기록해 최대 20Hz, 메시지당 8개 이하로 묶는다.
+
+```json
+{"type":"move","inputs":[{"x":1,"y":0,"ms":16.666666666666668,"seq":1},{"x":0,"y":0,"ms":0,"seq":2}]}
+```
+
+`seq`는 물리 스텝 명령 번호이고 `ms`는 해당 스텝의 시간이다. 좌표와 클라이언트 절대 시각은 전송하지 않는다. 방향 전환을 전송 간격 사이에 버리지 않고 순서대로 보관한다. 정지는 0ms 명령 한 번이며, 이후 유휴 이동 메시지를 보내지 않는다. 물리 스텝이 한 렌더 프레임에 두 번 실행돼도 각각 기록하므로 30Hz 렌더링을 30Hz 물리로 오인하지 않는다.
+
+서버는 필드·정수 방향·연속 번호·스텝당 0~50ms·메시지당 8개·전체 메시지 1024바이트를 검증한다. 이동 방향에 0ms는 허용하지 않는다. 기존 메시지 빈도 제한도 유지한다. 서버 단조 시계로 충전되는 이동 시간 예산은 초기 250ms, 최대 2000ms이며 명령 시간만큼 소비한다. 정상 지연으로 몰린 입력은 허용하되 지속적으로 시간을 과장하는 입력은 거부한다. 명령 전체를 검증한 뒤 서버의 200px/초 정규화 이동과 공통 맵 충돌을 순서대로 적용한다. 중복 처리한 입력은 다시 이동시키지 않는다.
+
+v4 플레이어의 `ack`는 **스텝 처리가 끝난 위치**를 가리킨다. 서버 주기 갱신은 그 좌표를 추가 적분하지 않는다. 클라이언트는 해당 서버 위치에서 `ack` 이후의 미확인 스텝만 재생한다. 같은 ack의 반복 스냅샷으로 정지 위치를 계속 보정하지 않는다. 예측은 600스텝, 송신 대기는 120스텝으로 제한하고 초과하면 재접속한다. 종료 시 예측 기록·대기 명령·물리 리스너를 정리한다.
+
+배포 중 구형 캐시와의 호환을 위해 기존 `input`은 구형 서버 틱 방식으로 처리한다. v4 명령을 사용한 플레이어는 다시 구형 입력으로 전환하지 못한다. 새 클라이언트가 구형 서버에 연결되면 기존 입력 방식으로 동작한다. **수정 반영을 확인할 때는 두 창을 모두 새로고침한다.** `?netDebug=1`의 `[multiplayer] 이동 프로토콜`에서 `version: 4`, `mode: completed-steps`를 확인할 수 있다.
+
+서버까지의 전송 시간 자체는 남는다. 원격 캐릭터의 기존 보간은 유지하며, 이번 수정은 지연을 위치 오차로 오인해 본인 캐릭터가 정지 후에도 밀리는 경로를 바꾼다. 채팅 v3의 메시지 구조와 연구 API는 변경하지 않는다.
