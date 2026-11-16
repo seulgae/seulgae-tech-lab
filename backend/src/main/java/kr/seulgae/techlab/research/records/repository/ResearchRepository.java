@@ -77,6 +77,45 @@ public class ResearchRepository {
             .query((rs, row) -> map(rs)).single();
     }
 
+    /** @return "연구 아이디어 일지 #N" 형식 제목 중 가장 큰 N + 1, 없으면 1 */
+    public int nextIdeaNumber() {
+        return jdbc.sql("""
+            SELECT COALESCE(MAX(substring(title FROM '^연구 아이디어 일지 #([0-9]{1,6})$')::int), 0) + 1
+            FROM lab.research_records
+            """).query(Integer.class).single();
+    }
+
+    /** 수정 키 해시와 함께 아이디어 일지를 저장한다. 요약과 본문은 같은 130자 내용이다. */
+    public ResearchRecord createIdea(String title, String content, String editTokenHash) {
+        return jdbc.sql("""
+            INSERT INTO lab.research_records (id, title, summary, content, edit_token_hash)
+            VALUES (:id, :title, :content, :content, :hash)
+            RETURNING id, title, summary, content, created_at
+            """).param("id", UUID.randomUUID()).param("title", title).param("content", content).param("hash", editTokenHash)
+            .query((rs, row) -> map(rs)).single();
+    }
+
+    /**
+     * 기록의 수정 키 해시를 조회한다. 행이 없으면 빈 Optional, V1 기록처럼 해시가 없으면 값이 빈 문자열이다.
+     */
+    public Optional<String> editTokenHash(UUID id) {
+        return jdbc.sql("SELECT COALESCE(edit_token_hash, '') FROM lab.research_records WHERE id = :id")
+            .param("id", id).query(String.class).optional();
+    }
+
+    /** 제목·내용을 바꾸고 수정 시각을 기록한다. */
+    public ResearchRecord updateIdea(UUID id, String title, String content) {
+        return jdbc.sql("""
+            UPDATE lab.research_records SET title = :title, summary = :content, content = :content, updated_at = CURRENT_TIMESTAMP
+            WHERE id = :id RETURNING id, title, summary, content, created_at
+            """).param("id", id).param("title", title).param("content", content).query((rs, row) -> map(rs)).single();
+    }
+
+    /** @return 삭제한 행 수 */
+    public int delete(UUID id) {
+        return jdbc.sql("DELETE FROM lab.research_records WHERE id = :id").param("id", id).update();
+    }
+
     /**
      * 현재 결과 행을 연구 기록 상세 모델로 변환한다.
      *

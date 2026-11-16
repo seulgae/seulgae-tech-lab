@@ -8,7 +8,8 @@ import { RESEARCH_EVENTS } from '../features/research/researchEvents'
 import ResearchPanel from '../features/research/components/ResearchPanel'
 import LabInfoPanel from '../features/lab/components/LabInfoPanel'
 import { LAB_EVENTS } from '../features/lab/labEvents'
-import type { LabPanelKind } from '../features/lab/model/labTypes'
+import type { RoomPanelKind } from '../features/lab/model/labTypes'
+import AgendaPanel from '../features/boards/AgendaPanel'
 import MultiplayerStatus from '../features/multiplayer/components/MultiplayerStatus'
 import { INITIAL_CONNECTION, MULTIPLAYER_EVENTS } from '../features/multiplayer/model/protocol'
 import type { ConnectionInfo, ChatMessage, ChatError } from '../features/multiplayer/model/protocol'
@@ -37,7 +38,7 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
   const [chatAvailable, setChatAvailable] = useState(false)
   const [chatFocused, setChatFocused] = useState(false)
   const [controlsReset, setControlsReset] = useState(0)
-  const [labPanel, setLabPanel] = useState<LabPanelKind | null>(null)
+  const [labPanel, setLabPanel] = useState<RoomPanelKind | null>(null)
   const [tableTalk, setTableTalk] = useState(false)
 
   /** 다른 UI 갱신 중에도 조이스틱의 입력 콜백을 유지한다. */
@@ -82,7 +83,7 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
     eventRef.current = uiEvents
     const openResearch = () => setResearchOpen(true)
     uiEvents.on(RESEARCH_EVENTS.openResearch, openResearch)
-    const openLabPanel = (kind: LabPanelKind) => setLabPanel(kind)
+    const openLabPanel = (kind: RoomPanelKind) => setLabPanel(kind)
     uiEvents.on(LAB_EVENTS.openPanel, openLabPanel)
     uiEvents.on(LAB_EVENTS.tableTalk, setTableTalk)
     const resetMobile = () => setControlsReset(value => value + 1)
@@ -152,7 +153,8 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
       <MobileControls disabled={researchOpen || labPanel !== null || chatFocused || connection.travelling === true} resetToken={controlsReset}
         onMove={moveMobile} onInteract={interactMobile} />
       {researchOpen && <ResearchPanel onClose={closeResearch} />}
-      {labPanel && <LabInfoPanel kind={labPanel} onClose={closeLabPanel} />}
+      {labPanel === 'agenda' && <AgendaPanel onClose={closeLabPanel} />}
+      {labPanel && labPanel !== 'agenda' && <LabInfoPanel kind={labPanel} onClose={closeLabPanel} />}
     </>
   )
 }

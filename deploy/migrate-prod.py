@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Explicit one-time existing V1 migration. Never called by deploy/start/rollback."""
+"""Explicit production migration up to the latest schema (V2). Never called by deploy/start/rollback.
+
+Supported paths: empty DB -> V2 and existing V1 -> V2. A verified pg_dump backup is taken first;
+there is no automatic DB rollback.
+"""
 import fcntl
 import os
 from pathlib import Path
@@ -8,6 +12,19 @@ import subprocess
 import sys
 import tempfile
 import ops
+
+LATEST_SCHEMA = 2
+
+
+def migration_plan(version, release):
+    """Return the target schema, or None when production is already current."""
+    if version == LATEST_SCHEMA:
+        return None
+    if not 0 <= version < LATEST_SCHEMA:
+        raise ops.OpsError(f'Unsupported production schema V{version}; inspect schema manually')
+    if release['db_schema'] != {'min': LATEST_SCHEMA, 'max': LATEST_SCHEMA}:
+        raise ops.OpsError(f'Release does not declare schema V{LATEST_SCHEMA}')
+    return LATEST_SCHEMA
 
 
 def main():
@@ -18,20 +35,17 @@ def main():
     with (ops.STATE / 'operations.lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         version = ops.schema_version()
-        if version == 1:
-            print('Production schema is already V1. No migration performed.')
+        if version == LATEST_SCHEMA:
+            print(f'Production schema is already V{LATEST_SCHEMA}. No migration performed.')
             return
-        if version != 0:
-            raise ops.OpsError('Only the initial V1 migration is supported; inspect schema manually')
         release = ops.select_release()
-        if release['db_schema'] != {'min': 1, 'max': 1}:
-            raise ops.OpsError('Release does not match initial V1 schema')
+        target = migration_plan(version, release)
         ops.command(['git', '-C', str(ops.ROOT), 'fetch', '--quiet', 'origin', 'main'])
         ops.command(['git', '-C', str(ops.ROOT), 'merge-base', '--is-ancestor', release['sha'], 'origin/main'])
         before = ops.shared_snapshot()
         backups = ops.STATE / 'backups'
         backups.mkdir(exist_ok=True)
-        backup = backups / ('stlab-prod-before-v1-' + ops.stamp().replace(':', '-') + '.dump')
+        backup = backups / (f'stlab-prod-before-v{target}-' + ops.stamp().replace(':', '-') + '.dump')
         with backup.open('wb') as f:
             subprocess.run(['docker', 'exec', 'postgres-postgres-1', 'sh', '-c',
                             'exec pg_dump -Fc -U "$POSTGRES_USER" -d stlab_prod'], stdout=f, check=True)
@@ -59,11 +73,11 @@ def main():
                          '-e', 'DB_USERNAME=stlab_prod_migrator', '-e', 'MAVEN_OPTS=-Xmx512m -XX:ActiveProcessorCount=1',
                          'maven:3.9-eclipse-temurin-17', 'sh', '-c',
                          'export DB_PASSWORD="$(cat /run/secrets/migration-password)"; '
-                         'exec mvn -B -f /work/pom.xml -Dflyway.target=1 flyway:migrate flyway:validate'])
-        if ops.schema_version() != 1 or ops.shared_snapshot() != before:
+                         f'exec mvn -B -f /work/pom.xml -Dflyway.target={target} flyway:migrate flyway:validate'])
+        if ops.schema_version() != target or ops.shared_snapshot() != before:
             raise ops.OpsError('Post-migration verification failed; inspect backup and logs, no DB auto-restore')
-        ops.event('migrate-prod-v1', 'success', sha=release['sha'], backup=str(backup))
-        print(f'Production V1 applied and validated. Backup: {backup}. No DB rollback performed.')
+        ops.event(f'migrate-prod-v{target}', 'success', sha=release['sha'], backup=str(backup))
+        print(f'Production V{target} applied and validated. Backup: {backup}. No DB rollback performed.')
 
 
 if __name__ == '__main__':

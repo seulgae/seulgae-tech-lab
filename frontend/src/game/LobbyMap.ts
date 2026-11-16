@@ -32,16 +32,19 @@ export default function createLobbyMap(scene: Phaser.Scene, roomId: RoomId = 'lo
     const body = scene.add.rectangle(area.x, area.y, area.width, area.height).setVisible(false)
     obstacles.add(body)
   }
+  // 화분은 흔들기 연출을 위해 roomPlants와 같은 순서의 id로 이미지를 돌려준다.
+  const plants = new Map<string, Phaser.GameObjects.Image>()
   for (const object of objects) {
     const key = theme.textures[object.texture] ?? object.texture
     // 가구 아래 접지 그림자
     scene.add.ellipse(object.x, object.bottom - 2, object.body.width * 0.9, 10, 0x000000, 0.18).setDepth(object.bottom - 1)
-    scene.add.image(object.x, object.bottom, key).setOrigin(0.5, 1).setScale(2).setDepth(object.bottom)
+    const image = scene.add.image(object.x, object.bottom, key).setOrigin(0.5, 1).setScale(2).setDepth(object.bottom)
+    if (object.texture === 'plant') plants.set(`${roomId}-plant-${plants.size}`, image)
   }
 
   // 현재 가까운 상호작용 대상의 크기·위치로 장면이 매 프레임 옮겨 사용한다.
   const interactionHighlight = scene.add.rectangle(COMPUTER.x, COMPUTER.y + 2, 126, 80)
     .setStrokeStyle(2, hex(theme.page.accent)).setFillStyle(hex(theme.page.accent), 0.1)
     .setDepth(COMPUTER.y + COMPUTER.height / 2 + 1).setVisible(false)
-  return { obstacles, interactionHighlight }
+  return { obstacles, interactionHighlight, plants }
 }

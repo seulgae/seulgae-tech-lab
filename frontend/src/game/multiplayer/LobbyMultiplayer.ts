@@ -55,7 +55,8 @@ export default class LobbyMultiplayer {
         }
       }
     }
-    this.ownLabel.setPosition(this.player.x, this.player.y - 55)
+    const anchor = this.player.labelAnchor()
+    this.ownLabel.setPosition(anchor.x, anchor.y)
     for (const [id, bubble] of this.bubbles) {
       const actor = id === this.selfId ? this.player : this.remotes.get(id)
       if (!actor || !bubble.update(actor.x, actor.y)) { bubble.destroy(); this.bubbles.delete(id) }
@@ -123,7 +124,8 @@ export default class LobbyMultiplayer {
     this.frameDelta = delta
     this.client.setInput(this.player.getInput())
     for (const remote of this.remotes.values()) remote.update(delta)
-    this.ownLabel.setPosition(this.player.x, this.player.y - 55).setDepth(900)
+    const label = this.player.labelAnchor()
+    this.ownLabel.setPosition(label.x, label.y).setDepth(900)
   }
 
   private showChat(message: ChatMessage) {

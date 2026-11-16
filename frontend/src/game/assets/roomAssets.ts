@@ -2,6 +2,7 @@ import type Phaser from 'phaser'
 import { texture } from './pixelAssets.ts'
 import type { Paint } from './pixelAssets.ts'
 import { ROOM_THEMES } from '../rooms/roomThemes.ts'
+import { SKY_PALETTES, SKY_PHASES } from '../rooms/timeOfDay.ts'
 import type { RoomId } from '../maps/rooms.ts'
 
 const ink = '#15100d'
@@ -158,11 +159,12 @@ function lobbyFurniture(scene: Phaser.Scene) {
     p('#356c53', 11, 6, 3, 20); p('#3f7d4f', 1, 10, 10, 8); p('#5f9c5e', 3, 9, 8, 5)
     p('#2e5e46', 14, 3, 10, 10); p('#6fac67', 14, 4, 7, 5); p('#4f8c61', 7, 0, 9, 12); p('#8fc27a', 8, 1, 4, 7); p('#5f9c5e', 13, 16, 10, 6)
   })
+  // 유리(x 2~37, y 2~21)는 비워 두고 뒤에 시간대별 하늘(sky-*)을 깐다. 건물 실루엣과 창틀만 그린다.
   texture(scene, 'lobby-window', 40, 24, p => {
-    p('#3b2418', 0, 0, 40, 24); p('#c9a24b', 1, 1, 38, 1)
-    p('#9fd0f0', 2, 2, 36, 20); p('#c8e6f7', 2, 2, 36, 6); p('#f7e2b0', 28, 4, 5, 5)
-    p('#6f8fa8', 4, 13, 6, 9); p('#5d7d96', 11, 9, 5, 13); p('#7d9cb3', 17, 15, 7, 7); p('#5d7d96', 25, 11, 4, 11); p('#6f8fa8', 30, 14, 7, 8)
-    p('#fff2b8', 12, 12, 1, 1); p('#fff2b8', 14, 16, 1, 1); p('#fff2b8', 26, 14, 1, 1)
+    p('#3b2418', 0, 0, 40, 2); p('#3b2418', 0, 22, 40, 2); p('#3b2418', 0, 0, 2, 24); p('#3b2418', 38, 0, 2, 24)
+    p('#c9a24b', 1, 1, 38, 1)
+    p('#34465a', 4, 13, 6, 9); p('#2a3a4c', 11, 9, 5, 13); p('#3d5168', 17, 15, 7, 7); p('#2a3a4c', 25, 11, 4, 11); p('#34465a', 30, 14, 7, 8)
+    p('#ffd98a', 12, 12, 1, 1); p('#ffd98a', 14, 16, 1, 1); p('#ffd98a', 26, 14, 1, 1); p('#ffd98a', 6, 16, 1, 1); p('#ffd98a', 32, 17, 1, 1)
     p('#3b2418', 19, 2, 2, 20); p('#3b2418', 2, 11, 36, 1)
   })
   texture(scene, 'lobby-board', 64, 20, p => {
@@ -229,11 +231,22 @@ function meetingFurniture(scene: Phaser.Scene) {
     p('#ef4444', 6, 28, 5, 1); p('#3b82f6', 13, 28, 5, 1); p('#22c55e', 20, 28, 5, 1)
   })
   texture(scene, 'meeting-window', 40, 24, p => {
-    p('#5f3d24', 0, 0, 40, 24); p('#d9c4a0', 1, 1, 38, 1)
-    p('#bfe3d0', 2, 2, 36, 20); p('#e3f4ea', 2, 2, 36, 5)
-    p('#6c9775', 2, 15, 12, 7); p('#4f7a5a', 6, 12, 6, 4); p('#8fb996', 26, 14, 12, 8); p('#4f7a5a', 30, 11, 5, 4)
+    p('#5f3d24', 0, 0, 40, 2); p('#5f3d24', 0, 22, 40, 2); p('#5f3d24', 0, 0, 2, 24); p('#5f3d24', 38, 0, 2, 24)
+    p('#d9c4a0', 1, 1, 38, 1)
+    p('#3f6b4a', 2, 15, 12, 7); p('#2f5a3c', 6, 12, 6, 4); p('#4f7a5a', 26, 14, 12, 8); p('#2f5a3c', 30, 11, 5, 4)
     p('#5f3d24', 19, 2, 2, 20)
   })
+  // 창문 유리 크기(36×20)의 시간대별 하늘
+  for (const phase of SKY_PHASES) {
+    const sky = SKY_PALETTES[phase]
+    texture(scene, `sky-${phase}`, 36, 20, p => {
+      p(sky.top, 0, 0, 36, 7); p(sky.middle, 0, 7, 36, 7); p(sky.horizon, 0, 14, 36, 6)
+      p(sky.middle, 0, 6, 36, 1); p(sky.horizon, 0, 13, 36, 1)
+      for (let i = 0; i < sky.stars; i++) p('#ffffff', (i * 13 + 5) % 34 + 1, (i * 7 + 2) % 10 + 1, 1, 1)
+      if (sky.sun) { const { x, y, color } = sky.sun; p(color, x, y, 4, 4); p(color, x - 1, y + 1, 6, 2); p(color, x + 1, y - 1, 2, 6) }
+      if (sky.moon) { const { x, y } = sky.moon; p('#f4f1d0', x, y, 3, 4); p('#f4f1d0', x - 1, y + 1, 1, 2); p(sky.top, x + 1, y, 2, 2) }
+    })
+  }
   texture(scene, 'meeting-sign', 32, 10, p => {
     p('#2a1d14', 0, 0, 32, 10); p('#5f3d24', 1, 1, 30, 8)
   })
@@ -282,6 +295,15 @@ function effects(scene: Phaser.Scene) {
   })
   texture(scene, 'spark', 3, 3, (p: Paint) => { p('#ffffff', 1, 0, 1, 3); p('#ffffff', 0, 1, 3, 1) })
   texture(scene, 'dot', 2, 2, p => p('#ffffff', 0, 0, 2, 2))
+  // 떨어지는 나뭇잎 (tint로 녹색 계열 변주)
+  texture(scene, 'leaf', 4, 3, p => { p('#ffffff', 1, 0, 2, 1); p('#ffffff', 0, 1, 4, 1); p('#ffffff', 1, 2, 2, 1) })
+  // 의자에 앉은 연구원(뒷모습). 의자 등받이 위로 머리와 어깨만 보인다.
+  texture(scene, 'researcher-sit', 16, 20, p => {
+    p('#2c4147', 4, 1, 8, 9); p('#553f38', 4, 1, 8, 8); p('#78554a', 5, 1, 6, 1)
+    p('#edc99b', 4, 8, 1, 2); p('#edc99b', 11, 8, 1, 2)
+    p('#38595c', 3, 10, 10, 10); p('#f2ead1', 4, 10, 8, 9); p('#d7d9c2', 6, 10, 4, 2)
+    p('#edd3a7', 2, 12, 2, 4); p('#edd3a7', 12, 12, 2, 4)
+  })
   texture(scene, 'confetti', 3, 2, p => p('#ffffff', 0, 0, 3, 2))
   texture(scene, 'clock-face', 14, 14, p => {
     p('#5f3d24', 3, 0, 8, 14); p('#5f3d24', 0, 3, 14, 8); p('#5f3d24', 1, 1, 12, 12)

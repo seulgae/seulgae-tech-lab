@@ -54,6 +54,7 @@ function createScene(room = 'lobby') {
     constructor() {
       this.events = new EventEmitter()
       this.cameras = { main: { setBackgroundColor() {}, fadeIn() {}, fadeOut() {} } }
+      this.time = { now: 0 }
       this.scale = { listeners: new Set(), on(_event, fn) { this.listeners.add(fn) }, off(_event, fn) { this.listeners.delete(fn) } }
       this.physics = { add: { collider() {} } }
       this.input = { keyboard: { addKey: () => key, resetKeys: () => { state.resets++ } } }
@@ -74,6 +75,8 @@ function createScene(room = 'lobby') {
     constructor(_scene, x, y) { this.x = x; this.y = y; this.movementEnabled = true }
     update(enabled = true, touch = { x: 0, y: 0 }) { this.movementEnabled = enabled; this.touch = enabled ? touch : { x: 0, y: 0 } }
     getInput() { return this.touch }
+    sit(seat) { this.seat = seat }
+    labelAnchor() { return { x: this.x, y: this.y - 55 } }
   }
   const source = stripTypeScriptTypes(readFileSync(new URL('../src/game/scenes/LabLobbyScene.ts', import.meta.url), 'utf8'))
     .replace(/^import .*$/gm, '')
@@ -88,7 +91,8 @@ function createScene(room = 'lobby') {
       update() {} destroy() {} stopInput() {}
     },
   })
-  const scene = new LobbyScene(uiEvents, { currentRoom() { return room }, isTravelling() { return false }, subscribe() { return () => {} }, setInput(input) { state.sentInput = input }, changeRoom(id) { state.changed = id; return true } })
+  const scene = new LobbyScene(uiEvents, { currentRoom() { return room }, isTravelling() { return false }, subscribe() { return () => {} }, setInput(input) { state.sentInput = input }, changeRoom(id) { state.changed = id; return true },
+    sit(id) { (state.sits ??= []).push(id); return true }, selfSeat() { return state.serverSeat ?? null } })
   scene.create()
   return { scene, uiEvents, key, state }
 }
@@ -212,7 +216,7 @@ test('터치 E는 범위 밖에서 예약되지 않고 패널 동안 재실행�
 })
 
 test('모든 방에 스폰과 겹치지 않는 상호작용이 있고 위치별로 하나만 고른다', () => {
-  const kinds = new Set(['research', 'build-info', 'server-status', 'table-talk'])
+  const kinds = new Set(['research', 'build-info', 'server-status', 'table-talk', 'agenda'])
   for (const [id, room] of Object.entries(ROOMS)) {
     assert.ok(room.interactions.length > 0, id)
     for (const interaction of room.interactions) {
@@ -305,4 +309,66 @@ test('테이블 대화 상태는 방 연출(회의 모드)에도 전달된다', 
   scene.player.x = 350; scene.player.y = 340
   key._justDown = true; scene.update()
   assert.deepEqual(state.fx.calls.filter(call => call[0] === 'tableTalk'), [['tableTalk', true]])
+})
+
+test('의자 E는 앉기를 요청하고 같은 의자 E는 일어나며, 서버가 확인하지 않으면 1.5초 뒤 일어난다', () => {
+  const { scene, key, state } = createScene('lobby')
+  // 로비 의자 0(620,418)은 키오스크 아래에 있다. 의자 뒤(아래)에서 다가간다.
+  scene.player.x = 620; scene.player.y = 450
+  scene.update()
+  assert.equal(scene.interactionHint.text, 'E · 앉기')
+  key._justDown = true; scene.update()
+  assert.deepEqual(state.sits, ['lobby-chair-0'])
+  assert.equal(scene.player.seat.id, 'lobby-chair-0')
+  assert.equal(scene.interactionHint.text, 'E · 앉기')
+  scene.update()
+  assert.equal(scene.interactionHint.text, 'E · 일어나기')
+  key._justDown = true; scene.update()
+  assert.deepEqual(state.sits, ['lobby-chair-0', null])
+  assert.equal(scene.player.seat, undefined)
+
+  key._justDown = true; scene.update()
+  state.serverSeat = null
+  scene.time.now = 1600; scene.update()
+  assert.equal(scene.player.seat, undefined, '서버가 거부하면 일어난다')
+  key._justDown = true; scene.update()
+  state.serverSeat = 'lobby-chair-0'
+  scene.time.now = 4000; scene.update()
+  assert.equal(scene.player.seat.id, 'lobby-chair-0', '서버가 확인하면 계속 앉아 있다')
+})
+
+test('회의실 의자에 앉으면 테이블 대화가 켜지고 일어나면 꺼진다', () => {
+  const { scene, uiEvents, key, state } = createScene('meeting-room')
+  const talk = []
+  uiEvents.on(LAB_EVENTS.tableTalk, value => talk.push(value))
+  scene.player.x = 400; scene.player.y = 385
+  scene.update()
+  assert.equal(scene.interactionHint.text, 'E · 앉기', '의자 뒤에서는 테이블보다 의자가 가깝다')
+  key._justDown = true; scene.update()
+  assert.deepEqual(state.sits, ['meeting-room-chair-1'])
+  assert.deepEqual(talk, [true])
+  scene.update()
+  assert.deepEqual(talk, [true], '의자에 앉아 있는 동안 유지한다')
+  scene.player.sit(undefined); scene.update()
+  assert.deepEqual(talk, [true, false])
+})
+
+test('식물과 회의 안건은 방 연출·안건 패널로 전달된다', () => {
+  const lobby = createScene('lobby')
+  lobby.state.fx.intercepting = true
+  lobby.scene.player.x = 66; lobby.scene.player.y = 150
+  lobby.scene.update()
+  assert.equal(lobby.scene.interactionHint.text, 'E · 식물 건드리기')
+  lobby.key._justDown = true; lobby.scene.update()
+  assert.deepEqual(lobby.state.fx.calls.at(-1), ['intercept', 'plant'])
+
+  const meeting = createScene('meeting-room')
+  const opened = []
+  meeting.uiEvents.on(LAB_EVENTS.openPanel, value => opened.push(value))
+  meeting.scene.player.x = 400; meeting.scene.player.y = 196
+  meeting.scene.update()
+  assert.equal(meeting.scene.interactionHint.text, 'E · 회의 안건')
+  meeting.key._justDown = true; meeting.scene.update()
+  assert.deepEqual(opened, ['agenda'])
+  assert.equal(meeting.scene.player.movementEnabled, false)
 })

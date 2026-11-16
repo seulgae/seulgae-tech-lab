@@ -25,10 +25,10 @@ public class LobbyRoom {
      * 스냅샷에 포함할 서버 기준 플레이어 상태이다.
      *
      * @author seulgae
-     * @version 1.0, 위치·방향·이동 및 수신 입력 번호 전달
+     * @version 1.1, 위치·방향·이동·수신 입력 번호와 앉은 의자(seat, 없으면 null) 전달
      * @see "None"
      */
-    public record PlayerView(String id, String nickname, double x, double y, String facing, boolean moving, long ack) {}
+    public record PlayerView(String id, String nickname, double x, double y, String facing, boolean moving, long ack, String seat) {}
     /**
      * 클라이언트에서 완료한 한 물리 스텝의 방향과 시간이다. 좌표는 받지 않는다.
      * @author seulgae
@@ -45,6 +45,7 @@ public class LobbyRoom {
     private static final class Member {
         String id, nickname, facing = "down";
         String roomId = "lobby";
+        String seat;
         long roomEpoch, movedAt;
         double x, y;
         int inputX, inputY;
@@ -56,7 +57,7 @@ public class LobbyRoom {
         long receivedSequence = -1;
         double pendingMs;
         final ArrayDeque<MoveCommand> pending = new ArrayDeque<>();
-        PlayerView view() { return new PlayerView(id, nickname, x, y, facing, moving, sequence); }
+        PlayerView view() { return new PlayerView(id, nickname, x, y, facing, moving, sequence, seat); }
     }
     private final LinkedHashMap<String, Member> members = new LinkedHashMap<>();
     private final LobbyWorld world;
@@ -170,6 +171,8 @@ public class LobbyRoom {
         member.budgetAt = now;
         while (!member.pending.isEmpty() && member.pending.peekFirst().ms() <= member.timeBudget + 0.001) {
             var command = member.pending.removeFirst();
+            // 실제로 움직이는 명령이 처리되면 자리에서 일어난다.
+            if (command.x() != 0 || command.y() != 0) member.seat = null;
             member.timeBudget = Math.max(0, member.timeBudget - command.ms());
             member.pendingMs = Math.max(0, member.pendingMs - command.ms());
             double length = Math.hypot(command.x(), command.y());
@@ -201,6 +204,7 @@ public class LobbyRoom {
             }
             int x = now - member.inputAt <= 300_000_000L ? member.inputX : 0;
             int y = now - member.inputAt <= 300_000_000L ? member.inputY : 0;
+            if (x != 0 || y != 0) member.seat = null;
             if (y != 0) member.facing = y < 0 ? "up" : "down";
             else if (x != 0) member.facing = x < 0 ? "left" : "right";
             double length = Math.hypot(x, y);
@@ -226,11 +230,26 @@ public class LobbyRoom {
         if (m == null || m.movedAt != 0 && now - m.movedAt < 1_000_000_000L) throw new IllegalArgumentException("Room transition cooldown");
         String target = world.destination(m.roomId, doorId, m.x, m.y);
         var spawn = world.roomSpawn(target);
-        m.roomId = target; m.roomEpoch++; m.movedAt = now;
+        m.roomId = target; m.roomEpoch++; m.movedAt = now; m.seat = null;
         m.x = spawn.x(); m.y = spawn.y(); m.facing = "down"; m.moving = false;
         m.inputX = 0; m.inputY = 0; m.sequence = -1; m.receivedSequence = -1;
         m.pending.clear(); m.pendingMs = 0; m.timeBudget = 250; m.budgetAt = now;
         return m.view();
+    }
+
+    /**
+     * 의자에 앉거나(seatId) 일어난다(null). 서버 좌표가 의자 근처이고 다른 사람이 앉아 있지 않을 때만 앉는다.
+     * 위치는 바꾸지 않으며, 다음 이동 명령이 처리되면 자동으로 일어난다.
+     * @return 상태를 바꿨으면 true
+     */
+    public synchronized boolean sit(String id, String seatId) {
+        var m = members.get(id);
+        if (m == null) return false;
+        if (seatId == null) { boolean changed = m.seat != null; m.seat = null; return changed; }
+        if (!world.nearSeat(m.roomId, seatId, m.x, m.y)) return false;
+        for (var other : members.values()) if (other != m && other.roomId.equals(m.roomId) && seatId.equals(other.seat)) return false;
+        m.seat = seatId; m.moving = false;
+        return true;
     }
 
     /** 서버 좌표 기준으로 플레이어가 현재 방의 지정 상호작용 범위 안에 있는지 확인한다. */

@@ -171,7 +171,7 @@ test('수신 콜백은 위치를 쓰지 않고 postUpdate에서만 보정하며 
   }
   const label = { setOrigin() { return this }, setResolution() { return this }, setPosition() { return this }, destroy() {} }
   const scene = { add: { text: () => label }, events: new EventEmitter(), physics: { world: new EventEmitter() } }
-  const player = { x: 400, y: 400, changes: 0, getInput: () => ({ x: 1, y: 0 }),
+  const player = { x: 400, y: 400, changes: 0, getInput: () => ({ x: 1, y: 0 }), labelAnchor() { return { x: this.x, y: this.y - 55 } },
     correctPosition(x, y) { const delta = { x: x-this.x, y: y-this.y }; this.x=x;this.y=y;this.changes++;return delta },
   }
   const source = stripTypeScriptTypes(readFileSync(new URL('../src/game/multiplayer/LobbyMultiplayer.ts', import.meta.url), 'utf8'))

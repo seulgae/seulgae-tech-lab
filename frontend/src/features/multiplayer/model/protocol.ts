@@ -3,7 +3,8 @@ import type { RoomId } from '../../../game/maps/rooms'
 export type Facing = 'down' | 'up' | 'left' | 'right'
 export type MoveInput = { x: number; y: number }
 export type MoveCommand = MoveInput & { seq: number; ms: number }
-export type PlayerState = { id: string; nickname: string; x: number; y: number; facing: Facing; moving: boolean; ack: number }
+/** seat: 서버가 확인한 앉은 의자 id(예: meeting-room-chair-1), 서 있으면 null. 구형 서버는 보내지 않는다. */
+export type PlayerState = { id: string; nickname: string; x: number; y: number; facing: Facing; moving: boolean; ack: number; seat?: string | null }
 export type ConnectionInfo = { roomId?: RoomId; roomOnline?: number; totalOnline?: number; travelling?: boolean; roomError?: string; phase: 'connecting' | 'online' | 'reconnecting'; nickname: string; online: number; maxPlayers: number; message: string }
 export type ChatMessage = { type: 'chat_message'; messageId: string; playerId: string; nickname: string; message: string; sentAt: string; scope?: ChatScope }
 /** room은 같은 방 전체, table은 서버가 확인한 회의 테이블 주변 참가자에게만 전달한다. */
@@ -48,6 +49,7 @@ function validPlayer(value: unknown): value is PlayerState {
   return validId(p.id) && validNickname(p.nickname) && Number.isFinite(p.x) && p.x >= 0 && p.x <= 800
     && Number.isFinite(p.y) && p.y >= 0 && p.y <= 600 && ['up', 'down', 'left', 'right'].includes(p.facing)
     && typeof p.moving === 'boolean' && Number.isSafeInteger(p.ack) && p.ack >= -1
+    && (p.seat === undefined || p.seat === null || typeof p.seat === 'string' && /^[a-z-]{1,32}-chair-[0-9]{1,2}$/.test(p.seat))
 }
 
 /** 서버 프레임도 크기·좌표·열거값을 확인한 뒤 장면과 UI에 전달한다. */

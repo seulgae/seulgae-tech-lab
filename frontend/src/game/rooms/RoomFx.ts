@@ -6,8 +6,10 @@ import DoorAnimator from './DoorAnimator'
 import { MONO_FONT, UI_FONT, crispText } from '../render/renderScale'
 import { ROOM_THEMES } from './roomThemes'
 import {
-  BOARD_MESSAGES, CiPipeline, LOBBY_ANNOUNCEMENTS, MEETING_AGENDA, RACK_LABELS, ServerAlert, detectArrivals, nextDelay, rotate,
+  BOARD_MESSAGES, CiPipeline, LOBBY_ANNOUNCEMENTS, RACK_LABELS, ServerAlert, detectArrivals, nextDelay, rotate,
 } from './roomEventLogic'
+import { SKY_PALETTES, clockAngles, clockLabel, skyPhase } from './timeOfDay'
+import { AGENDAS_CHANGED, fetchAgendas } from '../../features/boards/boardsApi'
 
 /** Scene이 사용하는 방 연출 핸들. 문·장식·이벤트를 한 번에 정리한다. */
 export type RoomFx = {
@@ -20,7 +22,7 @@ export type RoomFx = {
   destroy(): void
 }
 
-type Options = { from?: RoomId; client: MultiplayerClient }
+type Options = { from?: RoomId; client: MultiplayerClient; plants?: Map<string, Phaser.GameObjects.Image> }
 const hex = (color: string) => Phaser.Display.Color.HexStringToColor(color).color
 const BANNER_DEPTH = 1100
 const DIM_DEPTH = 900
@@ -36,10 +38,12 @@ export function createRoomFx(scene: Phaser.Scene, roomId: RoomId, options: Optio
   const banner = new Banner(scene, ROOM_THEMES[roomId].page.accent)
   const builders = { lobby: lobbyFx, 'development-lab': developmentFx, 'server-room': serverFx, 'meeting-room': meetingFx } as const
   const room = builders[roomId](new Context(scene, banner, options))
+  const shakePlant = plantShaker(scene, options.plants ?? new Map())
   if (roomId !== 'lobby') banner.show(`${ROOMS[roomId].name}에 들어왔어요`)
   return {
     doors,
-    intercept: target => room.intercept?.(target) ?? false,
+    // 식물은 모든 방에서 E로 흔들 수 있다. 나머지는 방 이벤트가 먼저 처리할 기회를 갖는다.
+    intercept: target => target.kind === 'plant' ? (shakePlant(target.id), true) : room.intercept?.(target) ?? false,
     hint: target => room.hint?.(target),
     setTableTalk: active => room.setTableTalk?.(active),
     destroy: () => { room.destroy?.(); banner.destroy() },
@@ -100,10 +104,8 @@ class Banner {
 /** 로비: 창문과 샹들리에, 안내판, 안내 방송, 도착 환영 */
 function lobbyFx(ctx: Context): RoomHandlers {
   const { scene } = ctx
-  for (const x of [150, 650]) {
-    scene.add.image(x, 32, 'lobby-window').setScale(2).setDepth(61)
-    ctx.glow(x, 110, '#fff2c8', 3, 4, 0.18, -40)
-  }
+  const sky = skyWindows(ctx, 'lobby-window')
+  wallClock(ctx, 540, '#3b2418', '#8c2f39')
   scene.add.image(400, 32, 'lobby-board').setScale(2).setDepth(61)
   const board = ctx.text(400, 32, BOARD_MESSAGES[0], 10, '#ffd89a', 62, true)
   let boardIndex = 0
@@ -111,8 +113,9 @@ function lobbyFx(ctx: Context): RoomHandlers {
     scene.tweens.add({ targets: board, alpha: 0, duration: 200, yoyo: true, onYoyo: () => board.setText(rotate(BOARD_MESSAGES, ++boardIndex)) })
   })
   scene.add.image(400, 84, 'chandelier').setScale(2).setDepth(140)
-  const warm = ctx.glow(400, 130, '#ffd89a', 10, 7, 0.22, -30)
-  scene.tweens.add({ targets: warm, alpha: 0.3, duration: 2400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' })
+  // 밤일수록 샹들리에를 밝힌다.
+  const warm = ctx.glow(400, 130, '#ffd89a', 10, 7, 0.22 * sky.indoor, -30)
+  scene.tweens.add({ targets: warm, alpha: 0.3 * sky.indoor, duration: 2400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' })
   const sparkle = scene.add.particles(0, 0, 'spark', {
     emitting: false, lifespan: 900, speed: { min: 30, max: 110 }, gravityY: 90, scale: { start: 2, end: 0 },
     alpha: { start: 1, end: 0 }, tint: [0xffd89a, 0xfff2b8, 0xe0b867],
@@ -251,26 +254,12 @@ function serverFx(ctx: Context): RoomHandlers {
 /** 회의실: 창문·시계·화이트보드 안건, 커피 김, 테이블 대화 회의 모드 */
 function meetingFx(ctx: Context): RoomHandlers {
   const { scene } = ctx
-  for (const x of [150, 650]) {
-    scene.add.image(x, 32, 'meeting-window').setScale(2).setDepth(61)
-    ctx.glow(x, 110, '#fff2c8', 3, 4, 0.16, -40)
-  }
-  scene.add.image(540, 32, 'clock-face').setScale(2).setDepth(61)
-  const hands = scene.add.graphics().setDepth(62)
-  const drawClock = () => {
-    const now = new Date()
-    const minute = (now.getMinutes() / 60) * Math.PI * 2, hour = ((now.getHours() % 12 + now.getMinutes() / 60) / 12) * Math.PI * 2
-    hands.clear().lineStyle(2, 0x5f3d24).lineBetween(540, 32, 540 + Math.sin(hour) * 6, 32 - Math.cos(hour) * 6)
-      .lineStyle(1, 0x8c2f39).lineBetween(540, 32, 540 + Math.sin(minute) * 9, 32 - Math.cos(minute) * 9)
-  }
-  drawClock()
-  scene.time.addEvent({ delay: 1000, loop: true, callback: drawClock })
+  skyWindows(ctx, 'meeting-window')
+  wallClock(ctx, 540, '#5f3d24', '#8c2f39')
 
   scene.add.image(260, 32, 'meeting-sign').setScale(2).setDepth(61)
   const sign = ctx.text(260, 32, '회의 대기', 12, '#c4b8a2', 62)
-  const agenda = ctx.text(400, 86, MEETING_AGENDA[0], 11, '#1e293b', 200)
-  let item = 0
-  ctx.every(9000, 9000, () => scene.tweens.add({ targets: agenda, alpha: 0, duration: 220, yoyo: true, onYoyo: () => agenda.setText(rotate(MEETING_AGENDA, ++item)) }))
+  const stopBoard = agendaBoard(ctx)
 
   const pendant = ctx.glow(400, 250, '#ffe2b0', 9, 5, 0.2, -30)
   for (const x of [376, 424]) {
@@ -287,6 +276,86 @@ function meetingFx(ctx: Context): RoomHandlers {
       sign.setText(active ? '● 회의 중' : '회의 대기').setColor(active ? '#f87171' : '#c4b8a2')
       ctx.banner.show(active ? '회의 모드 · 테이블 주변 사람에게만 대화가 전달돼요' : '회의 모드를 마쳤어요', ROOM_THEMES['meeting-room'].page.accent)
     },
-    destroy: () => ctx.stop(),
+    destroy: () => { ctx.stop(); stopBoard() },
   }
+}
+
+/** 화분을 누르거나 E를 누르면 흔들리며 나뭇잎이 떨어진다. 흔들리는 중에는 다시 시작하지 않는다. */
+function plantShaker(scene: Phaser.Scene, plants: Map<string, Phaser.GameObjects.Image>) {
+  const leaves = scene.add.particles(0, 0, 'leaf', {
+    emitting: false, lifespan: { min: 1400, max: 2200 }, speedX: { min: -45, max: 45 }, speedY: { min: -40, max: 0 }, gravityY: 70,
+    rotate: { min: 0, max: 360 }, scale: { start: 2, end: 1.5 }, alpha: { start: 1, end: 0 }, tint: [0x4f8c61, 0x73a570, 0x92ba7b, 0xb5c97a],
+  }).setDepth(980)
+  const shake = (id: string) => {
+    const image = plants.get(id)
+    if (!image || image.getData('shaking')) return
+    image.setData('shaking', true)
+    scene.tweens.add({ targets: image, angle: { from: -7, to: 7 }, duration: 90, yoyo: true, repeat: 3, ease: 'Sine.easeInOut',
+      onComplete: () => { image.setAngle(0); image.setData('shaking', false) } })
+    leaves.explode(9, image.x, image.y - image.displayHeight * 0.75)
+  }
+  for (const [id, image] of plants) image.setInteractive({ useHandCursor: true }).on('pointerdown', () => shake(id))
+  return shake
+}
+
+/** 창문 유리 뒤에 현재 시간대의 하늘을 깔고, 창으로 들어오는 빛 색도 맞춘다. 1분마다 갱신한다. */
+function skyWindows(ctx: Context, frame: 'lobby-window' | 'meeting-window') {
+  const { scene } = ctx
+  const views = [150, 650].map(x => ({
+    sky: scene.add.image(x, 32, 'sky-noon').setScale(2).setDepth(60.5),
+    beam: (scene.add.image(x, 32, frame).setScale(2).setDepth(61), ctx.glow(x, 110, '#ffffff', 3, 4, 0.18, -40)),
+  }))
+  const apply = () => {
+    const phase = skyPhase(new Date())
+    const palette = SKY_PALETTES[phase]
+    for (const { sky, beam } of views) { sky.setTexture(`sky-${phase}`); beam.setTint(hex(palette.light)).setAlpha(palette.lightAlpha) }
+    return palette
+  }
+  const palette = apply()
+  scene.time.addEvent({ delay: 60_000, loop: true, callback: apply })
+  return palette
+}
+
+/** 실제 현재 시각을 가리키는 벽시계(초침 포함)와 디지털 표시 */
+function wallClock(ctx: Context, x: number, frameColor: string, accent: string) {
+  const { scene } = ctx
+  scene.add.image(x, 28, 'clock-face').setScale(3).setDepth(61)
+  const hands = scene.add.graphics().setDepth(62)
+  const label = ctx.text(x, 56, '', 10, '#fff7e6', 62, true)
+  const draw = () => {
+    const now = new Date(), { hour, minute, second } = clockAngles(now)
+    const at = (angle: number, length: number) => [x + Math.sin(angle) * length, 28 - Math.cos(angle) * length] as const
+    hands.clear()
+      .lineStyle(3, hex(frameColor)).lineBetween(x, 28, ...at(hour, 9))
+      .lineStyle(2, hex(frameColor)).lineBetween(x, 28, ...at(minute, 14))
+      .lineStyle(1, hex(accent)).lineBetween(x, 28, ...at(second, 15))
+    label.setText(clockLabel(now))
+  }
+  draw()
+  scene.time.addEvent({ delay: 1000, loop: true, callback: draw })
+}
+
+/** 화이트보드에 최근 안건 제목을 돌려 보여 준다. 20초마다, 그리고 이 브라우저에서 안건이 바뀌면 바로 다시 읽는다. */
+function agendaBoard(ctx: Context) {
+  const { scene } = ctx
+  ctx.text(400, 74, '오늘의 안건', 10, '#64748b', 200)
+  const title = ctx.text(400, 94, '불러오는 중…', 12, '#1e293b', 200).setFontStyle('bold')
+  let titles: string[] = []
+  let index = 0
+  let controller: AbortController | undefined
+  const load = () => {
+    controller?.abort()
+    controller = new AbortController()
+    fetchAgendas(controller.signal, 5)
+      .then(page => { titles = page.items.map(item => item.title); index = 0; title.setText(titles[0] ?? 'E로 안건 쓰기') })
+      .catch(() => { if (!titles.length) title.setText('안건 없음') })
+  }
+  load()
+  scene.time.addEvent({ delay: 20_000, loop: true, callback: load })
+  ctx.every(6000, 6000, () => {
+    if (titles.length < 2) return
+    scene.tweens.add({ targets: title, alpha: 0, duration: 200, yoyo: true, onYoyo: () => title.setText(rotate(titles, ++index)) })
+  })
+  window.addEventListener(AGENDAS_CHANGED, load)
+  return () => { controller?.abort(); window.removeEventListener(AGENDAS_CHANGED, load) }
 }

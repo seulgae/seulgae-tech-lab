@@ -1,4 +1,6 @@
 export type LabPanelKind = 'server-status' | 'build-info'
+/** 방 상호작용이 여는 패널: 상태·빌드 정보 패널과 회의 안건 패널 */
+export type RoomPanelKind = LabPanelKind | 'agenda'
 export type RoomCount = { id: string; name: string; players: number }
 export type LabStatus = {
   status: string; uptimeSeconds: number; onlinePlayers: number; maxPlayers: number
