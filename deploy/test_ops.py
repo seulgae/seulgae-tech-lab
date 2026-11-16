@@ -1,6 +1,7 @@
 import copy
 import importlib.util
 import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
@@ -26,7 +27,8 @@ class OperationsTests(unittest.TestCase):
                 for index, name in enumerate(ops.SHARED)]
 
     def test_intentionally_stopped_invencore_is_preserved_without_health_request(self):
-        with patch.object(ops, 'containers', return_value=self.shared_containers()), \
+        with patch.object(ops, 'container_names', return_value=set(ops.SHARED)), \
+                patch.object(ops, 'containers', return_value=self.shared_containers()), \
                 patch.object(ops, 'request_json') as request:
             snapshot = ops.shared_snapshot()
             self.assertEqual(snapshot['/' + ops.SHARED[0]][3:], [False, 'exited'])
@@ -35,7 +37,8 @@ class OperationsTests(unittest.TestCase):
     def test_stopped_shared_database_is_rejected(self):
         data = self.shared_containers()
         data[-1]['State']['Running'] = False
-        with patch.object(ops, 'containers', return_value=data), self.assertRaises(ops.OpsError):
+        with patch.object(ops, 'container_names', return_value=set(ops.SHARED)), \
+                patch.object(ops, 'containers', return_value=data), self.assertRaises(ops.OpsError):
             ops.shared_snapshot()
 
     def test_sha_arguments_are_not_accepted(self):

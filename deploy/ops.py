@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import re
+import stat
 import subprocess
 import sys
 import tempfile
@@ -21,7 +22,9 @@ PROJECT = 'seulgae-tech-lab'
 SERVICES = ('backend', 'frontend')
 SHARED = ('invencore-app-frontend-1', 'invencore-app-backend-1',
           'invencore-infra-kafka-1', 'invencore-infra-redis-1',
-          'invencore-pg-local-proxy', 'postgres-postgres-1')
+          'invencore-pg-local-proxy', 'kafka-kafka-1', 'postgres-postgres-1')
+DATABASE = 'postgres-postgres-1'
+DATABASE_NETWORK = 'postgres_backend'
 
 
 class OpsError(RuntimeError):
@@ -125,13 +128,34 @@ def select_release(fetch=request_json):
 
 
 def containers(names):
+    if not names:
+        return []
     return json.loads(command(['docker', 'inspect', *names], capture=True))
+
+
+def container_names():
+    return set(command(['docker', 'ps', '--all', '--format', '{{.Names}}'], capture=True).splitlines())
+
+
+def application_containers():
+    names = container_names()
+    data = containers([f'{PROJECT}-{s}-1' for s in SERVICES if f'{PROJECT}-{s}-1' in names])
+    for c in data:
+        labels = c['Config'].get('Labels') or {}
+        service = labels.get('com.docker.compose.service')
+        if (labels.get('com.docker.compose.project') != PROJECT or service not in SERVICES
+                or c['Name'].lstrip('/') != f'{PROJECT}-{service}-1'):
+            raise OpsError('Application name collision; refusing to modify an unmanaged container')
+    return data
 
 
 def shared_snapshot():
     result = {}
     invencore_running = []
-    for c in containers(SHARED):
+    present = container_names()
+    if DATABASE not in present:
+        raise OpsError('Required PostgreSQL container is missing')
+    for c in containers([name for name in SHARED if name in present]):
         s = c['State']
         is_invencore_app = c['Name'].lstrip('/') in SHARED[:2]
         if is_invencore_app:
@@ -142,15 +166,69 @@ def shared_snapshot():
         result[c['Name']] = [c['Id'], s['StartedAt'], c['RestartCount'], s['Running'], s['Status']]
     if any(invencore_running) and not all(invencore_running):
         raise OpsError('InvenCore application is only partially running; inspect manually')
-    if all(invencore_running) and request_json('http://127.0.0.1:8082/api/health').get('status') != 'UP':
+    if any(invencore_running) and len(invencore_running) != 2:
+        raise OpsError('InvenCore application is incomplete; inspect manually')
+    if invencore_running and all(invencore_running) and request_json('http://127.0.0.1:8082/api/health').get('status') != 'UP':
         raise OpsError('InvenCore health failed')
     return result
+
+
+def preflight():
+    """Check host prerequisites without pulling images, starting services or migrating DB."""
+    command(['docker', 'compose', 'version'], capture=True)
+    shared_snapshot()
+    network = json.loads(command(['docker', 'network', 'inspect', DATABASE_NETWORK], capture=True))[0]
+    if network['Name'] != DATABASE_NETWORK:
+        raise OpsError('Unexpected PostgreSQL network')
+    database = containers([DATABASE])[0]
+    if DATABASE_NETWORK not in database.get('NetworkSettings', {}).get('Networks', {}):
+        raise OpsError('PostgreSQL is not attached to postgres_backend')
+    raw = os.environ.get('STLAB_SECRETS_DIR', str(STATE.parent))
+    directory = Path(raw)
+    if not directory.is_absolute() or any(char in raw for char in '\r\n'):
+        raise OpsError('STLAB_SECRETS_DIR must be an absolute path')
+    if not directory.is_dir() or directory.stat().st_mode & 0o077:
+        raise OpsError('Secret directory must exist and deny group/other access (0700)')
+    for name in ('prod-app-password', 'prod-migrator-password'):
+        path = directory / name
+        if path.is_symlink() or not path.is_file() or not os.access(path, os.R_OK) or path.stat().st_size == 0:
+            raise OpsError(f'Missing, empty or unreadable credential file: {name}')
+        info = path.stat()
+        if info.st_mode & 0o022:
+            raise OpsError(f'Credential must not be writable by group/others: {name}')
+        if name == 'prod-app-password':
+            readable = (info.st_uid == 10001 and info.st_mode & stat.S_IRUSR
+                        or info.st_gid == 10001 and info.st_mode & stat.S_IRGRP
+                        or info.st_mode & stat.S_IROTH)
+            if not readable:
+                raise OpsError('prod-app-password must be readable by backend UID/GID 10001; see operations.md')
+        elif info.st_mode & 0o077:
+            raise OpsError('prod-migrator-password must be private (0600)')
+    # Capture resolved configuration, never print it or any credentials from a local .env.
+    placeholder = dict(images={s: f'ghcr.io/seulgae/seulgae-tech-lab-{s}@sha256:' + '0' * 64 for s in SERVICES})
+    with compose_args(placeholder) as prefix:
+        config = json.loads(command([*prefix, 'config', '--format', 'json'], capture=True))
+    services = config.get('services', {})
+    env = services.get('backend', {}).get('environment', {})
+    if (set(services) != set(SERVICES)
+            or env.get('DB_URL') != 'jdbc:postgresql://postgres-postgres-1:5432/stlab_prod?currentSchema=lab'
+            or env.get('DB_USERNAME') != 'stlab_prod_app'
+            or env.get('SPRING_SQL_INIT_MODE') != 'never'
+            or env.get('SPRING_FLYWAY_ENABLED') != 'false'
+            or env.get('SPRING_CONFIG_IMPORT') != 'configtree:/run/secrets/'
+            or Path(config.get('secrets', {}).get('prod_db_password', {}).get('file', '')) != directory / 'prod-app-password'):
+        raise OpsError('Resolved Compose runtime/DB configuration is unsafe or inconsistent')
+    version = schema_version()
+    if version != 1:
+        raise OpsError(f'Expected existing Flyway V1; found schema {version}. No migration performed.')
+    print('Prerequisites verified: PostgreSQL, network, credential files, runtime config and existing schema V1.')
 
 
 def schema_version():
     def pg(sql):
         return command(['docker', 'exec', '-i', 'postgres-postgres-1', 'sh', '-c',
-                        'exec psql -X -qAt -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d stlab_prod'], capture=True, input=sql)
+                        'exec psql -X -qAt -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d stlab_prod'],
+                       capture=True, input='BEGIN READ ONLY;\n' + sql + 'COMMIT;\n')
     if not pg("SELECT to_regclass('lab.flyway_schema_history');\n"):
         return 0
     if pg('SELECT count(*) FROM lab.flyway_schema_history WHERE NOT success;\n') != '0':
@@ -224,7 +302,12 @@ def bootstrap():
     current = read(STATE / 'current.json')
     if current:
         return validate(current, local=True)
-    data = containers([f'{PROJECT}-{s}-1' for s in SERVICES])
+    data = application_containers()
+    if not data:
+        return None
+    if len(data) != len(SERVICES):
+        raise OpsError('Partial unmanaged application installation; inspect before bootstrap')
+    data = sorted(data, key=lambda c: SERVICES.index(c['Config']['Labels']['com.docker.compose.service']))
     revisions = {c['Config']['Image'].rsplit(':', 1)[-1] for c in data}
     if len(revisions) != 1 or not re.fullmatch(r'[0-9a-f]{40}', next(iter(revisions))):
         raise OpsError('Initial application version is ambiguous')
@@ -236,28 +319,60 @@ def bootstrap():
     return current
 
 
+def verify_running_images(current, partial=False):
+    data = application_containers()
+    if not partial and len(data) != len(SERVICES):
+        raise OpsError('Recorded application containers are missing; inspect state before continuing')
+    for c in data:
+        service = c['Config']['Labels']['com.docker.compose.service']
+        expected = json.loads(command(['docker', 'image', 'inspect', current['images'][service]], capture=True))[0]['Id']
+        if c['Image'] != expected:
+            raise OpsError('Running images differ from recorded state')
+
+
+def clean_initial(candidate, before):
+    """Remove only the candidate's owned app containers; no down, volumes or shared services."""
+    recorded = read(STATE / 'current.json')
+    if recorded is not None and recorded != candidate:
+        raise OpsError('Managed state changed since first installation; inspect before cleanup')
+    verify_running_images(candidate, partial=True)
+    compose(candidate, 'rm', '--stop', '--force', *SERVICES)
+    if application_containers() or shared_snapshot() != before:
+        raise OpsError('Initial deployment cleanup verification failed')
+    # A crash may occur after current.json was saved but before transaction.json was removed.
+    (STATE / 'current.json').unlink(missing_ok=True)
+    (STATE / 'previous.json').unlink(missing_ok=True)
+
+
 def transact(candidate, current, action):
     before = shared_snapshot()
     compatible(candidate, schema_version())
-    save(STATE / 'transaction.json', dict(time=stamp(), action=action, previous=current, candidate=candidate))
+    save(STATE / 'transaction.json', dict(time=stamp(), action=action, previous=current, candidate=candidate,
+                                         shared_before=before))
     try:
         activate(candidate)
         if shared_snapshot() != before:
             raise OpsError('Shared container identities changed')
     except Exception as failure:
         event(action, 'failed', sha=candidate['sha'], error=str(failure))
-        print('Verification failed. Restoring the previous application once.', flush=True)
+        print('Verification failed. Restoring previous application or cleaning first-install containers once.', flush=True)
         try:
-            activate(current)
+            if current is None:
+                clean_initial(candidate, before)
+            else:
+                activate(current)
             if shared_snapshot() != before:
                 raise OpsError('Shared infrastructure changed')
-            event(action, 'restored', sha=current['sha'])
+            event(action, 'restored' if current else 'initial-cleaned', sha=current['sha'] if current else None)
             (STATE / 'transaction.json').unlink(missing_ok=True)
         except Exception as restoration:
             event(action, 'restoration-failed', error=str(restoration))
             raise OpsError('Rollback failed; inspect transaction.json, history.jsonl and logs. No retry loop.') from restoration
-        raise OpsError('Deployment failed; previous application restored. DB was not rolled back.') from failure
-    save(STATE / 'previous.json', current)
+        raise OpsError('Deployment failed; previous application restored or first-install containers removed. DB unchanged.') from failure
+    if current is not None:
+        save(STATE / 'previous.json', current)
+    else:
+        (STATE / 'previous.json').unlink(missing_ok=True)
     save(STATE / 'current.json', candidate)
     (STATE / 'transaction.json').unlink(missing_ok=True)
     event(action, 'success', sha=candidate['sha'], run_id=candidate['run_id'], images=candidate['images'])
@@ -266,7 +381,7 @@ def transact(candidate, current, action):
 
 def main(argv):
     action = argv[0] if argv else ''
-    if action not in ('deploy', 'start', 'stop', 'restart', 'status', 'logs', 'rollback'):
+    if action not in ('check', 'deploy', 'start', 'stop', 'restart', 'status', 'logs', 'rollback'):
         raise OpsError('Unknown operation')
     if action != 'logs' and len(argv) != 1:
         raise OpsError('SHA, tag and Compose arguments are not accepted')
@@ -301,8 +416,17 @@ def main(argv):
         if (STATE / 'transaction.json').exists():
             if action != 'rollback':
                 raise OpsError('Interrupted operation recorded; inspect transaction.json, then explicitly run ./rollback.sh')
-            target = validate(read(STATE / 'transaction.json')['previous'], local=True)
+            transaction = read(STATE / 'transaction.json')
             before = shared_snapshot()
+            if transaction['previous'] is None:
+                candidate = validate(transaction['candidate'], local=True)
+                clean_initial(candidate, transaction['shared_before'])
+                (STATE / 'transaction.json').unlink()
+                event('rollback', 'recovered-initial-cleanup', sha=candidate['sha'])
+                print('SUCCESS removed interrupted first-install application containers. DB unchanged.')
+                return
+            preflight()
+            target = validate(transaction['previous'], local=True)
             activate(target)
             if shared_snapshot() != before:
                 raise OpsError('Shared infrastructure changed')
@@ -311,11 +435,14 @@ def main(argv):
             event('rollback', 'recovered-interrupted-operation', sha=target['sha'])
             print(f'SUCCESS recovered previous application: {target["sha"]}')
             return
+        preflight()
+        if action == 'check':
+            return
         current = bootstrap()
-        for service, c in zip(SERVICES, containers([f'{PROJECT}-{s}-1' for s in SERVICES])):
-            expected = json.loads(command(['docker', 'image', 'inspect', current['images'][service]], capture=True))[0]['Id']
-            if c['Image'] != expected:
-                raise OpsError('Running images differ from recorded state')
+        if current:
+            verify_running_images(current)
+        elif action != 'deploy':
+            raise OpsError('No managed application yet; run ./deploy.sh for first installation')
         if action == 'deploy':
             candidate = select_release()
             command(['git', '-C', str(ROOT), 'fetch', '--quiet', 'origin', 'main'])
@@ -324,7 +451,7 @@ def main(argv):
             for service in SERVICES:
                 command(['docker', 'pull', candidate['images'][service]])
             verify_images(candidate)
-            if candidate['images'] == current['images']:
+            if current and candidate['images'] == current['images']:
                 health(current)
                 print(f'Already running latest verified release {current["sha"]}')
             else:
