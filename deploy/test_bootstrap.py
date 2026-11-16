@@ -297,8 +297,9 @@ class PreflightTests(unittest.TestCase):
             env[key] = old
         self.schema.assert_not_called()
 
-    def test_existing_schema_zero_or_two_is_rejected_without_migration(self):
-        for version in (0, 2):
+    def test_existing_schema_zero_or_unknown_is_rejected_without_migration(self):
+        # V2는 지원 범위(SUPPORTED_SCHEMAS)에 들어가므로, 빈 DB와 아직 모르는 V3만 거부한다.
+        for version in (0, 3):
             self.schema.return_value = version
             with self.assertRaisesRegex(ops.OpsError, 'No migration'):
                 ops.preflight()
