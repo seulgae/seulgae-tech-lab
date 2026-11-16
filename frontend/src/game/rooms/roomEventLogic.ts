@@ -19,11 +19,12 @@ export const LOBBY_ANNOUNCEMENTS = [
 
 export const BOARD_MESSAGES = ['SEULGAE TECH LAB', 'WELCOME, RESEARCHER', 'BUILD·LEARN·DISCOVER'] as const
 
+/** 화이트보드 필기 영역(약 100×50)에 들어가도록 짧게 쓴다. */
 export const MEETING_AGENDA = [
-  '오늘의 안건\n· 방 분위기 리뉴얼',
-  '오늘의 안건\n· 테이블 대화 피드백',
-  '오늘의 안건\n· 다음 실험 아이디어',
-  '오늘의 안건\n· 서버 경보 회고',
+  '오늘의 안건\n· 분위기 리뉴얼',
+  '오늘의 안건\n· 테이블 대화',
+  '오늘의 안건\n· 다음 실험',
+  '오늘의 안건\n· 경보 회고',
 ] as const
 
 /** 순서를 돌며 메시지를 고른다. 음수·범위를 넘는 번호도 안전하게 순환한다. */

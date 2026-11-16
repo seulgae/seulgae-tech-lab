@@ -3,6 +3,7 @@ import { ROOMS, roomObjects } from '../maps/rooms'
 import type { RoomId, RoomInteraction } from '../maps/rooms'
 import type MultiplayerClient from '../../features/multiplayer/MultiplayerClient'
 import DoorAnimator from './DoorAnimator'
+import { MONO_FONT, UI_FONT, crispText } from '../render/renderScale'
 import { ROOM_THEMES } from './roomThemes'
 import {
   BOARD_MESSAGES, CiPipeline, LOBBY_ANNOUNCEMENTS, MEETING_AGENDA, RACK_LABELS, ServerAlert, detectArrivals, nextDelay, rotate,
@@ -66,9 +67,10 @@ class Context {
       .setScale(scaleX, scaleY).setAlpha(alpha).setBlendMode(Phaser.BlendModes.ADD).setDepth(depth)
   }
 
-  text(x: number, y: number, value: string, size: number, color: string, depth = 70) {
-    return this.scene.add.text(x, y, value, { fontFamily: 'monospace', fontSize: `${size}px`, color, align: 'center' })
-      .setOrigin(0.5).setResolution(2).setDepth(depth)
+  /** 한글은 UI 글꼴, 코드·영문 표시는 고정폭 글꼴로 렌더 배율에 맞춰 그린다. */
+  text(x: number, y: number, value: string, size: number, color: string, depth = 70, mono = false) {
+    return crispText(this.scene, x, y, value, { fontFamily: mono ? MONO_FONT : UI_FONT, fontSize: `${size}px`, color, align: 'center' })
+      .setOrigin(0.5).setDepth(depth)
   }
 
   stop() { this.stopped = true }
@@ -83,8 +85,7 @@ class Banner {
 
   show(message: string, color?: string, holdMs = 2600) {
     this.current?.destroy()
-    const text = this.scene.add.text(0, 0, message, { fontFamily: 'monospace', fontSize: '14px', color: '#ffffff', align: 'center' })
-      .setOrigin(0.5).setResolution(2)
+    const text = crispText(this.scene, 0, 0, message, { fontSize: '15px', fontStyle: 'bold', color: '#ffffff', align: 'center' }).setOrigin(0.5)
     const width = Math.min(740, text.width + 40)
     const box = this.scene.add.rectangle(0, 0, width, 34, 0x0b0f14, 0.85).setStrokeStyle(2, color ? hex(color) : this.accent)
     const container = this.scene.add.container(400, 70, [box, text]).setDepth(BANNER_DEPTH).setAlpha(0)
@@ -104,7 +105,7 @@ function lobbyFx(ctx: Context): RoomHandlers {
     ctx.glow(x, 110, '#fff2c8', 3, 4, 0.18, -40)
   }
   scene.add.image(400, 32, 'lobby-board').setScale(2).setDepth(61)
-  const board = ctx.text(400, 32, BOARD_MESSAGES[0], 10, '#ffd89a', 62)
+  const board = ctx.text(400, 32, BOARD_MESSAGES[0], 10, '#ffd89a', 62, true)
   let boardIndex = 0
   ctx.every(5000, 5000, () => {
     scene.tweens.add({ targets: board, alpha: 0, duration: 200, yoyo: true, onYoyo: () => board.setText(rotate(BOARD_MESSAGES, ++boardIndex)) })
@@ -150,7 +151,7 @@ function developmentFx(ctx: Context): RoomHandlers {
   // 양쪽 벽의 코드 패널이 한 줄씩 흘러간다.
   const panels = [120, 680].map(x => {
     scene.add.rectangle(x, 32, 150, 44, 0x05080d, 0.9).setStrokeStyle(1, 0x1f4d6b).setDepth(61)
-    return ctx.text(x, 32, '', 8, '#39e6b4', 62)
+    return ctx.text(x, 32, '', 9, '#39e6b4', 62, true)
   })
   let line = 0
   const scroll = () => { panels.forEach((panel, i) => panel.setText([0, 1, 2].map(n => rotate(CODE_LINES, line + n + i * 4)).join('\n'))); line++ }
@@ -158,8 +159,8 @@ function developmentFx(ctx: Context): RoomHandlers {
   scene.time.addEvent({ delay: 420, loop: true, callback: scroll })
 
   scene.add.image(400, 34, 'dev-screen').setScale(2).setDepth(61)
-  const title = ctx.text(400, 20, 'CI · main', 9, '#38bdf8', 62)
-  const status = ctx.text(400, 36, 'IDLE · 다음 빌드 대기 중', 11, '#8fb3c9', 62)
+  const title = ctx.text(400, 20, 'CI · main', 10, '#38bdf8', 62, true)
+  const status = ctx.text(400, 37, 'IDLE · 다음 빌드 대기 중', 12, '#8fb3c9', 62)
   scene.add.rectangle(400, 52, 160, 4, 0x1b2538).setDepth(62)
   const bar = scene.add.rectangle(320, 52, 160, 4, 0x39e6b4).setOrigin(0, 0.5).setScale(0, 1).setDepth(63)
   const confetti = scene.add.particles(0, 0, 'confetti', {
@@ -195,7 +196,7 @@ function serverFx(ctx: Context): RoomHandlers {
   const { scene } = ctx
   ctx.glow(400, 320, '#5fb6ff', 26, 12, 0.12, -40)
   scene.add.image(400, 30, 'server-sign').setScale(3, 2).setDepth(61)
-  const temperature = ctx.text(400, 30, 'SERVER ROOM · 18°C', 9, '#e2b33c', 62)
+  const temperature = ctx.text(400, 30, 'SERVER ROOM · 18°C', 10, '#e2b33c', 62, true)
   const alarms = [250, 550].map(x => {
     scene.add.image(x, 32, 'alarm-light').setScale(2).setDepth(61)
     return ctx.glow(x, 34, '#ef4444', 3, 3, 0, 62)
@@ -266,8 +267,8 @@ function meetingFx(ctx: Context): RoomHandlers {
   scene.time.addEvent({ delay: 1000, loop: true, callback: drawClock })
 
   scene.add.image(260, 32, 'meeting-sign').setScale(2).setDepth(61)
-  const sign = ctx.text(260, 32, '회의 대기', 10, '#c4b8a2', 62)
-  const agenda = ctx.text(400, 86, MEETING_AGENDA[0], 9, '#1e293b', 200)
+  const sign = ctx.text(260, 32, '회의 대기', 12, '#c4b8a2', 62)
+  const agenda = ctx.text(400, 86, MEETING_AGENDA[0], 11, '#1e293b', 200)
   let item = 0
   ctx.every(9000, 9000, () => scene.tweens.add({ targets: agenda, alpha: 0, duration: 220, yoyo: true, onYoyo: () => agenda.setText(rotate(MEETING_AGENDA, ++item)) }))
 

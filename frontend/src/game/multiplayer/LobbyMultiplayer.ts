@@ -7,6 +7,7 @@ import ChatBubble from './ChatBubble'
 import LocalReconciliation from './LocalReconciliation'
 import MovementDiagnostics from './MovementDiagnostics'
 import AcknowledgedMovement from './AcknowledgedMovement'
+import { crispText } from '../render/renderScale.ts'
 
 /**
  * 공유 소켓을 장면에서 구독하고 본인 예측 위치와 채팅 말풍선을 연결한다.
@@ -67,9 +68,9 @@ export default class LobbyMultiplayer {
     this.scene = scene; this.player = player
     this.world = scene.physics.world
     this.client = client
-    this.ownLabel = scene.add.text(player.x, player.y - 55, '나 · 로컬 연구원', {
-      fontFamily: 'Arial, sans-serif', fontSize: '16px', color: '#fff0bd', backgroundColor: '#20383a', padding: { x: 4, y: 2 },
-    }).setOrigin(0.5).setResolution(2)
+    this.ownLabel = crispText(scene, player.x, player.y - 55, '나 · 로컬 연구원', {
+      fontSize: '15px', fontStyle: 'bold', color: '#fff0bd', backgroundColor: '#14202acc', padding: { x: 5, y: 2 },
+    }).setOrigin(0.5)
     this.unsubscribe = client.subscribe({
       inputSent: sequence => {
         if (!client.usesCommands()) this.reconciliation.record(sequence, { x: this.player.x, y: this.player.y })

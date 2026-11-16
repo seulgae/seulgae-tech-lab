@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import type { PlayerState } from '../../features/multiplayer/model/protocol'
 import RemoteInterpolation from './RemoteInterpolation'
+import { crispText } from '../render/renderScale.ts'
 
 /**
  * 서버 상태를 보간하는 원격 캐릭터이며 로컬 충돌 계산에는 참여하지 않는다.
@@ -25,9 +26,9 @@ export default class RemotePlayer extends Phaser.GameObjects.Sprite {
     this.timeline.push(state, serverTime, performance.now())
     scene.add.existing(this)
     this.setOrigin(0.5, 1).setScale(2).setTint(0xc4dce8)
-    this.nameLabel = scene.add.text(state.x, state.y - 55, state.nickname, {
-      fontFamily: 'Arial, sans-serif', fontSize: '16px', color: '#edf3ff', backgroundColor: '#20383a', padding: { x: 4, y: 2 },
-    }).setOrigin(0.5).setResolution(2)
+    this.nameLabel = crispText(scene, state.x, state.y - 55, state.nickname, {
+      fontSize: '15px', fontStyle: 'bold', color: '#edf3ff', backgroundColor: '#14202acc', padding: { x: 5, y: 2 },
+    }).setOrigin(0.5)
   }
 
   setTarget(state: PlayerState, serverTime = performance.now()) { this.timeline.push(state, serverTime, performance.now()) }

@@ -8,6 +8,7 @@ import test from 'node:test'
 import LocalReconciliation from '../src/game/multiplayer/LocalReconciliation.ts'
 import AcknowledgedMovement from '../src/game/multiplayer/AcknowledgedMovement.ts'
 import { constrainedPosition, translateBody } from '../src/game/multiplayer/networkPosition.ts'
+import { crispText } from '../src/game/render/renderScale.ts'
 
 const require = createRequire(import.meta.url)
 const Body = require('phaser/src/physics/arcade/Body.js')
@@ -176,7 +177,7 @@ test('수신 콜백은 위치를 쓰지 않고 postUpdate에서만 보정하며 
   const source = stripTypeScriptTypes(readFileSync(new URL('../src/game/multiplayer/LobbyMultiplayer.ts', import.meta.url), 'utf8'))
     .replace(/^import .*$/gm, '').replace('export default class LobbyMultiplayer', 'class LobbyMultiplayer')
   const Bridge = vm.runInNewContext(source+'\nLobbyMultiplayer', {
-    MultiplayerClient: Client, LocalReconciliation, AcknowledgedMovement,
+    MultiplayerClient: Client, LocalReconciliation, AcknowledgedMovement, crispText,
     Phaser: { Scenes: { Events: { POST_UPDATE: 'postupdate' } }, Physics: { Arcade: { Events: { WORLD_STEP: 'worldstep' } } } },
     MovementDiagnostics: class { sent() {} received() {} frame() {} corrected() {} }, Date,
   })
