@@ -81,7 +81,8 @@ Browser checks performed: two-player display, A movement visible in B, departure
 ## User-owned deployment checks
 
 No production server access, manual deploy, GitHub Actions execution/result monitoring, or production DB operation is part of this task. After deployment, the user should check same-origin WSS through nginx/Tailscale, the exact public Origin, multiple browser engines/networks, long-lived connections, ordinary research reads and reconnect after a real deployment. Local Docker/nginx execution depends on available tools; where Docker/nginx are unavailable, container/proxy runtime verification remains a user/CI check.
-# 완료 스텝 이동 프로토콜 v4 (2026-11-16)
+
+## 완료 스텝 이동 프로토콜 v4 (2026-11-16)
 
 새 서버의 welcome은 `protocolVersion: 4`를 보낸다. 새 클라이언트는 Arcade `WORLD_STEP`이 실제로 완료한 각 스텝을 기록해 최대 20Hz, 메시지당 8개 이하로 묶는다.
 
@@ -91,10 +92,18 @@ No production server access, manual deploy, GitHub Actions execution/result moni
 
 `seq`는 물리 스텝 명령 번호이고 `ms`는 해당 스텝의 시간이다. 좌표와 클라이언트 절대 시각은 전송하지 않는다. 방향 전환을 전송 간격 사이에 버리지 않고 순서대로 보관한다. 정지는 0ms 명령 한 번이며, 이후 유휴 이동 메시지를 보내지 않는다. 물리 스텝이 한 렌더 프레임에 두 번 실행돼도 각각 기록하므로 30Hz 렌더링을 30Hz 물리로 오인하지 않는다.
 
-서버는 필드·정수 방향·연속 번호·스텝당 0~50ms·메시지당 8개·전체 메시지 1024바이트를 검증한다. 이동 방향에 0ms는 허용하지 않는다. 기존 메시지 빈도 제한도 유지한다. 서버 단조 시계로 충전되는 이동 시간 예산은 초기 250ms, 최대 2000ms이며 명령 시간만큼 소비한다. 정상 지연으로 몰린 입력은 허용하되 지속적으로 시간을 과장하는 입력은 거부한다. 명령 전체를 검증한 뒤 서버의 200px/초 정규화 이동과 공통 맵 충돌을 순서대로 적용한다. 중복 처리한 입력은 다시 이동시키지 않는다.
+서버는 필드·정수 방향·연속 번호·스텝당 0~50ms·메시지당 8개·전체 메시지 1024바이트를 검증한다. 이동 방향에 0ms는 허용하지 않는다. 기존 메시지 빈도 제한도 유지한다. 서버 단조 시계로 충전되는 이동 시간 예산은 초기 250ms, 최대 2000ms이며 명령 시간만큼 소비한다. 예산이 부족한 정상 명령은 즉시 거부하지 않고 최대 2000ms·240명령의 서버 대기 큐에 보관한다. 서버 갱신에서 예산이 충전된 만큼 순서대로 처리한다. 한도 초과·잘못된 방향/시간/순번은 거부한다. 서버의 200px/초 정규화 이동과 공통 맵 충돌을 유지하고, 이미 수신한 명령을 다시 대기시키거나 중복 적용하지 않는다.
 
-v4 플레이어의 `ack`는 **스텝 처리가 끝난 위치**를 가리킨다. 서버 주기 갱신은 그 좌표를 추가 적분하지 않는다. 클라이언트는 해당 서버 위치에서 `ack` 이후의 미확인 스텝만 재생한다. 같은 ack의 반복 스냅샷으로 정지 위치를 계속 보정하지 않는다. 예측은 600스텝, 송신 대기는 120스텝으로 제한하고 초과하면 재접속한다. 종료 시 예측 기록·대기 명령·물리 리스너를 정리한다.
+v4 플레이어의 `ack`는 **스텝 처리가 끝난 위치**를 가리킨다. 서버는 수신 순번과 완료 순번을 구분한다. 서버 주기 갱신은 검증된 대기 명령만 처리하며 받지 않은 이동을 추가 적분하지 않는다. 클라이언트는 해당 서버 위치에서 `ack` 이후의 미확인 스텝만 재생한다. 같은 ack의 반복 스냅샷으로 정지 위치를 계속 보정하지 않는다. 예측은 600스텝, 송신 대기는 120스텝으로 제한하고 초과하면 재접속한다. 종료 시 예측 기록·대기 명령·물리 리스너를 정리한다.
 
 배포 중 구형 캐시와의 호환을 위해 기존 `input`은 구형 서버 틱 방식으로 처리한다. v4 명령을 사용한 플레이어는 다시 구형 입력으로 전환하지 못한다. 새 클라이언트가 구형 서버에 연결되면 기존 입력 방식으로 동작한다. **수정 반영을 확인할 때는 두 창을 모두 새로고침한다.** `?netDebug=1`의 `[multiplayer] 이동 프로토콜`에서 `version: 4`, `mode: completed-steps`를 확인할 수 있다.
 
-서버까지의 전송 시간 자체는 남는다. 원격 캐릭터의 기존 보간은 유지하며, 이번 수정은 지연을 위치 오차로 오인해 본인 캐릭터가 정지 후에도 밀리는 경로를 바꾼다. 채팅 v3의 메시지 구조와 연구 API는 변경하지 않는다.
+서버까지의 전송 시간 자체는 남는다. 채팅 v3의 메시지 구조와 연구 API는 변경하지 않는다.
+
+## 원격 표시와 종료 진단 보완 (2026-11-16)
+
+welcome과 state의 선택 필드 `time`은 서버 단조 시계의 밀리초다. 클라이언트는 이 시간의 위치 표본을 최대 120개 보관하고, 수신 지터에 따라 100~650ms의 표시 버퍼를 사용한다. 이동 중 중복 위치 틱은 잠깐의 정지로 취급하지 않는다. 긴 유휴 후 첫 이동에 시작점을 추가하고, 표본 사이만 보간한다. 새 데이터가 없을 때 마지막 위치를 넘겨 외삽하지 않으며 긴 단절 후에는 재생 시계를 다시 맞춘다. 원격 표시의 따라잡기 속도는 최대 260px/초다. 이는 본인 이동 속도나 서버 검증 속도를 변경하지 않는다. 구형 서버에 time이 없으면 수신 시각을 사용한다.
+
+버퍼는 표시 지연을 추가하는 대신 수신 간격의 흔들림을 흡수한다. 지터가 버퍼 한도를 넘거나 전송이 완전히 끊기면 일시 정지는 남을 수 있다. 정상 접속에는 진단 로그를 추가하지 않는다. `?netDebug=1`일 때 `[multiplayer:remote]`에서 프레임·표시 중 정지 프레임·속도 변동·버퍼 시간을 집계한다. 충돌과 방향 전환이 섞인 집계를 일정 속도 구간의 품질과 같은 의미로 해석하면 안 된다.
+
+검증 실패의 종료 사유는 `Invalid movement: fields`, `Movement axes`, `Movement duration`, `Movement sequence`, `Movement backlog exceeded`처럼 분리한다. 1008 발생 시 `[multiplayer:movement-rejected]`에는 마지막 전송 명령의 방향·시간·순번과 대기 개수만 기록한다. 좌표·원문 채팅·토큰·개인정보는 기록하지 않는다.

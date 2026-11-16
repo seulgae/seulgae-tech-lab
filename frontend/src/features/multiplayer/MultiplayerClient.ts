@@ -1,7 +1,7 @@
 import { INITIAL_CONNECTION, lobbySocketUrl, parseServerMessage, normalizeChat, validChatText } from './model/protocol.ts'
 import type { ConnectionInfo, MoveInput, MoveCommand, PlayerState, ChatMessage, ChatError, ServerMessage } from './model/protocol'
 
-type Callbacks = { snapshot?: (players: PlayerState[], selfId: string | null) => void; status?: (info: ConnectionInfo) => void;
+type Callbacks = { snapshot?: (players: PlayerState[], selfId: string | null, serverTime?: number) => void; status?: (info: ConnectionInfo) => void;
   chat?: (event: ChatMessage) => void; history?: (messages: ChatMessage[]) => void; chatError?: (reason: ChatError) => void; inputSent?: (sequence: number) => void;
   predicted?: (command: MoveCommand) => void }
 
@@ -22,6 +22,8 @@ export default class MultiplayerClient {
   private sequence = 0
   private commandMode = false
   private commands: MoveCommand[] = []
+  private lastMovementBatch: MoveCommand[] = []
+  private serverTime: number | undefined
   private lastQueuedInput: MoveInput | null = null
   private lastInputSent = -Infinity
   private lastSentInput: MoveInput | null = null
@@ -48,7 +50,7 @@ export default class MultiplayerClient {
     this.listeners.add(callbacks)
     try {
       callbacks.status?.(this.info)
-      callbacks.snapshot?.([...this.players.values()], this.selfId)
+      callbacks.snapshot?.([...this.players.values()], this.selfId, this.serverTime)
       callbacks.history?.([...this.messages])
     } catch (error) { console.warn('[multiplayer] 구독 초기화 실패', error) }
     return () => { this.listeners.delete(callbacks) }
@@ -106,7 +108,8 @@ export default class MultiplayerClient {
       const now = Date.now()
       if (!this.commands.length || now - this.lastInputSent < 50) return
       if (socket.bufferedAmount > 4096) { socket.close(4003, 'Input backpressure'); return }
-      socket.send(JSON.stringify({ type: 'move', inputs: this.commands.slice(0, 8) }))
+      this.lastMovementBatch = this.commands.slice(0, 8)
+      socket.send(JSON.stringify({ type: 'move', inputs: this.lastMovementBatch }))
       this.commands.splice(0, 8); this.lastInputSent = now
       this.recentInputSends = this.recentInputSends.filter(sentAt => now - sentAt < 1000)
       this.recentInputSends.push(now)
@@ -162,6 +165,7 @@ export default class MultiplayerClient {
     catch { this.retry(); return }
     this.socket = socket
     this.commandMode = false; this.commands = []; this.lastQueuedInput = null
+    this.lastMovementBatch = []; this.serverTime = undefined
     this.chatEnabled = false
     this.connectedAt = 0; this.sequence = 0; this.recentInputSends = []
     socket.onopen = () => { this.lastMessage = Date.now() }
@@ -178,6 +182,7 @@ export default class MultiplayerClient {
       try {
         this.lastMessage = Date.now()
         if (message.type === 'welcome') {
+          this.serverTime = message.time
           this.selfId = message.selfId; this.sequence = 0; this.lastInputSent = -Infinity; this.lastTick = -1; this.attempts = 0
           this.connectedAt = Date.now(); this.recentInputSends = []
           this.lastSentInput = null; this.lastChatSent = -Infinity
@@ -208,10 +213,11 @@ export default class MultiplayerClient {
         else if (message.type === 'state') {
           if (message.tick <= this.lastTick) return
           this.lastTick = message.tick
+          this.serverTime = message.time
           this.players = new Map(message.players.map(player => [player.id, player]))
         } else if (message.type === 'joined') this.players.set(message.player.id, message.player)
         else if (message.type === 'left') this.players.delete(message.id)
-        this.notify(callbacks => callbacks.snapshot?.([...this.players.values()], this.selfId))
+        this.notify(callbacks => callbacks.snapshot?.([...this.players.values()], this.selfId, this.serverTime))
         this.updateStatus({ online: this.players.size })
       } catch (error) {
         console.warn('[multiplayer] 화면 상태 반영 실패 (연결 유지)', error)
@@ -224,7 +230,13 @@ export default class MultiplayerClient {
         code: event.code, reason: event.reason, wasClean: event.wasClean,
         sentInputs: this.sequence, connectedMs: this.connectedAt ? Date.now() - this.connectedAt : 0,
         sentLastSecond: this.recentInputSends.filter(sentAt => Date.now() - sentAt < 1000).length,
+        lastMovementBatch: this.commandMode ? this.lastMovementBatch : undefined,
+        pendingCommands: this.commands.length,
       })
+      if (event.code === 1008 && this.commandMode) {
+        console.warn('[multiplayer:movement-rejected]', JSON.stringify({ reason: event.reason,
+          lastBatch: this.lastMovementBatch, pendingCommands: this.commands.length }))
+      }
       socket.onmessage = null; socket.onclose = null; socket.onerror = null; socket.onopen = null
       this.socket = null; this.selfId = null; this.players.clear()
       this.commands = []; this.commandMode = false; this.lastQueuedInput = null

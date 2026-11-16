@@ -105,7 +105,7 @@ public class LobbySocketHandler extends TextWebSocketHandler {
             // 입장 기록과 실시간 방송 사이에 메시지가 빠지지 않게 같은 채팅 잠금을 사용한다.
             synchronized (chat) {
                 var peer = new Peer(socket, player.id());
-                peer.controls.add(new TextMessage(json.writeValueAsString(Map.of("type", "welcome", "selfId", player.id(), "players", room.snapshot(), "maxPlayers", LobbyRoom.MAX_PLAYERS, "protocolVersion", 4))));
+                peer.controls.add(new TextMessage(json.writeValueAsString(Map.of("type", "welcome", "selfId", player.id(), "players", room.snapshot(), "maxPlayers", LobbyRoom.MAX_PLAYERS, "protocolVersion", 4, "time", System.nanoTime() / 1_000_000d))));
                 peer.controls.add(new TextMessage(json.writeValueAsString(Map.of("type", "chat_history", "messages", chat.history()))));
                 peers.put(session.getId(), peer);
                 drain(session.getId(), peer);
@@ -154,7 +154,7 @@ public class LobbySocketHandler extends TextWebSocketHandler {
                 disconnect(session.getId(), CloseStatus.POLICY_VIOLATION.withReason("Input rate exceeded")); return;
             }
             if (input.isObject() && input.path("type").stringValue("").equals("move")) {
-                rejection = "Invalid movement command";
+                rejection = "Invalid movement: fields";
                 if (!Set.copyOf(input.propertyNames()).equals(MOVE_FIELDS) || !input.get("inputs").isArray()
                     || input.get("inputs").isEmpty() || input.get("inputs").size() > 8) throw new IllegalArgumentException();
                 var commands = new ArrayList<LobbyRoom.MoveCommand>();
@@ -165,7 +165,11 @@ public class LobbySocketHandler extends TextWebSocketHandler {
                     commands.add(new LobbyRoom.MoveCommand(command.get("x").asInt(), command.get("y").asInt(),
                         command.get("ms").asDouble(), command.get("seq").asLong()));
                 }
-                room.commands(peer.playerId, commands, now);
+                try { room.commands(peer.playerId, commands, now); }
+                catch (IllegalArgumentException exception) {
+                    rejection = "Invalid movement: " + exception.getMessage();
+                    throw exception;
+                }
                 peer.lastSeen = now;
                 return;
             }
@@ -209,7 +213,7 @@ public class LobbySocketHandler extends TextWebSocketHandler {
         room.step((now - lastTick) / 1_000_000_000d, now);
         lastTick = now;
         if (peers.isEmpty()) return;
-        broadcast(Map.of("type", "state", "tick", ++tick, "players", room.snapshot()));
+        broadcast(Map.of("type", "state", "tick", ++tick, "time", now / 1_000_000d, "players", room.snapshot()));
         peers.forEach((id, peer) -> {
             boolean slowSend = peer.socket instanceof ConcurrentWebSocketSessionDecorator decorated && decorated.getTimeSinceSendStarted() > 1000;
             if (slowSend || now - peer.lastSeen > 15_000_000_000L) disconnect(id, CloseStatus.SESSION_NOT_RELIABLE);

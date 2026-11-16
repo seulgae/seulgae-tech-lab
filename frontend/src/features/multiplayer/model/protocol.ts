@@ -9,8 +9,8 @@ export type ServerMessage =
   | ChatMessage
   | { type: 'chat_history'; messages: ChatMessage[] }
   | { type: 'chat_error'; reason: ChatError }
-  | { type: 'welcome'; selfId: string; players: PlayerState[]; maxPlayers: number; protocolVersion?: number }
-  | { type: 'state'; tick: number; players: PlayerState[] }
+  | { type: 'welcome'; selfId: string; players: PlayerState[]; maxPlayers: number; protocolVersion?: number; time?: number }
+  | { type: 'state'; tick: number; players: PlayerState[]; time?: number }
   | { type: 'joined'; player: PlayerState }
   | { type: 'left'; id: string }
 
@@ -46,6 +46,8 @@ export function parseServerMessage(raw: string): ServerMessage {
   if (raw.length > 65536) throw new Error('Frame too large')
   const message = JSON.parse(raw)
   if (!message || typeof message !== 'object') throw new Error('Invalid frame')
+  if ((message.type === 'state' || message.type === 'welcome') && message.time !== undefined
+    && (!Number.isFinite(message.time) || message.time < 0)) throw new Error('Invalid server time')
   if (message.type === 'joined' && validPlayer(message.player)) return message
   if (message.type === 'left' && validId(message.id)) return message
   if (message.type === 'chat_message' && validChat(message)) return message

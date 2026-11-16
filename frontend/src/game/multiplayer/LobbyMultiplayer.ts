@@ -74,7 +74,7 @@ export default class LobbyMultiplayer {
         this.diagnostics.sent()
       },
       predicted: command => { if (!this.acknowledged.record(command)) client.restartMovement() },
-      snapshot: (players, selfId) => this.applySnapshot(players, selfId),
+      snapshot: (players, selfId, serverTime) => this.applySnapshot(players, selfId, serverTime),
       chat: message => this.showChat(message),
       status: info => {
         this.ownLabel.setText(info.phase === 'online' ? `나 · ${info.nickname}` : '나 · 로컬 연구원')
@@ -84,7 +84,7 @@ export default class LobbyMultiplayer {
     scene.physics.world.on(Phaser.Physics.Arcade.Events.WORLD_STEP, this.physicsStep)
   }
 
-  private applySnapshot(players: PlayerState[], selfId: string | null) {
+  private applySnapshot(players: PlayerState[], selfId: string | null, serverTime?: number) {
     this.diagnostics.received()
     if (this.selfId !== selfId) {
       for (const bubble of this.bubbles.values()) bubble.destroy()
@@ -111,8 +111,8 @@ export default class LobbyMultiplayer {
     for (const state of players) {
       if (state.id === selfId) continue
       const remote = this.remotes.get(state.id)
-      if (remote) remote.setTarget(state)
-      else this.remotes.set(state.id, new RemotePlayer(this.scene, state))
+      if (remote) remote.setTarget(state, serverTime)
+      else this.remotes.set(state.id, new RemotePlayer(this.scene, state, serverTime))
     }
   }
 
