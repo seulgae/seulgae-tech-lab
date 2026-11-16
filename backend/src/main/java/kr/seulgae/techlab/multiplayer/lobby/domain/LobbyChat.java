@@ -19,10 +19,17 @@ public class LobbyChat {
     /**
      * 서버가 생성한 식별자·발신자·시각을 갖는 일반 텍스트 채팅이다.
      * @author seulgae
-     * @version 1.0, 실시간 방송 및 최근 기록 데이터
+     * @version 1.1, 방 전체(room)와 회의 테이블 근거리(table) 범위 구분
      * @see "None"
      */
-    public record Message(String type, String messageId, String playerId, String nickname, String message, String sentAt) {}
+    public record Message(String type, String messageId, String playerId, String nickname, String message, String sentAt, String scope) {
+        public static final String ROOM = "room";
+        public static final String TABLE = "table";
+        /** @return 회의 테이블 주변에만 전달하는 메시지인지 여부 */
+        public boolean table() { return TABLE.equals(scope); }
+    }
+    /** 테이블 대화로 사용하는 공유 맵 상호작용 종류이다. */
+    public static final String TABLE_KIND = "table-talk";
     /**
      * 개별 세션에만 알려주는 채팅 거부 사유이다. 연결을 종료하지 않는다.
      * @author seulgae
@@ -56,7 +63,18 @@ public class LobbyChat {
      * @return 검증된 방송 메시지
      * @throws Rejected 비어 있음·길이·제어 문자·전송 제한·세션 검증에 실패한 경우
      */
-    public synchronized Message post(String playerId, String text, long now) {
+    public synchronized Message post(String playerId, String text, long now) { return post(playerId, text, now, false); }
+
+    /**
+     * 방 전체 또는 회의 테이블 범위의 메시지를 검증한다. 테이블 대화는 최근 기록에 남기지 않는다.
+     * @param playerId 연결에 매핑된 플레이어
+     * @param text 클라이언트 일반 텍스트
+     * @param now 서버 단조 시각
+     * @param table 서버 좌표가 테이블 범위 안일 때만 허용하는 근거리 대화 여부
+     * @return 검증된 방송 메시지
+     * @throws Rejected 기존 검증 실패 또는 테이블 범위 밖(not_at_table)인 경우
+     */
+    public synchronized Message post(String playerId, String text, long now, boolean table) {
         var player = room.player(playerId);
         if (player == null) throw new Rejected("unavailable");
         var budget = budgets.computeIfAbsent(playerId, ignored -> new Budget(now));
@@ -69,7 +87,10 @@ public class LobbyChat {
         if (message.isEmpty()) throw new Rejected("empty");
         if (message.codePointCount(0, message.length()) > 150) throw new Rejected("too_long");
         if (message.codePoints().anyMatch(c -> Character.isISOControl(c) && c != '\n' && c != '\t' || c >= 0xd800 && c <= 0xdfff)) throw new Rejected("invalid");
-        var result = new Message("chat_message", UUID.randomUUID().toString(), player.id(), player.nickname(), message, Instant.now().toString());
+        if (table && !room.near(playerId, TABLE_KIND)) throw new Rejected("not_at_table");
+        var result = new Message("chat_message", UUID.randomUUID().toString(), player.id(), player.nickname(), message, Instant.now().toString(),
+            table ? Message.TABLE : Message.ROOM);
+        if (table) return result;
         var messages = histories.computeIfAbsent(room.roomId(playerId), ignored -> new ArrayDeque<>());
         messages.addLast(result);
         while (messages.size() > 50) messages.removeFirst();

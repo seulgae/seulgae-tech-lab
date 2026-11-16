@@ -26,7 +26,9 @@
     <resource><directory>../shared</directory><targetPath>shared</targetPath><includes><include>lobby-world.json</include></includes></resource>
   </resources>
   <plugins>
-    <plugin><groupId>org.springframework.boot</groupId><artifactId>spring-boot-maven-plugin</artifactId></plugin>
+    <plugin><groupId>org.springframework.boot</groupId><artifactId>spring-boot-maven-plugin</artifactId>
+      <executions><execution><goals><goal>build-info</goal></goals></execution></executions>
+    </plugin>
     <plugin>
       <groupId>org.flywaydb</groupId><artifactId>flyway-maven-plugin</artifactId><version>${flyway.version}</version>
       <configuration>

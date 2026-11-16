@@ -1,6 +1,6 @@
 import type { RoomId } from '../../game/maps/rooms'
 import { INITIAL_CONNECTION, lobbySocketUrl, parseServerMessage, normalizeChat, validChatText } from './model/protocol.ts'
-import type { ConnectionInfo, MoveInput, MoveCommand, PlayerState, ChatMessage, ChatError, ServerMessage } from './model/protocol'
+import type { ConnectionInfo, MoveInput, MoveCommand, PlayerState, ChatMessage, ChatError, ChatScope, ServerMessage } from './model/protocol'
 
 type Callbacks = { room?: (roomId: RoomId, pending: boolean) => void; snapshot?: (players: PlayerState[], selfId: string | null, serverTime?: number) => void; status?: (info: ConnectionInfo) => void;
   chat?: (event: ChatMessage) => void; history?: (messages: ChatMessage[]) => void; chatError?: (reason: ChatError) => void; inputSent?: (sequence: number) => void;
@@ -138,7 +138,7 @@ export default class MultiplayerClient {
   }
 
   /** 이동 sequence나 입력 예산을 소비하지 않는 별도 일반 텍스트 요청이다. */
-  sendChat(text: string) {
+  sendChat(text: string, scope: ChatScope = 'room') {
     const message = normalizeChat(text)
     const reason: ChatError | null = !this.canChat() ? 'unavailable' : !message ? 'empty'
       : Array.from(message).length > 150 ? 'too_long' : !validChatText(message) ? 'invalid'
@@ -146,7 +146,7 @@ export default class MultiplayerClient {
     if (reason) { this.notify(callbacks => callbacks.chatError?.(reason)); return false }
     if (this.socket!.bufferedAmount > 4096) { this.notify(callbacks => callbacks.chatError?.('unavailable')); return false }
     this.lastChatSent = Date.now()
-    try { this.socket!.send(JSON.stringify({ type: 'chat', message, ...(this.scoped ? {roomEpoch:this.roomEpoch} : {}) })) }
+    try { this.socket!.send(JSON.stringify({ type: 'chat', message, ...(scope === 'table' ? { scope } : {}), ...(this.scoped ? {roomEpoch:this.roomEpoch} : {}) })) }
     catch { this.notify(callbacks => callbacks.chatError?.('unavailable')); return false }
     return true
   }

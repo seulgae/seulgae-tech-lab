@@ -261,6 +261,20 @@ class LobbySocketTest {
         assertFalse(b.closed.isDone());
     }
 
+    /** 테이블 범위 밖 근거리 대화와 알 수 없는 범위는 연결을 유지한 채 거부한다. */
+    @Test void rejectsTableTalkAwayFromTableAndUnknownScope() throws Exception {
+        var a = connect(""); a.type("welcome"); a.type("chat_history");
+        a.send("{\"type\":\"chat\",\"message\":\"테이블\",\"scope\":\"table\",\"roomEpoch\":0}");
+        assertEquals("not_at_table", a.type("chat_error").get("reason").stringValue());
+        a.send("{\"type\":\"chat\",\"message\":\"전체\",\"scope\":\"everyone\",\"roomEpoch\":0}");
+        assertEquals("invalid", a.type("chat_error").get("reason").stringValue());
+        a.send("{\"type\":\"chat\",\"message\":\"방 전체\",\"scope\":\"room\",\"roomEpoch\":0}");
+        var message = a.type("chat_message");
+        assertEquals("room", message.get("scope").stringValue());
+        assertFalse(message.has("table"));
+        assertFalse(a.closed.isDone());
+    }
+
     /** 정상 20Hz 입력 약 2초 분량이 지연 후 몰려도 연결을 유지해야 한다. */
     @Test void acceptsBatchedInputsAfterShortTransportDelay() throws Exception {
         var client = connect("");

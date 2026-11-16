@@ -4,6 +4,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import kr.seulgae.techlab.lab.status.LabStatusController;
 import kr.seulgae.techlab.multiplayer.lobby.config.LobbyWebSocketConfig;
 import kr.seulgae.techlab.multiplayer.lobby.domain.LobbyRoom;
 import kr.seulgae.techlab.multiplayer.lobby.domain.LobbyChat;
@@ -31,7 +32,7 @@ import org.springframework.context.annotation.Import;
 @Configuration(proxyBeanMethods = false)
 @EnableAutoConfiguration(excludeName = "org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration")
 @Import({LobbyWebSocketConfig.class, LobbySocketHandler.class, LobbyRoom.class, LobbyWorld.class, LobbyChat.class,
-    ResearchController.class, ResearchService.class, ApiExceptionHandler.class})
+    ResearchController.class, ResearchService.class, ApiExceptionHandler.class, LabStatusController.class})
 public class LocalLobbyTestApplication {
     public static final UUID RECORD_ID = UUID.fromString("00000000-0000-4000-8000-000000000001");
     private static final OffsetDateTime CREATED_AT = OffsetDateTime.parse("2026-11-15T12:00:00+09:00");

@@ -2,7 +2,9 @@ package kr.seulgae.techlab.multiplayer.lobby.domain;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
@@ -27,6 +29,22 @@ public class LobbyWorld {
      */
     public record Position(double x, double y) {}
     private record Area(double x, double y, double width, double height) {}
+    /**
+     * 방 안에서 E로 사용하는 상호작용 지점이다. 가장자리까지의 거리로 범위를 판정한다.
+     *
+     * @author seulgae
+     * @version 1.0, 공유 맵의 방별 상호작용 정의
+     * @see "None"
+     */
+    public record Interaction(String id, String kind, String label, double x, double y, double width, double height, double range) {
+        /** 클라이언트 {@code isNearObject}와 같은 가장자리 거리 판정이다. */
+        public boolean near(double px, double py) {
+            double dx = Math.max(Math.abs(px - x) - width / 2, 0);
+            double dy = Math.max(Math.abs(py - y) - height / 2, 0);
+            return Math.hypot(dx, dy) <= range;
+        }
+    }
+    private final Map<String, List<Interaction>> interactions = new LinkedHashMap<>();
     private final List<Area> obstacles = new ArrayList<>();
     private final double width;
     private final double height;
@@ -47,6 +65,14 @@ public class LobbyWorld {
             data.get("spawns").forEach(node -> spawns.add(new Position(node.get("x").asDouble(), node.get("y").asDouble())));
             data.get("walls").forEach(node -> obstacles.add(area(node)));
             data.get("objects").forEach(node -> obstacles.add(area(node.get("body"))));
+            for (var entry : rooms.properties()) {
+                var list = new ArrayList<Interaction>();
+                var nodes = entry.getValue().get("interactions");
+                if (nodes != null) nodes.forEach(node -> list.add(new Interaction(node.get("id").stringValue(), node.get("kind").stringValue(),
+                    node.get("label").stringValue(), node.get("x").asDouble(), node.get("y").asDouble(),
+                    node.get("width").asDouble(), node.get("height").asDouble(), node.get("range").asDouble())));
+                interactions.put(entry.getKey(), List.copyOf(list));
+            }
         } catch (IOException exception) {
             throw new IllegalStateException("Cannot load lobby geometry", exception);
         }
@@ -117,5 +143,19 @@ public class LobbyWorld {
     public Position roomSpawn(String roomId) {
         var spawn = rooms.get(roomId).get("spawn");
         return new Position(spawn.get("x").asDouble(), spawn.get("y").asDouble());
+    }
+
+    /** @return 공유 맵에 정의된 방 식별자, 정의 순서 유지 */
+    public List<String> roomIds() { return List.copyOf(interactions.keySet()); }
+
+    /** @return 방의 표시 이름 */
+    public String roomName(String roomId) { return rooms.get(roomId).get("name").stringValue(); }
+
+    /** @return 방의 상호작용 지점 목록, 없는 방이면 빈 목록 */
+    public List<Interaction> interactions(String roomId) { return interactions.getOrDefault(roomId, List.of()); }
+
+    /** 서버 좌표가 해당 방의 지정 종류 상호작용 범위 안에 있는지 확인한다. */
+    public boolean near(String roomId, String kind, double x, double y) {
+        return interactions(roomId).stream().anyMatch(interaction -> interaction.kind().equals(kind) && interaction.near(x, y));
     }
 }

@@ -1,7 +1,10 @@
 package kr.seulgae.techlab.multiplayer.lobby.domain;
 
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.ArrayDeque;
 import java.util.function.LongSupplier;
@@ -228,6 +231,27 @@ public class LobbyRoom {
         m.inputX = 0; m.inputY = 0; m.sequence = -1; m.receivedSequence = -1;
         m.pending.clear(); m.pendingMs = 0; m.timeBudget = 250; m.budgetAt = now;
         return m.view();
+    }
+
+    /** 서버 좌표 기준으로 플레이어가 현재 방의 지정 상호작용 범위 안에 있는지 확인한다. */
+    public synchronized boolean near(String id, String kind) {
+        var m = members.get(id);
+        return m != null && world.near(m.roomId, kind, m.x, m.y);
+    }
+
+    /** @return 같은 방에서 지정 상호작용 범위 안에 있는 플레이어 ID */
+    public synchronized Set<String> playersNear(String roomId, String kind) {
+        var ids = new LinkedHashSet<String>();
+        for (var m : members.values()) if (m.roomId.equals(roomId) && world.near(roomId, kind, m.x, m.y)) ids.add(m.id);
+        return ids;
+    }
+
+    /** @return 공유 맵의 모든 방을 포함한 방별 접속자 수, 맵 정의 순서 */
+    public synchronized Map<String, Integer> roomCounts() {
+        var counts = new LinkedHashMap<String, Integer>();
+        for (var roomId : world.roomIds()) counts.put(roomId, 0);
+        for (var m : members.values()) counts.merge(m.roomId, 1, Integer::sum);
+        return counts;
     }
 
     /** @return 현재 접속 중인 플레이어의 읽기 전용 상태 또는 null */

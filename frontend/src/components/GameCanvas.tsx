@@ -5,6 +5,9 @@ import Phaser from 'phaser'
 import LabLobbyScene from '../game/scenes/LabLobbyScene'
 import { RESEARCH_EVENTS } from '../features/research/researchEvents'
 import ResearchPanel from '../features/research/components/ResearchPanel'
+import LabInfoPanel from '../features/lab/components/LabInfoPanel'
+import { LAB_EVENTS } from '../features/lab/labEvents'
+import type { LabPanelKind } from '../features/lab/model/labTypes'
 import MultiplayerStatus from '../features/multiplayer/components/MultiplayerStatus'
 import { INITIAL_CONNECTION, MULTIPLAYER_EVENTS } from '../features/multiplayer/model/protocol'
 import type { ConnectionInfo, ChatMessage, ChatError } from '../features/multiplayer/model/protocol'
@@ -33,6 +36,8 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
   const [chatAvailable, setChatAvailable] = useState(false)
   const [chatFocused, setChatFocused] = useState(false)
   const [controlsReset, setControlsReset] = useState(0)
+  const [labPanel, setLabPanel] = useState<LabPanelKind | null>(null)
+  const [tableTalk, setTableTalk] = useState(false)
 
   /** 다른 UI 갱신 중에도 조이스틱의 입력 콜백을 유지한다. */
   const moveMobile = useCallback((input: DirectionInput) => {
@@ -50,6 +55,12 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
   const closeResearch = () => {
     eventRef.current?.emit(RESEARCH_EVENTS.closeResearch)
     setResearchOpen(false)
+    containerRef.current?.focus({ preventScroll: true })
+  }
+  /** 서버 상태·빌드 정보 패널도 같은 방식으로 게임 입력을 복구한다. */
+  const closeLabPanel = () => {
+    eventRef.current?.emit(LAB_EVENTS.closePanel)
+    setLabPanel(null)
     containerRef.current?.focus({ preventScroll: true })
   }
 
@@ -70,6 +81,9 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
     eventRef.current = uiEvents
     const openResearch = () => setResearchOpen(true)
     uiEvents.on(RESEARCH_EVENTS.openResearch, openResearch)
+    const openLabPanel = (kind: LabPanelKind) => setLabPanel(kind)
+    uiEvents.on(LAB_EVENTS.openPanel, openLabPanel)
+    uiEvents.on(LAB_EVENTS.tableTalk, setTableTalk)
     const resetMobile = () => setControlsReset(value => value + 1)
     uiEvents.on(MOBILE_INPUT.reset, resetMobile)
 
@@ -101,6 +115,8 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
       // Phaser의 비동기 destroy 프레임을 기다리지 않고 소켓·타이머부터 정리한다.
       uiEvents.emit(MULTIPLAYER_EVENTS.dispose)
       uiEvents.off(RESEARCH_EVENTS.openResearch, openResearch)
+      uiEvents.off(LAB_EVENTS.openPanel, openLabPanel)
+      uiEvents.off(LAB_EVENTS.tableTalk, setTableTalk)
       uiEvents.off(MOBILE_INPUT.reset, resetMobile)
       client.destroy()
       clientRef.current = null
@@ -114,15 +130,17 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
     <>
       <div ref={containerRef} className="game-canvas" tabIndex={0} role="application"
         onPointerDown={() => containerRef.current?.focus({ preventScroll: true })}
-        aria-label="슬개기술연구소 게임 화면. WASD 또는 방향키 이동, E 연구 기록 열기" />
+        aria-label="슬개기술연구소 게임 화면. WASD 또는 방향키 이동, E 출입구·연구 장비 사용" />
       <MultiplayerStatus connection={connection} />
       <ChatPanel roomName={ROOMS[connection.roomId ?? "lobby"].name} messages={messages} connected={connection.phase === 'online' && chatAvailable}
-        error={chatError} onSend={message => clientRef.current?.sendChat(message) ?? false}
+        tableTalk={tableTalk}
+        error={chatError} onSend={message => clientRef.current?.sendChat(message, tableTalk ? 'table' : 'room') ?? false}
         onInputFocus={focused => { setChatFocused(focused); eventRef.current?.emit('chat:focus') }}
         onExit={() => containerRef.current?.focus({ preventScroll: true })} onEdit={() => setChatError(null)} />
-      <MobileControls disabled={researchOpen || chatFocused || connection.travelling === true} resetToken={controlsReset}
+      <MobileControls disabled={researchOpen || labPanel !== null || chatFocused || connection.travelling === true} resetToken={controlsReset}
         onMove={moveMobile} onInteract={interactMobile} />
       {researchOpen && <ResearchPanel onClose={closeResearch} />}
+      {labPanel && <LabInfoPanel kind={labPanel} onClose={closeLabPanel} />}
     </>
   )
 }
