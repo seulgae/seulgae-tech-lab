@@ -17,7 +17,7 @@ import type MultiplayerClient from '../../features/multiplayer/MultiplayerClient
 import { MOBILE_INPUT } from '../input/mobileInput'
 import type { DirectionInput } from '../input/mobileInput'
 import { ROOMS, nearestInteraction, roomObstacles } from '../maps/rooms'
-import type { RoomId, RoomInteraction } from '../maps/rooms'
+import type { RoomId, RoomInteraction, Seat } from '../maps/rooms'
 import { setRoomObstacles } from '../multiplayer/networkPosition'
 
 /**
@@ -37,6 +37,9 @@ export default class LabLobbyScene extends Phaser.Scene {
   private interactKey?: Phaser.Input.Keyboard.Key
   private panelOpen = false
   private tableTalk = false
+  /** 회의실 의자에 앉아 자동으로 켠 테이블 대화 */
+  private seatTalk = false
+  private sitRequestedAt = 0
   private interactionHighlight?: Phaser.GameObjects.Rectangle
   private multiplayer?: LobbyMultiplayer
   private fx?: RoomFx
@@ -87,6 +90,7 @@ export default class LabLobbyScene extends Phaser.Scene {
   create(data: { from?: RoomId } = {}) {
     this.panelOpen = false
     this.tableTalk = false
+    this.seatTalk = false
     this.uiEvents.emit(LAB_EVENTS.tableTalk, false)
     this.activeRoom = this.client.currentRoom()
     this.restartPending = false
@@ -97,9 +101,9 @@ export default class LabLobbyScene extends Phaser.Scene {
     this.touchInteraction = false
     this.openingDoor = undefined
     this.cameras.main.setBackgroundColor(ROOM_THEMES[this.activeRoom].camera)
-    const { obstacles, interactionHighlight } = createLobbyMap(this, this.activeRoom)
+    const { obstacles, interactionHighlight, plants } = createLobbyMap(this, this.activeRoom)
     this.interactionHighlight = interactionHighlight
-    this.fx = createRoomFx(this, this.activeRoom, { from: data.from, client: this.client })
+    this.fx = createRoomFx(this, this.activeRoom, { from: data.from, client: this.client, plants })
     this.player = new Player(this, SPAWN.x, SPAWN.y)
     this.physics.add.collider(this.player, obstacles)
     this.multiplayer = new LobbyMultiplayer(this, this.player, this.client)
@@ -166,8 +170,9 @@ export default class LabLobbyScene extends Phaser.Scene {
     const door = ROOMS[this.activeRoom].doors.find(d => Math.hypot(this.player!.x - d.x, this.player!.y - d.y) <= 56)
     // 출입구가 우선이며, E 한 번에 한 대상만 실행한다.
     const target = door ? undefined : nearestInteraction(this.activeRoom, this.player.x, this.player.y)
-    // 테이블 범위를 벗어나면 서버 거부를 기다리지 않고 근거리 대화를 끈다.
-    if (this.tableTalk && target?.kind !== 'table-talk') this.setTableTalk(false)
+    this.syncSeat()
+    // 테이블 범위를 벗어나면 서버 거부를 기다리지 않고 근거리 대화를 끈다. 회의실 의자에 앉아 있는 동안은 유지한다.
+    if (this.tableTalk && target?.kind !== 'table-talk' && !this.seatTalk) this.setTableTalk(false)
     const enabled = !this.panelOpen && !this.transition && !textFocused
     if (door) this.interactionHint?.setPosition(door.x, door.y - 70).setText('E · ' + ROOMS[door.target as RoomId].name + ' 입장')
     else if (target) this.interactionHint?.setPosition(target.x, target.y - target.height / 2 - 30).setText(this.fx?.hint(target) ?? this.hintFor(target))
@@ -195,6 +200,10 @@ export default class LabLobbyScene extends Phaser.Scene {
       this.setTableTalk(!this.tableTalk)
       return
     }
+    if (target.kind === 'seat') {
+      this.toggleSeat(target as Seat)
+      return
+    }
     this.panelOpen = true
     this.resetChatInput()
     this.interactionHint?.setVisible(false)
@@ -213,6 +222,29 @@ export default class LabLobbyScene extends Phaser.Scene {
 
   private hintFor(target: RoomInteraction) {
     if (target.kind === 'table-talk') return this.tableTalk ? 'E · 테이블 대화 나가기' : 'E · 테이블 대화 참여'
+    if (target.kind === 'seat') return this.player?.seat?.id === target.id ? 'E · 일어나기' : 'E · 앉기'
     return 'E · ' + target.label
+  }
+
+  /** 같은 의자에서 E를 다시 누르면 일어난다. 서버 확인 전에 먼저 앉은 모습을 보여 준다. */
+  private toggleSeat(seat: Seat) {
+    if (!this.player) return
+    if (this.player.seat?.id === seat.id) {
+      this.player.sit(undefined)
+      this.client.sit(null)
+      return
+    }
+    if (!this.client.sit(seat.id)) return
+    this.player.sit(seat)
+    this.sitRequestedAt = this.time.now
+    // 회의실 의자에 앉으면 테이블 대화에 자동으로 참여한다.
+    if (this.activeRoom === 'meeting-room') { this.seatTalk = true; this.setTableTalk(true) }
+  }
+
+  /** 서버가 1.5초 안에 앉음을 확인하지 않으면(멀거나 빈자리 아님) 일어난다. 일어나면 자동 테이블 대화도 끈다. */
+  private syncSeat() {
+    const seat = this.player?.seat
+    if (seat && this.time.now - this.sitRequestedAt > 1500 && this.client.selfSeat() !== seat.id) this.player!.sit(undefined)
+    if (this.seatTalk && !this.player?.seat) { this.seatTalk = false; this.setTableTalk(false) }
   }
 }

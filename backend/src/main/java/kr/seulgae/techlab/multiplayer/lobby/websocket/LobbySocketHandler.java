@@ -37,6 +37,7 @@ public class LobbySocketHandler extends TextWebSocketHandler {
     private static final Logger LOG = LoggerFactory.getLogger(LobbySocketHandler.class);
     private static final Set<String> INPUT_FIELDS = Set.of("type", "x", "y", "seq");
     private static final Set<String> CHAT_FIELDS = Set.of("type", "message");
+    private static final Set<String> SEAT_FIELDS = Set.of("type", "seatId");
     private static final Set<String> MOVE_FIELDS = Set.of("type", "inputs");
     private static final Set<String> COMMAND_FIELDS = Set.of("x", "y", "ms", "seq");
     private static final double INPUTS_PER_SECOND = 40;
@@ -160,6 +161,17 @@ public class LobbySocketHandler extends TextWebSocketHandler {
             }
             long expectedEpoch = room.epoch(peer.playerId);
             if (input.has("roomEpoch") ? !input.get("roomEpoch").isIntegralNumber() || input.get("roomEpoch").asLong() != expectedEpoch : expectedEpoch != 0) return;
+            if (input.isObject() && input.path("type").stringValue("").equals("seat")) {
+                // 의자 앉기(seatId)·일어나기(null). 조건이 맞지 않으면 무시하고 다음 상태로 결과를 알린다.
+                if (peer.allow(now)) {
+                    var seat = input.get("seatId");
+                    boolean valid = fields(input, SEAT_FIELDS) && seat != null
+                        && (seat.isNull() || seat.isString() && seat.stringValue().matches("[a-z-]{1,32}-chair-[0-9]{1,2}"));
+                    if (valid) room.sit(peer.playerId, seat.isNull() ? null : seat.stringValue());
+                }
+                peer.lastSeen = now;
+                return;
+            }
             if (input.isObject() && input.path("type").stringValue("").equals("chat")) {
                 try {
                     synchronized (chat) {

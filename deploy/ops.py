@@ -219,9 +219,13 @@ def preflight():
             or Path(config.get('secrets', {}).get('prod_db_password', {}).get('file', '')) != directory / 'prod-app-password'):
         raise OpsError('Resolved Compose runtime/DB configuration is unsafe or inconsistent')
     version = schema_version()
-    if version != 1:
-        raise OpsError(f'Expected existing Flyway V1; found schema {version}. No migration performed.')
-    print('Prerequisites verified: PostgreSQL, network, credential files, runtime config and existing schema V1.')
+    if version not in SUPPORTED_SCHEMAS:
+        raise OpsError(f'Expected existing Flyway V1 or V2; found schema {version}. No migration performed.')
+    print(f'Prerequisites verified: PostgreSQL, network, credential files, runtime config and existing schema V{version}.')
+
+
+# Flyway versions this repository knows how to run against. Releases still declare their own range.
+SUPPORTED_SCHEMAS = (1, 2)
 
 
 def schema_version():

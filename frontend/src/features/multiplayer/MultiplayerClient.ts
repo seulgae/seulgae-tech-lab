@@ -159,6 +159,16 @@ export default class MultiplayerClient {
     return true
   }
 
+  /** 의자에 앉거나(seatId) 일어난다(null). 서버가 거리·빈자리를 확인하고 다음 상태의 seat로 결과를 알린다. */
+  sit(seatId: string | null) {
+    if (!this.scoped || this.travelling || this.socket?.readyState !== 1 || !this.selfId) return false
+    this.socket.send(JSON.stringify({ type: 'seat', seatId, roomEpoch: this.roomEpoch }))
+    return true
+  }
+
+  /** @return 서버가 마지막으로 알려 준 내 의자, 없으면 null */
+  selfSeat() { return (this.selfId && this.players.get(this.selfId)?.seat) || null }
+
   canChat() { return !this.travelling && this.chatEnabled && !!this.selfId && this.socket?.readyState === 1 }
 
   currentRoom() { return this.roomId }

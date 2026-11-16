@@ -66,6 +66,7 @@ jobs:
           DB_USERNAME: test_app
           DB_PASSWORD: ci-app-only
           LAB_RESEARCH_WRITE_ENABLED: 'true'
+          LAB_WRITE_CLIENT_CAPACITY: '100'
           TEST_DATABASE_DISPOSABLE: 'true'
         run: |
           java -jar backend/target/tech-lab-0.0.1-SNAPSHOT.jar > "$RUNNER_TEMP/research-backend.log" 2>&1 &
@@ -145,12 +146,12 @@ jobs:
           import json,os
           manifest = dict(format=1, repository=os.environ['GITHUB_REPOSITORY'],
                           sha=os.environ['GITHUB_SHA'], run_id=int(os.environ['GITHUB_RUN_ID']),
-                          db_schema=dict(min=1,max=1),
+                          db_schema=dict(min=2,max=2),
                           images={s:'ghcr.io/seulgae/seulgae-tech-lab-'+s+'@'+os.environ[s.upper()+'_DIGEST']
                                   for s in ('backend','frontend')})
           with open('release.json','w') as f: json.dump(manifest,f,indent=2)
           PY
           gh release create "deploy-run-$GITHUB_RUN_ID" release.json \
             --target "$GITHUB_SHA" --title "Deployable tech lab $GITHUB_SHA" \
-            --notes "Pinned application images from validated main CI. DB schema compatibility: 1." \
+            --notes "Pinned application images from validated main CI. DB schema compatibility: 2." \
             --prerelease --latest=false

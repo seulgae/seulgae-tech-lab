@@ -412,6 +412,16 @@
       "name": "회의실",
       "interactions": [
         {
+          "id": "meeting-agenda",
+          "kind": "agenda",
+          "label": "회의 안건",
+          "x": 400,
+          "y": 122,
+          "width": 96,
+          "height": 56,
+          "range": 48
+        },
+        {
           "id": "meeting-table",
           "kind": "table-talk",
           "label": "테이블 대화",
@@ -419,7 +429,7 @@
           "y": 278,
           "width": 200,
           "height": 64,
-          "range": 64
+          "range": 96
         }
       ],
       "spawn": {

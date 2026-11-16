@@ -45,6 +45,22 @@ public class LobbyWorld {
         }
     }
     private final Map<String, List<Interaction>> interactions = new LinkedHashMap<>();
+    /**
+     * 앉을 수 있는 의자. 공유 맵의 chair 가구에서 방별 순서대로 만든다(예: meeting-room-chair-0).
+     *
+     * @author seulgae
+     * @version 1.0, 의자 앉기 검증
+     * @see "None"
+     */
+    public record Seat(String id, double x, double y, double width, double height) {
+        public static final double RANGE = 40;
+        public boolean near(double px, double py) {
+            double dx = Math.max(Math.abs(px - x) - width / 2, 0);
+            double dy = Math.max(Math.abs(py - y) - height / 2, 0);
+            return Math.hypot(dx, dy) <= RANGE;
+        }
+    }
+    private final Map<String, List<Seat>> seats = new LinkedHashMap<>();
     private final List<Area> obstacles = new ArrayList<>();
     private final double width;
     private final double height;
@@ -72,6 +88,16 @@ public class LobbyWorld {
                     node.get("label").stringValue(), node.get("x").asDouble(), node.get("y").asDouble(),
                     node.get("width").asDouble(), node.get("height").asDouble(), node.get("range").asDouble())));
                 interactions.put(entry.getKey(), List.copyOf(list));
+                // 로비 가구는 최상위 objects, 나머지 방은 rooms.<id>.objects에 있다.
+                var objects = entry.getKey().equals("lobby") ? data.get("objects") : entry.getValue().get("objects");
+                var roomSeats = new ArrayList<Seat>();
+                if (objects != null) for (var object : objects) {
+                    if (!"chair".equals(object.path("texture").stringValue(""))) continue;
+                    var body = object.get("body");
+                    roomSeats.add(new Seat(entry.getKey() + "-chair-" + roomSeats.size(), body.get("x").asDouble(), body.get("y").asDouble(),
+                        body.get("width").asDouble(), body.get("height").asDouble()));
+                }
+                seats.put(entry.getKey(), List.copyOf(roomSeats));
             }
         } catch (IOException exception) {
             throw new IllegalStateException("Cannot load lobby geometry", exception);
@@ -153,6 +179,14 @@ public class LobbyWorld {
 
     /** @return 방의 상호작용 지점 목록, 없는 방이면 빈 목록 */
     public List<Interaction> interactions(String roomId) { return interactions.getOrDefault(roomId, List.of()); }
+
+    /** @return 방의 의자 목록, 없는 방이면 빈 목록 */
+    public List<Seat> seats(String roomId) { return seats.getOrDefault(roomId, List.of()); }
+
+    /** 서버 좌표가 현재 방의 해당 의자 가까이에 있는지 확인한다. */
+    public boolean nearSeat(String roomId, String seatId, double x, double y) {
+        return seats(roomId).stream().anyMatch(seat -> seat.id().equals(seatId) && seat.near(x, y));
+    }
 
     /** 서버 좌표가 해당 방의 지정 종류 상호작용 범위 안에 있는지 확인한다. */
     public boolean near(String roomId, String kind, double x, double y) {

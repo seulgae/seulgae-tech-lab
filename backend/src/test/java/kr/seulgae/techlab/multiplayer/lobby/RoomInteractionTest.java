@@ -46,7 +46,7 @@ class RoomInteractionTest {
     }
 
     @Test void everyRoomHasInteractionsOutsideSpawnAndOnlyKnownKinds() {
-        var kinds = java.util.Set.of("research", "build-info", "server-status", "table-talk");
+        var kinds = java.util.Set.of("research", "build-info", "server-status", "table-talk", "agenda");
         for (var roomId : world.roomIds()) {
             var interactions = world.interactions(roomId);
             assertFalse(interactions.isEmpty(), roomId);

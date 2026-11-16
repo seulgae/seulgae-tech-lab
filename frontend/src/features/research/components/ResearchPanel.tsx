@@ -1,15 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
 import { fetchResearchPage, fetchResearchRecord } from '../api/researchApi'
 import type { ResearchPage, ResearchRecord } from '../model/researchTypes'
+import EntryForm from '../../boards/EntryForm'
+import { BoardError, IDEA_CONTENT_MAX, IDEA_TITLE_MAX, createIdea, deleteIdea, editToken, ideaTitle, nextIdeaNumber, updateIdea } from '../../boards/boardsApi'
 import './ResearchPanel.css'
 
 type ResearchPanelProps = { onClose: () => void }
+type Form = { kind: 'create'; title: string } | { kind: 'edit'; record: ResearchRecord } | null
 
 /**
- * 연구 기록 목록·상세 조회와 로딩·오류·재시도 상태를 표시하는 모달이다.
+ * 연구 기록 목록·상세와, 연구 아이디어 일지 작성·수정·삭제를 제공하는 로비 컴퓨터 모달이다.
+ * 일지 제목은 다음 번호("연구 아이디어 일지 #N")로 미리 채우고 내용은 130자까지 받는다.
  *
  * @author seulgae
- * @version 1.0, 연구 기록 조회 패널과 요청 정리 책임 문서화
+ * @version 1.1, 아이디어 일지 입력과 내 글 수정·삭제
  * @see "None"
  * @param props 패널 속성
  * @param props.onClose 패널 종료와 게임 입력 복구를 수행하는 콜백
@@ -26,6 +30,8 @@ export default function ResearchPanel({ onClose }: ResearchPanelProps) {
   const [selected, setSelected] = useState<ResearchRecord | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [detailError, setDetailError] = useState(false)
+  const [form, setForm] = useState<Form>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   useEffect(() => {
     const dialog = dialogRef.current
@@ -54,36 +60,31 @@ export default function ResearchPanel({ onClose }: ResearchPanelProps) {
     return () => controller.abort()
   }, [selectedId, retry])
 
-  /**
-   * 현재 목록 또는 상세 화면의 오류 상태를 초기화하고 조회를 다시 시도한다.
-   */
   const retryLoad = () => {
     if (selectedId) { setDetailLoading(true); setDetailError(false) }
     else { setLoading(true); setError(false) }
     setRetry((n) => n + 1)
   }
-  /**
-   * 이전 상세 결과를 비우고 선택한 연구 기록을 조회한다.
-   *
-   * @param id 조회할 연구 기록 식별자
-   */
   const openRecord = (id: string) => {
-    setDetailLoading(true)
-    setDetailError(false)
-    setSelected(null)
-    setSelectedId(id)
+    setDetailLoading(true); setDetailError(false); setSelected(null); setActionError(null); setSelectedId(id)
   }
-  /**
-   * 목록 로딩 상태를 초기화하고 조회 페이지를 변경한다.
-   *
-   * @param next 다음 목록 조회에서 건너뛸 기록 수
-   */
-  const changeOffset = (next: number) => {
-    setLoading(true)
-    setError(false)
-    setOffset(next)
+  const changeOffset = (next: number) => { setLoading(true); setError(false); setOffset(next) }
+  /** 저장·삭제 후 첫 페이지 목록으로 돌아간다. */
+  const refresh = () => { setForm(null); setSelectedId(null); setSelected(null); setLoading(true); setError(false); setOffset(0); setRetry(n => n + 1) }
+
+  /** 다음 일지 번호를 서버에서 받아 제목을 미리 채운다. 실패하면 #1로 시작한다. */
+  const startCreate = async () => {
+    setActionError(null)
+    const number = await nextIdeaNumber().catch(() => 1)
+    setForm({ kind: 'create', title: ideaTitle(number) })
+  }
+  const remove = async (record: ResearchRecord) => {
+    if (!window.confirm(`"${record.title}"을(를) 삭제할까요? 되돌릴 수 없어요.`)) return
+    try { await deleteIdea(record.id); refresh() }
+    catch (cause) { setActionError(cause instanceof BoardError ? cause.message : '삭제하지 못했어요.') }
   }
 
+  const mine = (id: string) => !!editToken(id)
   return (
     <dialog
       ref={dialogRef}
@@ -91,7 +92,8 @@ export default function ResearchPanel({ onClose }: ResearchPanelProps) {
       aria-labelledby="research-title"
       onCancel={(event) => {
         event.preventDefault()
-        onClose()
+        if (form) setForm(null)
+        else onClose()
       }}
     >
       <header className="research-panel-header">
@@ -103,7 +105,19 @@ export default function ResearchPanel({ onClose }: ResearchPanelProps) {
           닫기
         </button>
       </header>
-      {selectedId ? (
+      {form ? (
+        <EntryForm titleLabel="일지 제목" titleMax={IDEA_TITLE_MAX} contentMax={IDEA_CONTENT_MAX}
+          titleHint="예: 연구 아이디어 일지 #1 — 다음 번호를 미리 채워 두었어요."
+          initialTitle={form.kind === 'create' ? form.title : form.record.title}
+          initialContent={form.kind === 'edit' ? form.record.content : ''}
+          submitLabel={form.kind === 'edit' ? '수정하기' : '등록하기'}
+          onCancel={() => setForm(null)}
+          onSubmit={async (title, content) => {
+            if (form.kind === 'edit') await updateIdea(form.record.id, title, content)
+            else await createIdea(title, content)
+            refresh()
+          }} />
+      ) : selectedId ? (
         <section aria-live="polite" aria-busy={detailLoading}>
           <button type="button" className="research-close" onClick={() => setSelectedId(null)}>목록으로</button>
           {detailLoading && <p role="status">기록을 불러오는 중…</p>}
@@ -111,21 +125,31 @@ export default function ResearchPanel({ onClose }: ResearchPanelProps) {
           {!detailLoading && !detailError && selected && (
             <article className="research-entry">
               <span className="research-status">{new Date(selected.createdAt).toLocaleString('ko-KR')}</span>
-              <h3>{selected.title}</h3>
-              <p>{selected.summary}</p>
+              <h3>{selected.title}{mine(selected.id) && <span className="board-mine">내 일지</span>}</h3>
+              {selected.summary !== selected.content && <p>{selected.summary}</p>}
               <p className="research-content">{selected.content}</p>
+              {mine(selected.id) && <div className="board-entry-actions">
+                <button type="button" className="research-close" onClick={() => setForm({ kind: 'edit', record: selected })}>수정</button>
+                <button type="button" className="research-close" onClick={() => void remove(selected)}>삭제</button>
+              </div>}
+              {actionError && <p role="alert" className="board-error">{actionError}</p>}
             </article>
           )}
         </section>
       ) : (
         <section aria-live="polite" aria-busy={loading}>
+          <div className="board-toolbar">
+            <p>떠오른 연구 아이디어를 130자로 남겨 보세요.</p>
+            <button type="button" className="research-close board-primary" onClick={() => void startCreate()}>아이디어 일지 쓰기</button>
+          </div>
           {loading && <p role="status">연구 기록을 불러오는 중…</p>}
           {error && <p role="alert">연구 기록을 불러오지 못했습니다. <button type="button" onClick={retryLoad}>다시 시도</button></p>}
           {!loading && !error && page.items.length === 0 && <p>아직 등록된 연구 기록이 없습니다.</p>}
           {!loading && !error && page.items.map((record) => (
             <article className="research-entry" key={record.id}>
               <span className="research-status">{new Date(record.createdAt).toLocaleString('ko-KR')}</span>
-              <h3><button type="button" className="research-title" onClick={() => openRecord(record.id)}>{record.title}</button></h3>
+              <h3><button type="button" className="research-title" onClick={() => openRecord(record.id)}>{record.title}</button>
+                {mine(record.id) && <span className="board-mine">내 일지</span>}</h3>
               <p>{record.summary}</p>
             </article>
           ))}
@@ -137,7 +161,7 @@ export default function ResearchPanel({ onClose }: ResearchPanelProps) {
           )}
         </section>
       )}
-      <p className="research-footer">ESC 또는 닫기 버튼으로 로비로 돌아갑니다.</p>
+      <p className="research-footer">ESC 또는 닫기 버튼으로 로비로 돌아갑니다. 이 브라우저에서 쓴 일지만 수정·삭제할 수 있어요.</p>
     </dialog>
   )
 }

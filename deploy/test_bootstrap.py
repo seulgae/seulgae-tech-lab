@@ -244,6 +244,14 @@ class PreflightTests(unittest.TestCase):
         for c in self.command.call_args_list:
             self.assertFalse(set(c.args[0]) & {'pull', 'up', 'restart', 'down', 'migrate'})
 
+    def test_existing_v2_schema_is_accepted_but_unknown_versions_are_not(self):
+        self.schema.return_value = 2
+        ops.preflight()
+        for version in (0, 3):
+            self.schema.return_value = version
+            with self.assertRaisesRegex(ops.OpsError, 'V1 or V2'):
+                ops.preflight()
+
     def test_missing_empty_or_private_app_password_is_rejected(self):
         password = self.secret / 'prod-app-password'
         password.chmod(0o600)

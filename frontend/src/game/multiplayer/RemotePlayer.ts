@@ -2,6 +2,8 @@ import Phaser from 'phaser'
 import type { PlayerState } from '../../features/multiplayer/model/protocol'
 import RemoteInterpolation from './RemoteInterpolation'
 import { crispText } from '../render/renderScale.ts'
+import SeatView from '../seating.ts'
+import { seatById } from '../maps/rooms.ts'
 
 /**
  * 서버 상태를 보간하는 원격 캐릭터이며 로컬 충돌 계산에는 참여하지 않는다.
@@ -13,6 +15,8 @@ import { crispText } from '../render/renderScale.ts'
 export default class RemotePlayer extends Phaser.GameObjects.Sprite {
   private readonly timeline = new RemoteInterpolation()
   private readonly nameLabel: Phaser.GameObjects.Text
+  private readonly seatView: SeatView
+  private seatId: string | null = null
   private readonly debug = new URLSearchParams(window.location.search).get('netDebug') === '1'
   private elapsed = 0
   private frames = 0
@@ -29,9 +33,14 @@ export default class RemotePlayer extends Phaser.GameObjects.Sprite {
     this.nameLabel = crispText(scene, state.x, state.y - 55, state.nickname, {
       fontSize: '15px', fontStyle: 'bold', color: '#edf3ff', backgroundColor: '#14202acc', padding: { x: 5, y: 2 },
     }).setOrigin(0.5)
+    this.seatView = new SeatView(scene, 0xc4dce8)
+    this.seatId = state.seat ?? null
   }
 
-  setTarget(state: PlayerState, serverTime = performance.now()) { this.timeline.push(state, serverTime, performance.now()) }
+  setTarget(state: PlayerState, serverTime = performance.now()) {
+    this.timeline.push(state, serverTime, performance.now())
+    this.seatId = state.seat ?? null
+  }
 
   update(delta: number) {
     const target = this.timeline.sample(performance.now(), delta)
@@ -42,7 +51,11 @@ export default class RemotePlayer extends Phaser.GameObjects.Sprite {
     this.setPosition(this.x + dx * scale, this.y + dy * scale)
     this.setDepth(this.y)
     this.play(`${amount > 0.02 ? 'walk' : 'idle'}-${target.facing}`, true)
-    this.nameLabel.setPosition(this.x, this.y - 55).setDepth(900)
+    // 서버가 앉았다고 알린 동안에는 의자 위에 앉은 모습을 그린다.
+    const seat = seatById(this.seatId)
+    if (seat !== this.seatView.seat) { this.seatView.show(seat); this.setVisible(!seat) }
+    const anchor = this.seatView.labelAnchor() ?? { x: this.x, y: this.y - 55 }
+    this.nameLabel.setPosition(anchor.x, anchor.y).setDepth(900)
     if (this.debug) {
       this.elapsed += delta; this.frames++
       if (target.moving && delta > 0) {
@@ -63,6 +76,7 @@ export default class RemotePlayer extends Phaser.GameObjects.Sprite {
 
   override destroy(fromScene?: boolean) {
     this.nameLabel.destroy()
+    this.seatView.destroy()
     super.destroy(fromScene)
   }
 }

@@ -84,7 +84,7 @@ cd /opt/homeserver/apps/seulgae-tech-lab
 python3 deploy/ops.py check
 ```
 
-`check`는 Docker·Compose, PostgreSQL 상태와 네트워크, 두 비밀번호 파일과 권한, 해석된 Compose DB 설정, 기존 Flyway V1을 확인한다. SQL은 READ ONLY 트랜잭션으로 실행한다. 성공 이력의 스키마 버전 1만 허용하며 실패 이력·미적용·다른 버전이면 중단한다. 이미지 Pull, 앱 시작, 마이그레이션은 하지 않는다. 자체 ops 디렉터리와 잠금 파일은 만들 수 있다.
+`check`는 Docker·Compose, PostgreSQL 상태와 네트워크, 두 비밀번호 파일과 권한, 해석된 Compose DB 설정, 기존 Flyway V1을 확인한다. SQL은 READ ONLY 트랜잭션으로 실행한다. 성공 이력의 스키마 버전 1 또는 2만 허용하며 실패 이력·미적용·다른 버전이면 중단한다. 배포할 릴리스와 맞는지는 `deploy`가 릴리스의 `db_schema` 범위로 다시 확인한다. 이미지 Pull, 앱 시작, 마이그레이션은 하지 않는다. 자체 ops 디렉터리와 잠금 파일은 만들 수 있다.
 
 병합 후 main CI에서 이미지·manifest 게시가 끝났는지 GitHub Actions에서 사용자가 확인한 다음:
 
@@ -143,7 +143,7 @@ DB 및 Kafka를 중지하거나 마이그레이션을 재실행하지 않는다.
 
 | 목적 | 명령 | 동작 |
 | --- | --- | --- |
-| 사전 점검 | `python3 deploy/ops.py check` | 기존 V1 및 호스트 필수 조건 확인 |
+| 사전 점검 | `python3 deploy/ops.py check` | 기존 V1·V2 및 호스트 필수 조건 확인 |
 | 최초/이후 배포 | `./deploy.sh` | 검증된 최신 manifest로 앱만 기동·갱신 |
 | 시작·중지·재시작 | `./start.sh`, `./stop.sh`, `./restart.sh` | 기록된 연구소 앱만 대상 |
 | 상태 | `./status.sh` | SHA·CI 실행 ID·digest·스키마·health 확인 |
@@ -155,7 +155,22 @@ DB 및 Kafka를 중지하거나 마이그레이션을 재실행하지 않는다.
 
 이후 업데이트 실패 시 이전 정상 앱을 한 번 복원한다. 복원 실패 시 transaction을 남기고 멈춘다. 성공 시에만 current/previous를 교체한다. 작업 중단으로 transaction이 남으면 내용을 조사하고 명시적으로 `./rollback.sh`를 실행한다. previous가 null인 최초 배포 transaction은 최초 후보 앱만 정리한다. 최초 성공만 있고 이전 성공 버전이 없을 때 일반 rollback은 거부한다.
 
-롤백은 **앱 이미지에만 적용**한다. PostgreSQL 데이터·스키마·Flyway 이력은 되돌리지 않는다. 이전 이미지가 현재 스키마와 호환되지 않으면 거부한다. **V1 완료 DB에 `provision-db.sh`, `migrate-prod.py`, Flyway migrate, SQL 초기화를 재실행하지 않는다.** 미래 스키마 변경은 별도 작업이다.
+롤백은 **앱 이미지에만 적용**한다. PostgreSQL 데이터·스키마·Flyway 이력은 되돌리지 않는다. 이전 이미지가 현재 스키마와 호환되지 않으면 거부한다. **완료된 DB에 `provision-db.sh`, Flyway migrate, SQL 초기화를 직접 재실행하지 않는다.** 스키마 변경은 아래 V2 절차처럼 `migrate-prod.py`로만 한다.
+
+### V2 마이그레이션 (회의 안건·수정 키, 2026-11-16)
+
+V2는 `lab.meeting_agendas` 테이블을 만들고, `lab.research_records`에 `edit_token_hash`·`updated_at` 열을 추가한다. 둘 다 추가만 하므로 기존 데이터는 바뀌지 않는다. V2 이후 main 릴리스는 `db_schema` 범위가 **2..2**라서, 운영 DB가 V1인 동안에는 `deploy`가 새 이미지를 거부한다.
+
+1. V2 PR이 main에 병합되고 CI가 새 릴리스(`DB schema compatibility: 2`)를 게시했는지 확인한다.
+2. 서버에서 `python3 deploy/ops.py check`로 현재 V1과 필수 조건을 확인한다.
+3. `python3 deploy/migrate-prod.py`를 실행한다. 이 스크립트는 다음을 한다.
+   - 최신 main 릴리스가 V2를 선언하는지 확인한다.
+   - `pg_dump` 백업(`backups/stlab-prod-before-v2-*.dump`)을 만들고 `pg_restore --list`로 검증한다.
+   - 그 커밋의 `backend`로 `stlab_prod_migrator` 계정을 써서 Flyway V2를 적용하고 검증한다.
+   - 자동 DB 롤백은 없다.
+4. `./deploy.sh`로 새 이미지를 배포한다.
+
+V2로 올린 뒤에는 `db_schema`가 1..1인 이전 릴리스로 롤백할 수 없다. 스키마 자체는 이전 이미지와 호환되지만, 이전 릴리스의 선언 범위를 바꾸지 않기 위해서다.
 
 ## 운영 상태와 진단
 
