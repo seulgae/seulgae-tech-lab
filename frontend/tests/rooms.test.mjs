@@ -10,7 +10,7 @@ test('방 전환은 같은 소켓을 유지하고 이전 방 세대의 상태·�
  class Socket {static all=[];readyState=1;bufferedAmount=0;sent=[];constructor(){Socket.all.push(this)}send(s){this.sent.push(JSON.parse(s))}close(){}receive(m){this.onmessage({data:JSON.stringify(m)})}}
  Object.assign(globalThis,{window:Object.assign(new EventTarget(),{location:{protocol:'http:',host:'localhost:5188'}}),document:Object.assign(new EventTarget(),{hidden:false}),WebSocket:Socket,sessionStorage:{getItem(){return null},setItem(){}}})
  const snapshots=[],chats=[],histories=[]
- const c=new MultiplayerClient({snapshot:(players)=>snapshots.push(players),chat:m=>chats.push(m),history:m=>histories.push(m)})
+ const c=new MultiplayerClient({snapshot:(players, selfId, time)=>{snapshots.push(players); if(selfId && time !== undefined) assert.equal(time,1000)},chat:m=>chats.push(m),history:m=>histories.push(m)})
  try {
   c.start();const s=Socket.all[0];s.receive({type:'welcome',selfId:own.id,players:[own],maxPlayers:5,protocolVersion:4,roomId:'lobby',roomEpoch:0})
   assert.equal(c.changeRoom('lobby-to-development'),true);assert.equal(c.changeRoom('lobby-to-development'),false)
@@ -19,7 +19,7 @@ test('방 전환은 같은 소켓을 유지하고 이전 방 세대의 상태·�
   s.receive({type:'room_error',reason:'거리 부족',roomId:'lobby',roomEpoch:0})
   assert.equal(c.isTravelling(),false);assert.equal(c.currentRoom(),'lobby')
   assert.equal(c.changeRoom('lobby-to-development'),true)
-  s.receive({type:'room_changed',selfId:own.id,players:[{...own,y:460}],roomId:'development-lab',roomEpoch:1})
+  s.receive({type:'room_changed',selfId:own.id,players:[{...own,y:460}],time:1000,roomId:'development-lab',roomEpoch:1})
   assert.equal(c.currentRoom(),'development-lab');assert.equal(c.isTravelling(),false)
   const n=snapshots.length
   s.receive({type:'state',tick:999,players:[{...own,x:700}],roomId:'lobby',roomEpoch:0})

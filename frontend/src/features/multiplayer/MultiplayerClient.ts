@@ -214,13 +214,13 @@ export default class MultiplayerClient {
           clearTimeout(this.travelTimer)
           this.roomId = message.roomId!; this.roomEpoch = message.roomEpoch!; this.travelling = false
           this.sequence = 0; this.lastTick = -1; this.commands = []; this.lastMovementBatch = []; this.lastQueuedInput = null
-          this.input = {x:0,y:0}; this.lastSentInput = null; this.lastInputSent = -Infinity; this.serverTime = undefined
+          this.input = {x:0,y:0}; this.lastSentInput = null; this.lastInputSent = -Infinity; this.serverTime = message.time
           this.messages = []; this.seenMessages.clear(); this.notify(c => c.history?.([]))
           this.players = new Map(message.players.map(p => [p.id,p]))
           this.notify(c => c.snapshot?.([], null))
           this.updateStatus({roomId:this.roomId, roomOnline:this.players.size, travelling:false, roomError:undefined})
           this.notify(c => c.room?.(this.roomId, false))
-          this.notify(c => c.snapshot?.([...this.players.values()], this.selfId))
+          this.notify(c => c.snapshot?.([...this.players.values()], this.selfId, this.serverTime))
           return
         }
         if (message.type === 'welcome') {

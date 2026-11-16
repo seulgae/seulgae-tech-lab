@@ -16,7 +16,7 @@ export type ServerMessage = RoomMeta & (
   | { type: 'state'; tick: number; players: PlayerState[]; time?: number }
   | { type: 'joined'; player: PlayerState }
   | { type: 'left'; id: string }
-  | { type: 'room_changed'; selfId: string; players: PlayerState[] }
+  | { type: 'room_changed'; selfId: string; players: PlayerState[]; time?: number }
   | { type: 'room_error'; reason: string }
 )
 
@@ -53,7 +53,7 @@ export function parseServerMessage(raw: string): ServerMessage {
   const message = JSON.parse(raw)
   if (!message || typeof message !== 'object') throw new Error('Invalid frame')
   if (message.roomId !== undefined && (!isRoomId(message.roomId) || !Number.isSafeInteger(message.roomEpoch) || message.roomEpoch < 0)) throw new Error('Invalid room')
-  if ((message.type === 'state' || message.type === 'welcome') && message.time !== undefined
+  if ((message.type === 'state' || message.type === 'welcome' || message.type === 'room_changed') && message.time !== undefined
     && (!Number.isFinite(message.time) || message.time < 0)) throw new Error('Invalid server time')
   if (message.type === 'joined' && validPlayer(message.player)) return message
   if (message.type === 'left' && validId(message.id)) return message

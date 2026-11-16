@@ -139,7 +139,7 @@ public class LobbySocketHandler extends TextWebSocketHandler {
                         String previous = room.roomId(peer.playerId);
                         room.changeRoom(peer.playerId, input.get("doorId").stringValue(), now);
                         peer.latestState.set(null);
-                        sendScoped(session.getId(), peer, Map.of("type", "room_changed", "players", room.snapshot(room.roomId(peer.playerId)), "selfId", peer.playerId));
+                        sendScoped(session.getId(), peer, Map.of("type", "room_changed", "players", room.snapshot(room.roomId(peer.playerId)), "selfId", peer.playerId, "time", now / 1_000_000d));
                         sendScoped(session.getId(), peer, Map.of("type", "chat_history", "messages", chat.history(room.roomId(peer.playerId))));
                         broadcastIn(previous, Map.of("type", "left", "id", peer.playerId));
                         broadcastIn(room.roomId(peer.playerId), Map.of("type", "joined", "player", room.player(peer.playerId)));
