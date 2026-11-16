@@ -4,6 +4,20 @@ import { defineConfig } from 'vite'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  build: {
+    // Phaser·React는 배포마다 거의 바뀌지 않으므로 앱 코드와 분리해, 재배포 후에도 브라우저 캐시를 그대로 쓴다.
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            { name: 'phaser', test: /node_modules[\\/]phaser/ },
+            { name: 'react', test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/ },
+          ],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 1300,
+  },
   server: {
     host: '127.0.0.1',
     fs: { allow: ['.', '../shared'] },

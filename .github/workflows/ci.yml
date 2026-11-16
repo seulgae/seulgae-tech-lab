@@ -74,6 +74,19 @@ jobs:
           node backend/tests/research-api.mjs
       - run: docker build -f backend/Dockerfile -t tech-lab-backend:ci .
       - run: docker build -f frontend/Dockerfile -t tech-lab-frontend:ci .
+      - name: Validate nginx config, compression and cache headers
+        run: |
+          docker run --rm --add-host backend:127.0.0.1 tech-lab-frontend:ci nginx -t
+          docker run -d --name nginx-ci --add-host backend:127.0.0.1 -p 127.0.0.1:18090:8080 tech-lab-frontend:ci
+          trap 'docker rm -f nginx-ci >/dev/null' EXIT
+          for i in $(seq 1 20); do curl -fsS -o /dev/null http://127.0.0.1:18090/ && break; sleep 1; done
+          asset=$(curl -fsS http://127.0.0.1:18090/ | grep -oE '/assets/index-[^"]+\.js' | head -1)
+          test -n "$asset"
+          headers=$(curl -fsS -o /dev/null -D - -H 'Accept-Encoding: gzip' "http://127.0.0.1:18090$asset")
+          echo "$headers"
+          echo "$headers" | grep -qi '^content-encoding: gzip'
+          echo "$headers" | grep -qi '^cache-control: public, max-age=31536000, immutable'
+          curl -fsS -o /dev/null -D - http://127.0.0.1:18090/ | grep -qi '^cache-control: no-cache'
   operations:
     runs-on: ubuntu-latest
     steps:

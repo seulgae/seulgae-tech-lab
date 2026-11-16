@@ -16,7 +16,7 @@
 {"type":"room_change","doorId":"lobby-to-development","roomEpoch":0}
 ```
 
-승인은 `room_changed`에 `selfId`, 목적지 `roomId`, 증가한 `roomEpoch`, 목적지 `players` 스냅샷을 담는다. 스냅샷의 본인 좌표가 서버가 정한 스폰이다. 거부는 `room_error`로 알려주며 소켓을 닫지 않고 기존 방을 유지한다. 응답이 5초간 없으면 모호한 위치 상태를 계속 사용하지 않고 기존 재연결 절차로 복구한다. 재접속 기본 방은 로비다.
+승인은 `room_changed`에 `selfId`, 목적지 `roomId`, 증가한 `roomEpoch`, 목적지 `players` 스냅샷을 담는다. 스냅샷의 본인 좌표가 서버가 정한 스폰이다. 거부는 `room_error`로 알려주며 소켓을 닫지 않고 기존 방을 유지한다. 응답이 15초간 없으면(운영 Funnel 경로의 약 1초 왕복을 고려해 5초에서 늘림, [network-latency.md](network-latency.md)) 모호한 위치 상태를 계속 사용하지 않고 기존 재연결 절차로 복구한다. 재접속 기본 방은 로비다.
 
 새 `move`, `input`, `chat` 요청에는 현재 `roomEpoch`를 포함한다. 이동 시 서버 대기 명령·수신 sequence·처리 ACK·방향·속도를 초기화한다. 클라이언트도 sequence, 송신 묶음, 입력, 마지막 tick과 예측을 초기화한다. 이전 세대 입력은 위치에 적용하지 않는다. A→B→A 재입장도 방 ID뿐 아니라 세대로 구분한다.
 

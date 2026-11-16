@@ -1,5 +1,13 @@
 import type { RoomId } from '../../game/maps/rooms'
-import { INITIAL_CONNECTION, lobbySocketUrl, parseServerMessage, normalizeChat, validChatText } from './model/protocol.ts'
+import { INITIAL_CONNECTION, closeCause, lobbySocketUrl, parseServerMessage, normalizeChat, validChatText } from './model/protocol.ts'
+
+/**
+ * 운영 경로(Tailscale Funnel)는 요청 왕복이 약 1초, 연결 수립이 3~5초까지 걸린다.
+ * 방 이동 응답을 5초만 기다리면 정상 지연에도 스스로 연결을 끊으므로 여유를 둔다.
+ */
+export const ROOM_RESPONSE_TIMEOUT_MS = 15000
+/** 업로드가 잠시 막혀도 바로 끊지 않도록 약 4초 분량의 입력(20Hz)을 허용한다. */
+export const INPUT_BACKPRESSURE_BYTES = 16384
 import type { ConnectionInfo, MoveInput, MoveCommand, PlayerState, ChatMessage, ChatError, ChatScope, ServerMessage } from './model/protocol'
 
 type Callbacks = { room?: (roomId: RoomId, pending: boolean) => void; snapshot?: (players: PlayerState[], selfId: string | null, serverTime?: number) => void; status?: (info: ConnectionInfo) => void;
@@ -114,7 +122,7 @@ export default class MultiplayerClient {
     if (this.commandMode) {
       const now = Date.now()
       if (!this.commands.length || now - this.lastInputSent < 50) return
-      if (socket.bufferedAmount > 4096) { socket.close(4003, 'Input backpressure'); return }
+      if (socket.bufferedAmount > INPUT_BACKPRESSURE_BYTES) { socket.close(4003, 'Input backpressure'); return }
       this.lastMovementBatch = this.commands.slice(0, 8)
       socket.send(JSON.stringify({ type: 'move', inputs: this.lastMovementBatch, ...(this.scoped ? {roomEpoch:this.roomEpoch} : {}) }))
       this.commands.splice(0, 8); this.lastInputSent = now
@@ -128,7 +136,7 @@ export default class MultiplayerClient {
     // 방향 변경과 정기 전송을 합쳐 최대 20Hz로 보낸다. 대기 중에는 최신 방향만 유지한다.
     const now = Date.now()
     if (now - this.lastInputSent < 50) return
-    if (socket.bufferedAmount > 4096) { socket.close(4003, 'Input backpressure'); return }
+    if (socket.bufferedAmount > INPUT_BACKPRESSURE_BYTES) { socket.close(4003, 'Input backpressure'); return }
     socket.send(JSON.stringify({ type: 'input', x: this.input.x, y: this.input.y, seq: ++this.sequence, ...(this.scoped ? {roomEpoch:this.roomEpoch} : {}) }))
     this.lastInputSent = now
     this.lastSentInput = { ...this.input }
@@ -163,7 +171,7 @@ export default class MultiplayerClient {
     this.updateStatus({travelling:true, roomError:undefined, message:'방을 이동하고 있어요…'})
     this.notify(c => c.room?.(this.roomId, true))
     this.socket.send(JSON.stringify({type:'room_change', doorId, roomEpoch:this.roomEpoch}))
-    this.travelTimer = setTimeout(() => { this.socket?.close(4005, 'Room response timeout') }, 5000)
+    this.travelTimer = setTimeout(() => { this.socket?.close(4005, 'Room response timeout') }, ROOM_RESPONSE_TIMEOUT_MS)
     return true
   }
 
@@ -273,7 +281,7 @@ export default class MultiplayerClient {
     socket.onclose = event => {
       if (this.disposed || socket !== this.socket) return
       console.warn('[multiplayer] 연결 종료', {
-        code: event.code, reason: event.reason, wasClean: event.wasClean,
+        code: event.code, reason: event.reason, wasClean: event.wasClean, cause: closeCause(event.code, event.reason), travelling: this.travelling,
         sentInputs: this.sequence, connectedMs: this.connectedAt ? Date.now() - this.connectedAt : 0,
         sentLastSecond: this.recentInputSends.filter(sentAt => Date.now() - sentAt < 1000).length,
         lastMovementBatch: this.commandMode ? this.lastMovementBatch : undefined,

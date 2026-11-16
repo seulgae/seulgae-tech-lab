@@ -73,4 +73,40 @@ class LobbySocketCloseTest {
             handler.stop();
         }
     }
+
+    /** 왕복 약 1초인 운영 경로에서 2초 걸리는 송신은 정상 지연으로 보고, 5초를 넘으면 정리한다. */
+    @Test void keepsSlowButProgressingSendAndDropsStalledSend() throws Exception {
+        var room = new LobbyRoom(new LobbyWorld());
+        var handler = new LobbySocketHandler(room, new kr.seulgae.techlab.multiplayer.lobby.domain.LobbyChat(room));
+        var session = mock(WebSocketSession.class);
+        var open = new AtomicBoolean(true);
+        var blockWrites = new AtomicBoolean(false);
+        var writeStarted = new CountDownLatch(1);
+        var releaseWrite = new CountDownLatch(1);
+        when(session.getId()).thenReturn("slow-send");
+        when(session.getUri()).thenReturn(URI.create("ws://localhost/ws/lobby"));
+        when(session.isOpen()).thenAnswer(invocation -> open.get());
+        doAnswer(invocation -> {
+            if (blockWrites.get()) { writeStarted.countDown(); releaseWrite.await(8, TimeUnit.SECONDS); }
+            return null;
+        }).when(session).sendMessage(any());
+        doAnswer(invocation -> { open.set(false); return null; }).when(session).close(any(CloseStatus.class));
+        try {
+            handler.afterConnectionEstablished(session);
+            verify(session, timeout(1000).times(3)).sendMessage(any());
+            blockWrites.set(true);
+            handler.updateRoom();
+            assertTrue(writeStarted.await(1, TimeUnit.SECONDS));
+            Thread.sleep(2000);
+            handler.updateRoom();
+            assertEquals(1, room.snapshot().size(), "2초 송신 지연은 연결을 유지해야 한다");
+            Thread.sleep(3300);
+            handler.updateRoom();
+            assertTrue(room.snapshot().isEmpty(), "5초 넘게 멈춘 송신은 연결을 정리해야 한다");
+            verify(session, timeout(1000)).close(CloseStatus.SESSION_NOT_RELIABLE);
+        } finally {
+            releaseWrite.countDown();
+            handler.stop();
+        }
+    }
 }

@@ -73,6 +73,20 @@ export function parseServerMessage(raw: string): ServerMessage {
   throw new Error('Invalid frame')
 }
 
+/**
+ * 콘솔(F12)에서 끊김 원인을 바로 알 수 있도록 종료 코드를 사람이 읽는 설명으로 바꾼다.
+ * 4001~4005는 클라이언트가 스스로 닫은 경우, 그 밖은 서버·브라우저가 닫은 경우다.
+ */
+export function closeCause(code: number, reason = '') {
+  const causes: Record<number, string> = {
+    1000: '정상 종료', 1001: '페이지 이동 또는 서버 종료', 1006: '네트워크 단절(종료 프레임 없음)',
+    1008: `서버가 입력을 거부함${reason ? `: ${reason}` : ''}`, 1009: '메시지가 너무 큼', 1011: '서버 오류', 1013: '로비 정원 초과',
+    4001: '클라이언트: 10초간 서버 메시지 없음', 4002: '클라이언트: 잘못된 서버 메시지', 4003: '클라이언트: 업로드 지연으로 입력이 쌓임',
+    4004: '클라이언트: 이동 확인(ack) 지연', 4005: '클라이언트: 방 이동 응답 지연', 4500: '서버: 전송 지연·대기열 초과로 연결 정리',
+  }
+  return causes[code] ?? `알 수 없는 종료 코드 ${code}${reason ? `: ${reason}` : ''}`
+}
+
 export function lobbySocketUrl(location: Pick<Location, 'protocol' | 'host'>, nickname = '') {
   const url = new URL(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws/lobby`)
   if (validNickname(nickname)) url.searchParams.set('nickname', nickname)
