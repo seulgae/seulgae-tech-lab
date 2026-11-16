@@ -1,33 +1,34 @@
 .lab-shell { width: min(1160px, 100%); margin: 0 auto; padding: 32px 24px 18px; }
 .lab-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 34px; }
 .lab-brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
-.brand-mark { position: relative; display: grid; place-items: center; width: 42px; height: 42px; border: 2px solid #acc7ab; color: #d2e1c1; background: #254644; font: bold 27px monospace; box-shadow: 4px 4px 0 #102024; }
-.brand-mark span { position: absolute; width: 7px; height: 7px; background: #dfbd80; right: -4px; top: -4px; }
+.brand-mark { position: relative; display: grid; place-items: center; width: 42px; height: 42px; border: 2px solid var(--room-accent, #acc7ab); color: #f3ead8; background: var(--room-card, #254644); transition: background .5s, border-color .5s; font: bold 27px monospace; box-shadow: 4px 4px 0 #102024; }
+.brand-mark span { position: absolute; width: 7px; height: 7px; background: var(--room-accent, #dfbd80); right: -4px; top: -4px; }
 .lab-brand strong { display: block; font-size: 17px; letter-spacing: -.4px; margin-top: 3px; }
 .eyebrow { display: block; color: #91aa9a; font: 10px/1.6 monospace; letter-spacing: 1.4px; }
-.location-badge { display: flex; align-items: center; gap: 9px; font-size: 12px; color: #c2d1bc; padding: 8px 12px; border: 1px solid #3b5550; }
-.location-badge i { width: 6px; height: 6px; background: #a1c58f; }
+.location-badge { display: flex; align-items: center; gap: 9px; font-size: 12px; color: #c2d1bc; padding: 8px 12px; border: 1px solid var(--room-border, #3b5550); transition: border-color .5s; }
+.location-badge i { width: 6px; height: 6px; background: var(--room-accent, #a1c58f); box-shadow: 0 0 8px var(--room-accent, #a1c58f); }
 .location-badge span { color: #829e91; font: 11px monospace; border-left: 1px solid #3b5550; padding-left: 9px; }
 .lab-layout { display: grid; grid-template-columns: minmax(0, 1fr) 218px; gap: 30px; align-items: start; }
-.game-card { min-width: 0; background: #20383a; border: 1px solid #4b6258; box-shadow: 0 12px 32px #0a181a38; }
+.game-card { min-width: 0; background: var(--room-card, #20383a); border: 1px solid var(--room-border, #4b6258); box-shadow: 0 12px 32px #0000004d, 0 0 0 1px #ffffff08 inset; transition: background .5s, border-color .5s; }
 .game-card-header { min-height: 79px; padding: 18px 22px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .game-card h1 { font-size: 18px; margin: 4px 0 0; font-weight: 500; letter-spacing: -.5px; }
-.room-label { font: 10px monospace; color: #a3b49a; white-space: nowrap; padding: 7px 9px; border: 1px solid #496057; }
-.game-canvas { position: relative; width: 100%; aspect-ratio: 4 / 3; background: #ddd5bf; overflow: hidden; }
+.room-label { font: 10px monospace; color: var(--room-accent, #a3b49a); white-space: nowrap; padding: 7px 9px; border: 1px solid var(--room-border, #496057); }
+.game-canvas { position: relative; width: 100%; aspect-ratio: 4 / 3; background: var(--room-background, #ddd5bf); overflow: hidden; }
 .game-canvas canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
 .game-canvas:focus-visible { outline: 2px solid #e5c28b; outline-offset: -2px; }
 .game-controls { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 15px 20px; font-size: 11px; color: #a2b6a5; }
 .game-controls > span { display: flex; align-items: center; gap: 7px; }
-kbd { font: 10px/1.5 monospace; padding: 3px 5px; border: 1px solid #5e7163; background: #293f3e; color: #d7ddc5; box-shadow: 0 2px 0 #13292a; white-space: nowrap; }
+kbd { font: 10px/1.5 monospace; padding: 3px 5px; border: 1px solid var(--room-border, #5e7163); background: var(--room-background, #293f3e); color: #d7ddc5; box-shadow: 0 2px 0 #13292a; white-space: nowrap; }
 .control-or { color: #637e73; }
 .lab-notes { padding-top: 14px; }
 .lab-notes h2 { font-size: 25px; line-height: 1.55; margin: 15px 0; font-weight: 500; letter-spacing: -.8px; }
-.lab-notes > p { color: #9eb0a0; font-size: 12px; line-height: 1.9; }
-.mission-card { margin-top: 30px; padding: 20px 17px; border: 1px solid #4d6151; background: #233d3b; position: relative; }
-.mission-card::before { content: ''; position: absolute; left: -1px; top: 18px; height: 21px; width: 3px; background: #dab77e; }
-.note-number { font: 10px monospace; color: #d8bb88; letter-spacing: 1px; }
+.multiline { white-space: pre-line; }
+.lab-notes > p { color: var(--room-muted, #9eb0a0); font-size: 12px; line-height: 1.9; }
+.mission-card { margin-top: 30px; padding: 20px 17px; border: 1px solid var(--room-border, #4d6151); background: var(--room-card, #233d3b); position: relative; transition: background .5s, border-color .5s; }
+.mission-card::before { content: ''; position: absolute; left: -1px; top: 18px; height: 21px; width: 3px; background: var(--room-accent, #dab77e); }
+.note-number { font: 10px monospace; color: var(--room-accent, #d8bb88); letter-spacing: 1px; }
 .mission-card h3 { font-size: 14px; margin: 12px 0; font-weight: 500; }
-.mission-card p { font-size: 12px; color: #afbdac; line-height: 1.9; }
+.mission-card p { font-size: 12px; color: var(--room-muted, #afbdac); line-height: 1.9; }
 .map-key { display: grid; gap: 13px; padding: 25px 0; font-size: 11px; color: #a1b29e; }
 .map-key span { display: flex; align-items: center; gap: 9px; }
 .map-key i { width: 9px; height: 9px; }

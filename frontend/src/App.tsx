@@ -1,19 +1,27 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ROOMS } from './game/maps/rooms'
 import type { RoomId } from './game/maps/rooms'
 import GameCanvas from './components/GameCanvas'
+import { ROOM_THEMES } from './game/rooms/roomThemes'
 import './App.css'
 
 /**
  * 픽셀 로비와 조작 안내를 반응형으로 배치하는 최상위 React 컴포넌트이다.
  *
  * @author seulgae
- * @version 1.0, 현재 공간 이름과 반응형 연구소 UI 구성
+ * @version 1.1, 방 테마에 맞춘 페이지 색과 안내 문구
  * @see "None"
  * @returns 게임 화면을 포함한 메인 영역
  */
 function App() {
   const [roomId, setRoomId] = useState<RoomId>('lobby')
+  const theme = ROOM_THEMES[roomId]
+  // 페이지 배경·카드·강조색도 현재 방 분위기를 따라간다.
+  useEffect(() => {
+    const root = document.documentElement
+    root.dataset.room = roomId
+    for (const [name, value] of Object.entries(ROOM_THEMES[roomId].page)) root.style.setProperty(`--room-${name}`, value)
+  }, [roomId])
   return (
     <main className="lab-shell">
       <header className="lab-header">
@@ -36,11 +44,11 @@ function App() {
             <span><kbd>ESC</kbd> 닫기</span>
           </footer>
         </section>
-        <aside className="lab-notes" aria-label="로비 안내">
+        <aside className="lab-notes" aria-label={`${ROOMS[roomId].name} 안내`}>
           <span className="eyebrow">FIELD NOTES</span>
-          <h2>반가워요,<br />연구원님.</h2>
-          <p>배우고, 실험하고,<br />작은 기록을 쌓는 공간입니다.</p>
-          <div className="mission-card"><span className="note-number">01 / EXPLORE</span><h3>첫 번째 연구 기록</h3><p>로비 오른쪽 컴퓨터에 다가가세요. 안내가 나타나면 <kbd>E</kbd>를 눌러 기록을 열 수 있어요.</p></div>
+          <h2 className="multiline">{theme.notes.title}</h2>
+          <p className="multiline">{theme.notes.body}</p>
+          <div className="mission-card"><span className="note-number">{ROOMS[roomId].name} / EXPLORE</span><h3>{theme.notes.missionTitle}</h3><p>{theme.notes.mission}</p></div>
           <div className="map-key"><span><i className="key-player" /> 나의 연구원</span><span><i className="key-interaction" /> 상호작용 가능한 곳</span></div>
           <p className="quiet-note">서두르지 않아도 괜찮아요.<br />좋은 발견은 작은 호기심에서 시작되니까요.</p>
         </aside>
