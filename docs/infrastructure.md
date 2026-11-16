@@ -31,14 +31,24 @@ SSH 접속 정보(별칭·키)는 각자 `~/.ssh/config`에 둔다. 개인키 �
 |---|---|
 | Host / Port | 127.0.0.1 / 25432 |
 | Database | stlab_dev |
-| User | appuser |
+| User | stlab_dev_app |
 | Schema | lab |
 | URL | `jdbc:postgresql://127.0.0.1:25432/stlab_dev?currentSchema=lab` |
 
 - 외부 SSH 터널을 쓰므로 데이터 소스 안의 SSH 터널 설정은 켜지 않는다.
-- 비밀번호는 `%USERPROFILE%\.config\seulgae-tech-lab\dev-appuser-password`에 저장하고, 현재 Windows 사용자만 읽을 수 있게 둔다. 화면에 출력하지 않는다.
-- `appuser`는 운영 DB(`stlab_prod`)에도 접속할 수 있다. 운영 데이터는 읽기만 하고, 스키마 변경은 `migrate-prod.py`로만 한다.
-- 마이그레이션 전용 계정은 `dev-migrator-password` 파일을 쓴다. 이 값이 현재 서버와 맞는지는 아직 확인하지 않았다.
+- 비밀번호는 `%USERPROFILE%\.config\seulgae-tech-lab\dev-app-password`에 있다. 현재 Windows 사용자만 읽을 수 있게 두고, 화면에 출력하지 않는다.
+- `stlab_dev_app`은 개발 `lab` 테이블의 조회·쓰기(DML)만 할 수 있다. 테이블 생성·변경(DDL)은 할 수 없다.
+- 개발 스키마 변경은 `stlab_dev_migrator`(`dev-migrator-password`)로 Flyway를 실행한다: `. .\deploy\dev-env.ps1 -Migration` 후 `mvn -f backend/pom.xml flyway:migrate flyway:validate`.
+- `appuser`는 PostgreSQL **슈퍼유저**(관리 전용)다. IntelliJ 일상 조회에는 쓰지 않는다. 운영 데이터 확인이 꼭 필요할 때만 읽기 전용으로 쓰고, 운영 스키마 변경은 `migrate-prod.py`로만 한다.
+
+### 개발 DB 준비 기록 (2026-11-17)
+
+새 서버에서는 운영 DB만 설정돼 있었고, `stlab_dev`는 빈 DB였다(계정·`lab` 스키마 없음). `deploy/provision-dev-db.sh`를 서버에서 실행해 다음을 만들었다.
+
+- 개발 전용 계정 `stlab_dev_owner`·`stlab_dev_app`·`stlab_dev_migrator`
+- 비밀번호(서버에서 생성), `lab` 스키마, 기본 권한
+
+비밀번호 파일 두 개는 이 PC로 복사했다. 이어서 개발 migrator로 Flyway V1~V3를 적용했다. 운영 DB는 바꾸지 않았다. 운영 DB에 PUBLIC CONNECT가 남아 있어 개발 계정이 `stlab_prod`에 접속은 되지만, 운영 테이블 권한은 없다.
 
 ## 로컬 백엔드·프런트엔드
 
