@@ -178,7 +178,8 @@ export default class LabLobbyScene extends Phaser.Scene {
     const enabled = !this.panelOpen && !this.transition && !textFocused
     if (door) this.interactionHint?.setPosition(door.x, door.y - 70).setText('E · ' + ROOMS[door.target as RoomId].name + ' 입장')
     else if (target) this.interactionHint?.setPosition(target.x, target.y - target.height / 2 - 30).setText(this.fx?.hint(target) ?? this.hintFor(target))
-    this.interactionHint?.setVisible(enabled && (!!door || !!target))
+    // 의자는 머리 위 이름표와 겹치므로 안내 문구 없이 테두리만 보여 준다.
+    this.interactionHint?.setVisible(enabled && (!!door || (!!target && target.kind !== 'seat')))
     if (target) this.interactionHighlight?.setPosition(target.x, target.y + 2).setSize(target.width + 14, target.height + 8)
       .setDepth(target.y + target.height / 2 + 1)
     this.interactionHighlight?.setVisible(!!target && enabled)
@@ -227,8 +228,6 @@ export default class LabLobbyScene extends Phaser.Scene {
 
   private hintFor(target: RoomInteraction) {
     if (target.kind === 'table-talk') return this.tableTalk ? 'E · 테이블 대화 나가기' : 'E · 테이블 대화 참여'
-    // 의자는 자주 지나치므로 짧게 E만 보여 준다.
-    if (target.kind === 'seat') return 'E'
     return 'E · ' + target.label
   }
 
