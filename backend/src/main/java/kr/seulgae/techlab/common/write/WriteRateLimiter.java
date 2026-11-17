@@ -82,12 +82,7 @@ public class WriteRateLimiter {
 
     /** Funnel·nginx가 붙인 X-Forwarded-For의 첫 주소, 없으면 직접 연결 주소 */
     static String clientOf(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            String first = forwarded.split(",")[0].strip();
-            if (!first.isEmpty() && first.length() <= 64) return first;
-        }
-        return String.valueOf(request.getRemoteAddr());
+        return kr.seulgae.techlab.common.web.ClientAddress.of(request.getHeader("X-Forwarded-For"), request.getRemoteAddr());
     }
 
     private static ResponseStatusException tooMany() {

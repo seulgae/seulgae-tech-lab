@@ -4,6 +4,7 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import kr.seulgae.techlab.common.web.ClientAddress;
 import kr.seulgae.techlab.multiplayer.lobby.websocket.LobbySocketHandler;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -44,7 +45,13 @@ public class LobbyWebSocketConfig implements WebSocketConfigurer {
         registry.addHandler(handler, "/ws/lobby").setAllowedOrigins(origins.toArray(String[]::new)).addInterceptors(new HandshakeInterceptor() {
             @Override public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response, WebSocketHandler socket, Map<String, Object> attributes) {
                 String origin = request.getHeaders().getOrigin();
-                if (origin != null && origins.contains(origin)) return true;
+                if (origin != null && origins.contains(origin)) {
+                    // 1주소 1연결 판단에 쓸 방문자 주소를 연결 속성에 남긴다.
+                    var remote = request.getRemoteAddress();
+                    attributes.put(LobbySocketHandler.CLIENT_ADDRESS, ClientAddress.of(request.getHeaders().getFirst("X-Forwarded-For"),
+                        remote == null || remote.getAddress() == null ? null : remote.getAddress().getHostAddress()));
+                    return true;
+                }
                 response.setStatusCode(HttpStatus.FORBIDDEN);
                 return false;
             }

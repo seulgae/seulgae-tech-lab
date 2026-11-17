@@ -27,6 +27,9 @@ import { setRoomObstacles } from '../multiplayer/networkPosition'
  * @version 1.2, 방별 테마·문 열림 연출·방 이벤트 연결
  * @see "None"
  */
+/** 의자 안내 문구가 보이는 시간(ms). 그 뒤에는 테두리 강조만 남는다. */
+const SEAT_HINT_MS = 2000
+
 export default class LabLobbyScene extends Phaser.Scene {
   private player?: Player
   private activeRoom: RoomId = 'lobby'
@@ -41,6 +44,9 @@ export default class LabLobbyScene extends Phaser.Scene {
   private seatTalk = false
   private sitRequestedAt = 0
   private interactionHighlight?: Phaser.GameObjects.Rectangle
+  /** 의자 안내는 이름표와 겹치므로 대상이 바뀐 순간부터 잠깐만 보여 준다. */
+  private hintTargetId?: string
+  private hintShownAt = 0
   private multiplayer?: LobbyMultiplayer
   private fx?: RoomFx
   /** 서버 승인을 기다리며 열어 둔 출입구 */
@@ -178,7 +184,10 @@ export default class LabLobbyScene extends Phaser.Scene {
     const enabled = !this.panelOpen && !this.transition && !textFocused
     if (door) this.interactionHint?.setPosition(door.x, door.y - 70).setText('E · ' + ROOMS[door.target as RoomId].name + ' 입장')
     else if (target) this.interactionHint?.setPosition(target.x, target.y - target.height / 2 - 30).setText(this.fx?.hint(target) ?? this.hintFor(target))
-    this.interactionHint?.setVisible(enabled && (!!door || !!target))
+    const hintId = door?.id ?? target?.id
+    if (hintId !== this.hintTargetId) { this.hintTargetId = hintId; this.hintShownAt = this.time.now }
+    const seatHintExpired = target?.kind === 'seat' && this.time.now - this.hintShownAt >= SEAT_HINT_MS
+    this.interactionHint?.setVisible(enabled && (!!door || !!target) && !seatHintExpired)
     if (target) this.interactionHighlight?.setPosition(target.x, target.y + 2).setSize(target.width + 14, target.height + 8)
       .setDepth(target.y + target.height / 2 + 1)
     this.interactionHighlight?.setVisible(!!target && enabled)

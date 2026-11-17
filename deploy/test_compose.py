@@ -29,6 +29,7 @@ class ComposeTests(unittest.TestCase):
         self.assertEqual(backend['environment']['DB_USERNAME'], 'stlab_prod_app')
         self.assertEqual(backend['environment']['LAB_MULTIPLAYER_ALLOWED_ORIGINS'].split(','), [
             'https://seulgae-home-server.tailac4b36.ts.net', 'http://127.0.0.1:5188', 'http://localhost:5188'])
+        self.assertEqual(backend['environment']['LAB_MULTIPLAYER_SINGLE_CONNECTION_PER_ADDRESS'], 'true')
         self.assertNotIn('DB_PASSWORD', backend['environment'])
         self.assertEqual(backend['image'], env['BACKEND_IMAGE'])
         self.assertEqual(backend['secrets'], [{'source': 'prod_db_password', 'target': 'DB_PASSWORD'},

@@ -40,6 +40,8 @@ services:
       SPRING_SQL_INIT_MODE: never
       SPRING_FLYWAY_ENABLED: "false"
       LAB_MULTIPLAYER_ALLOWED_ORIGINS: https://seulgae-home-server.tailac4b36.ts.net,http://127.0.0.1:5188,http://localhost:5188
+      # 한 주소(IP)에 로비 연결 하나만 둔다. 같은 주소의 새 창이 기존 연결을 끊는다.
+      LAB_MULTIPLAYER_SINGLE_CONNECTION_PER_ADDRESS: "true"
       SERVER_ADDRESS: 0.0.0.0
       # 카카오 로그인(docs/kakao-login.md). REST API 키와 Redirect URI는 공개 값이고, 비밀 값은 아래 secrets로만 넣는다.
       LAB_AUTH_KAKAO_CLIENT_ID: 8e235c19470d153bef77ad4ddddc3f23

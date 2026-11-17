@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import MultiplayerClient from '../src/features/multiplayer/MultiplayerClient.ts'
-import { lobbySocketUrl, parseServerMessage, validNickname, validChatText } from '../src/features/multiplayer/model/protocol.ts'
+import { REPLACED_CLOSE_CODE, REPLACED_MESSAGE, closeCause, lobbySocketUrl, parseServerMessage, validNickname, validChatText } from '../src/features/multiplayer/model/protocol.ts'
 
 const first = { id: '00000000-0000-4000-8000-000000000001', nickname: '연구원-0001', x: 400, y: 400, facing: 'down', moving: false, ack: -1 }
 const second = { ...first, id: '00000000-0000-4000-8000-000000000002', nickname: '연구원-0002', x: 428 }
@@ -195,6 +195,47 @@ test('연결·목록 변경·재연결·입력 전송·종료 정리를 중복 �
     assert.equal(c.sent.length, sentCount)
     assert.equal(Socket.instances.length, 3)
     assert.equal(c.onmessage, null)
+  } finally {
+    client.destroy()
+    for (const [key, value] of Object.entries(originals)) {
+      if (value === undefined) delete globalThis[key]
+      else globalThis[key] = value
+    }
+    t.mock.timers.reset()
+  }
+})
+
+test('같은 주소의 새 창이 연결을 가져가면(4409) 다시 연결하지 않고 안내한다', t => {
+  t.mock.method(console, 'warn', () => {})
+  t.mock.timers.enable({ apis: ['setTimeout', 'setInterval', 'Date'], now: 1000 })
+  const originals = { window: globalThis.window, document: globalThis.document, WebSocket: globalThis.WebSocket, sessionStorage: globalThis.sessionStorage }
+  class Socket {
+    static instances = []
+    readyState = 0
+    bufferedAmount = 0
+    constructor(url) { this.url = url; Socket.instances.push(this) }
+    open() { this.readyState = 1; this.onopen?.() }
+    receive(message) { this.onmessage?.({ data: JSON.stringify(message) }) }
+    send() {}
+    drop(code, reason = '') { this.readyState = 3; this.onclose?.({ code, reason, wasClean: true }) }
+    close(code = 1000) { this.drop(code) }
+  }
+  globalThis.window = Object.assign(new EventTarget(), { location: { protocol: 'http:', host: 'localhost:5188' } })
+  globalThis.document = Object.assign(new EventTarget(), { hidden: false })
+  globalThis.sessionStorage = { getItem: () => null, setItem() {}, removeItem() {} }
+  globalThis.WebSocket = Socket
+  const statuses = []
+  const client = new MultiplayerClient({ status: status => statuses.push(status) })
+  try {
+    client.start()
+    const a = Socket.instances[0]
+    a.open(); a.receive(welcome())
+    a.drop(REPLACED_CLOSE_CODE, 'Replaced by a newer connection from the same address')
+    assert.equal(statuses.at(-1).phase, 'replaced')
+    assert.equal(statuses.at(-1).message, REPLACED_MESSAGE)
+    t.mock.timers.tick(60000)
+    assert.equal(Socket.instances.length, 1, '두 창이 서로 끊어 내지 않도록 재연결하지 않는다')
+    assert.equal(closeCause(4409), '서버: 같은 주소의 새 연결로 대체됨')
   } finally {
     client.destroy()
     for (const [key, value] of Object.entries(originals)) {

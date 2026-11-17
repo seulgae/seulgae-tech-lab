@@ -406,3 +406,21 @@ test('책장 E는 책이 날아오는 연출 뒤 책 읽기 창을 연다', () =
   runDelayed()
   assert.deepEqual(opened, ['bookshelf'])
 })
+
+test('의자 안내 문구는 다가간 뒤 2초만 보이고, 다른 안내는 계속 보인다', () => {
+  const { scene } = createScene('lobby')
+  scene.player.x = 620; scene.player.y = 450
+  scene.update()
+  assert.equal(scene.interactionHint.visible, true)
+  scene.time.now = 1999; scene.update()
+  assert.equal(scene.interactionHint.visible, true)
+  scene.time.now = 2000; scene.update()
+  assert.equal(scene.interactionHint.visible, false, '2초 뒤 사라진다')
+  scene.player.y = 520; scene.update()
+  scene.player.y = 450; scene.update()
+  assert.equal(scene.interactionHint.visible, true, '벗어났다 다시 다가가면 2초 동안 다시 보인다')
+  scene.player.x = 445; scene.player.y = 240; scene.update()
+  scene.time.now = 9000; scene.update()
+  assert.equal(scene.interactionHint.text, 'E · 커피 마시기')
+  assert.equal(scene.interactionHint.visible, true, '의자가 아닌 안내는 사라지지 않는다')
+})
