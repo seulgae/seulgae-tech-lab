@@ -18,6 +18,7 @@ import type { ConnectionInfo, ChatMessage, ChatError } from '../features/multipl
 import MultiplayerClient from '../features/multiplayer/MultiplayerClient'
 import ChatPanel from '../features/multiplayer/components/ChatPanel'
 import MobileControls from './MobileControls'
+import { playSfx } from '../audio/AudioManager'
 import { MOBILE_INPUT } from '../game/input/mobileInput'
 import type { DirectionInput } from '../game/input/mobileInput'
 
@@ -80,7 +81,11 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
     const client = new MultiplayerClient({
       status: info => { setConnection(info); setChatAvailable(client.canChat()); onRoomChange?.(info.roomId ?? "lobby") },
       history: setMessages,
-      chat: message => setMessages(previous => [...previous, message].slice(-50)),
+      chat: message => {
+        setMessages(previous => [...previous, message].slice(-50))
+        // 다른 연구원의 새 메시지에만 알림음을 낸다(기록·내 메시지는 조용히).
+        if (message.playerId !== client.selfPlayerId()) playSfx('chat', { volume: 0.6 })
+      },
       chatError: setChatError,
     })
     clientRef.current = client

@@ -8,6 +8,8 @@ import LocalReconciliation from './LocalReconciliation'
 import MovementDiagnostics from './MovementDiagnostics'
 import AcknowledgedMovement from './AcknowledgedMovement'
 import { crispText } from '../render/renderScale.ts'
+import { playSpatialSfx } from '../../audio/AudioManager.ts'
+import { FootstepTracker, footstepSound } from '../../audio/soundRules.ts'
 
 /**
  * 공유 소켓을 장면에서 구독하고 본인 예측 위치와 채팅 말풍선을 연결한다.
@@ -19,6 +21,8 @@ import { crispText } from '../render/renderScale.ts'
 export default class LobbyMultiplayer {
   private readonly client: MultiplayerClient
   private readonly remotes = new Map<string, RemotePlayer>()
+  /** 같은 방 다른 연구원의 발걸음(화면에 그려진 보간 위치 기준, 거리 감쇠) */
+  private readonly remoteSteps = new Map<string, FootstepTracker>()
   private readonly ownLabel: Phaser.GameObjects.Text
   private readonly bubbles = new Map<string, ChatBubble>()
   private readonly unsubscribe: () => void
@@ -108,7 +112,7 @@ export default class LobbyMultiplayer {
     const otherIds = new Set(players.filter(player => player.id !== selfId).map(player => player.id))
     for (const [id, remote] of this.remotes) {
       if (!otherIds.has(id)) {
-        remote.destroy(); this.remotes.delete(id)
+        remote.destroy(); this.remotes.delete(id); this.remoteSteps.delete(id)
         this.bubbles.get(id)?.destroy(); this.bubbles.delete(id)
       }
     }
@@ -123,7 +127,15 @@ export default class LobbyMultiplayer {
   update(delta: number) {
     this.frameDelta = delta
     this.client.setInput(this.player.getInput())
-    for (const remote of this.remotes.values()) remote.update(delta)
+    for (const [id, remote] of this.remotes) {
+      remote.update(delta)
+      let steps = this.remoteSteps.get(id)
+      if (!steps) { steps = new FootstepTracker(); this.remoteSteps.set(id, steps) }
+      // 스냅샷이 반복 와도 실제로 그려진 위치가 움직일 때만 소리가 난다.
+      if (steps.update(remote.x, remote.y)) {
+        playSpatialSfx(footstepSound(this.client.currentRoom(), remote.x, remote.y), remote, this.player, { volume: 0.7, rate: 0.9 + Math.random() * 0.2 })
+      }
+    }
     const label = this.player.labelAnchor()
     this.ownLabel.setPosition(label.x, label.y).setDepth(900)
   }
@@ -147,7 +159,7 @@ export default class LobbyMultiplayer {
     this.acknowledged.reset()
     this.unsubscribe()
     for (const remote of this.remotes.values()) remote.destroy()
-    this.remotes.clear(); this.ownLabel.destroy()
+    this.remotes.clear(); this.remoteSteps.clear(); this.ownLabel.destroy()
     for (const bubble of this.bubbles.values()) bubble.destroy()
     this.bubbles.clear()
   }

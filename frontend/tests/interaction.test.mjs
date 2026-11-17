@@ -5,6 +5,8 @@ import { createRequire, stripTypeScriptTypes } from 'node:module'
 import test from 'node:test'
 import vm from 'node:vm'
 import { ROOMS, doorHint, nearestInteraction, roomObstacles } from '../src/game/maps/rooms.ts'
+import { FootstepTracker, footstepSound } from '../src/audio/soundRules.ts'
+import { skyPhase } from '../src/game/rooms/timeOfDay.ts'
 import { LAB_EVENTS } from '../src/features/lab/labEvents.ts'
 import { ROOM_THEMES } from '../src/game/rooms/roomThemes.ts'
 import { crispText } from '../src/game/render/renderScale.ts'
@@ -57,7 +59,7 @@ function createScene(room = 'lobby') {
       this.events = new EventEmitter()
       this.cameras = { main: { setBackgroundColor() {}, fadeIn() {}, fadeOut() {} } }
       // delayedCall은 바로 실행하지 않고 쌓아 두었다가 테스트가 runDelayed로 실행한다.
-      this.time = { now: 0, delayedCall: (_ms, fn) => { (state.delayed ??= []).push(fn) } }
+      this.time = { now: 0, delayedCall: (_ms, fn) => { (state.delayed ??= []).push(fn) }, addEvent() {} }
       this.scale = { listeners: new Set(), on(_event, fn) { this.listeners.add(fn) }, off(_event, fn) { this.listeners.delete(fn) } }
       this.physics = { add: { collider() {} } }
       this.input = { keyboard: { addKey: () => key, resetKeys: () => { state.resets++ } } }
@@ -88,6 +90,9 @@ function createScene(room = 'lobby') {
     Phaser: { Scene, Input: { Keyboard: { JustDown } }, Scenes: { Events: { SHUTDOWN: 'shutdown' } } },
     ROOMS, doorHint, roomObstacles, nearestInteraction, setRoomObstacles() {}, Player, createLobbyMap: () => ({}), RESEARCH_EVENTS, LAB_EVENTS,
     createRoomAssets() {}, ROOM_THEMES, createRoomFx: () => fx, crispText,
+    // 사운드: 재생한 효과음 이름만 기록한다. 발걸음 규칙은 실제 모듈을 쓴다.
+    AudioManager: { for: () => ({ enterRoom: (room, phase) => { (state.rooms ??= []).push([room, phase]) } }) },
+    playSfx: (key, options) => { (state.sounds ??= []).push(key) }, FootstepTracker, footstepSound, skyPhase,
     applyRenderZoom: () => { state.zoomApplied = (state.zoomApplied ?? 0) + 1 },
     hasTextInputFocus: () => state.textFocused,
     SPAWN: { x: 400, y: 400 }, MULTIPLAYER_EVENTS, MOBILE_INPUT, LobbyMultiplayer: class {
@@ -453,4 +458,26 @@ test('테이블 대화 안내는 2초 뒤 사라지고, E로 참여·나가기�
   assert.equal(scene.interactionHint.visible, true, '문구가 바뀌면 다시 보인다')
   scene.time.now = 4000; scene.update()
   assert.equal(scene.interactionHint.visible, false)
+})
+
+test('사운드: 방 음악을 시작하고, 실제로 움직일 때만 발걸음, 패널·의자 소리를 낸다', () => {
+  const lobby = createScene('lobby')
+  assert.equal(lobby.state.rooms[0][0], 'lobby', '장면을 만들면 방 음악·환경음을 요청한다')
+  lobby.scene.player.x = 400; lobby.scene.player.y = 400; lobby.scene.update()
+  lobby.scene.update()
+  assert.equal((lobby.state.sounds ?? []).filter(s => s.startsWith('footstep')).length, 0, '제자리면 발걸음 없음')
+  lobby.scene.player.y = 398; lobby.scene.update()
+  assert.equal(lobby.state.sounds.at(-1), 'footstep-carpet', '로비 카펫 위 발걸음')
+  lobby.scene.player.x = 620; lobby.scene.player.y = 400; lobby.scene.update()
+  lobby.key._justDown = true; lobby.scene.update()
+  assert.deepEqual(lobby.state.sounds.slice(-2), ['panel-open', 'kiosk'], '키오스크 패널을 열 때')
+  lobby.uiEvents.emit(RESEARCH_EVENTS.closeResearch)
+  assert.equal(lobby.state.sounds.at(-1), 'panel-close')
+
+  const control = createScene('control-room')
+  control.scene.player.x = 340; control.scene.player.y = 395; control.scene.update()
+  control.key._justDown = true; control.scene.update()
+  assert.equal(control.state.sounds.at(-1), 'chair-sit')
+  control.key._justDown = true; control.scene.update()
+  assert.equal(control.state.sounds.at(-1), 'chair-stand')
 })

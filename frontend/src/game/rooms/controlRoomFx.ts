@@ -5,6 +5,7 @@ import type { RoomFeeds } from '../../features/multiplayer/model/protocol'
 import type { Context } from './fxContext'
 import type { RoomHandlers } from './RoomFx'
 import { CCTV_ROOMS, feedPoint } from './cctvLayout'
+import { playSfx } from '../../audio/AudioManager'
 
 /** 모니터 월 텍스처는 중심 x 400, 바닥 y 168에 2배로 그려진다(왼쪽 위 120, 40). */
 const WALL_LEFT = 120
@@ -60,6 +61,8 @@ export function controlRoomFx(ctx: Context): RoomHandlers {
   const buttons = Array.from({ length: 6 }, (_, i) => scene.add.rectangle(318 + i * 33, 300, 4, 4, i % 2 ? GREEN : AMBER).setDepth(315))
   scene.time.addEvent({ delay: 400, loop: true, callback: () => { for (const b of buttons) if (Math.random() < 0.3) b.setAlpha(b.alpha > 0.5 ? 0.25 : 1) } })
 
+  // 모니터링 시스템: 가끔 상태 점검 알림음이 작게 난다.
+  ctx.every(20000, 34000, () => playSfx('beep', { volume: 0.3 }))
   let selfId: string | null = null
   const draw = (feeds: RoomFeeds | null) => {
     for (const screen of screens) {

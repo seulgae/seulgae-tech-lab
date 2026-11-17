@@ -3,6 +3,7 @@ import { ROOMS, doorLabel } from '../maps/rooms'
 import type { RoomId } from '../maps/rooms'
 import { ROOM_THEMES } from './roomThemes'
 import { crispText } from '../render/renderScale'
+import { playSfx } from '../../audio/AudioManager'
 
 /** 문이 열리는 데 걸리는 시간. 서버 승인이 먼저 와도 이 시간만큼은 열림을 보여 준다. */
 export const DOOR_OPEN_MS = 280
@@ -51,13 +52,16 @@ export default class DoorAnimator {
     const door = this.doors.get(doorId)
     if (!door) return
     this.openUntil = this.scene.time.now + DOOR_OPEN_MS
+    playSfx('door-open', { volume: 0.7 })
     this.tween(door, 0.28, 0.85, DOOR_OPEN_MS, 'Cubic.easeOut')
   }
 
   /** 이동이 거부되면 다시 닫는다. */
   close(doorId: string) {
     const door = this.doors.get(doorId)
-    if (door) this.tween(door, 2, 0, DOOR_CLOSE_MS, 'Back.easeOut')
+    if (!door) return
+    playSfx('door-close', { volume: 0.6 })
+    this.tween(door, 2, 0, DOOR_CLOSE_MS, 'Back.easeOut')
   }
 
   /** 도착한 방에서는 지나온 문이 열린 상태로 시작해 잠시 뒤 닫힌다. */
@@ -66,7 +70,7 @@ export default class DoorAnimator {
     if (!door) return
     door.left.scaleX = door.right.scaleX = 0.28
     door.light.setAlpha(0.85); door.glow.setAlpha(0.85)
-    this.scene.time.delayedCall(220, () => this.tween(door, 2, 0, DOOR_CLOSE_MS, 'Back.easeOut'))
+    this.scene.time.delayedCall(220, () => { playSfx('door-close', { volume: 0.6 }); this.tween(door, 2, 0, DOOR_CLOSE_MS, 'Back.easeOut') })
   }
 
   /** 열림 연출이 끝나기까지 남은 시간(ms) */

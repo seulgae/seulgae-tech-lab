@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ROOMS } from './game/maps/rooms'
 import type { RoomId } from './game/maps/rooms'
 import GameCanvas from './components/GameCanvas'
+import SoundSettings from './audio/SoundSettings'
 import { ROOM_THEMES } from './game/rooms/roomThemes'
 import AuthBar from './features/auth/AuthBar'
 import { authStore } from './features/auth/authStore'
@@ -52,7 +53,10 @@ function App() {
         <section className="game-card" id="lobby" aria-labelledby="lobby-title">
           <header className="game-card-header">
             <div><span className="eyebrow">YOUR LITTLE PLACE TO EXPLORE</span><h1 id="lobby-title">작은 발견이 시작되는 곳</h1></div>
-            <span className="room-label">{roomId.toUpperCase()}</span>
+            <div className="header-tools">
+              <SoundSettings />
+              <span className="room-label">{roomId.toUpperCase()}</span>
+            </div>
           </header>
           {gameReady ? <GameCanvas onRoomChange={setRoomId} /> : <div className="game-canvas" aria-busy="true" aria-label="연구소를 불러오는 중" />}
           <footer className="game-controls">
