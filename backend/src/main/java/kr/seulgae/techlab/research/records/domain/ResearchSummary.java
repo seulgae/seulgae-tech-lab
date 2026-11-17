@@ -10,8 +10,9 @@ import java.util.UUID;
  * @param title 제목
  * @param summary 요약
  * @param createdAt 작성 시각
+ * @param done 완료 표시(누구나 체크·해제하는 공유 상태, V4)
  * @author seulgae
  * @version 1.0, 연구 기록 요약 모델 문서화
  * @see "None"
  */
-public record ResearchSummary(UUID id, String title, String summary, OffsetDateTime createdAt) {}
+public record ResearchSummary(UUID id, String title, String summary, OffsetDateTime createdAt, boolean done) {}

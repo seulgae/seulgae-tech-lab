@@ -64,11 +64,12 @@ public class LocalLobbyTestApplication {
     ResearchRepository fixtureResearchRepository() {
         Map<UUID, ResearchRecord> records = new ConcurrentHashMap<>();
         Map<UUID, String> hashes = new ConcurrentHashMap<>();
+        Map<UUID, Boolean> done = new ConcurrentHashMap<>();
         records.put(RECORD_ID, new ResearchRecord(RECORD_ID, "로컬 검증용 연구 기록", "테스트 요약", "두 브라우저의 캐릭터 이동과 연구 기록 패널을 로컬에서 확인합니다.", CREATED_AT));
         return new ResearchRepository(null) {
             @Override public List<ResearchSummary> list(int limit, int offset) {
                 return records.values().stream().sorted(Comparator.comparing(ResearchRecord::createdAt).reversed()).skip(offset).limit(limit)
-                    .map(r -> new ResearchSummary(r.id(), r.title(), r.summary(), r.createdAt())).toList();
+                    .map(r -> new ResearchSummary(r.id(), r.title(), r.summary(), r.createdAt(), done.getOrDefault(r.id(), false))).toList();
             }
             @Override public Optional<ResearchRecord> find(UUID id) { return Optional.ofNullable(records.get(id)); }
             @Override public int nextIdeaNumber() {
@@ -86,7 +87,12 @@ public class LocalLobbyTestApplication {
                 records.put(id, record);
                 return record;
             }
-            @Override public int delete(UUID id) { hashes.remove(id); return records.remove(id) == null ? 0 : 1; }
+            @Override public int delete(UUID id) { hashes.remove(id); done.remove(id); return records.remove(id) == null ? 0 : 1; }
+            @Override public int setDone(UUID id, boolean value) {
+                if (!records.containsKey(id)) return 0;
+                done.put(id, value);
+                return 1;
+            }
         };
     }
 

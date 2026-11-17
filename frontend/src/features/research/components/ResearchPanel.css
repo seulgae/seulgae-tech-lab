@@ -90,3 +90,24 @@
 .research-panel button:disabled { opacity: .45; cursor: default; }
 .research-panel .research-title { border: 0; padding: 0; background: transparent; color: #e3c58d; }
 @media (max-width: 560px) { .research-panel { padding: 20px; max-height: calc(100svh - 24px); } .research-panel-header { gap: 10px; } .research-eyebrow { font-size: 9px; } .research-entry { padding: 15px; } }
+
+/* 아이디어 일지 완료 체크: 제목 앞 네모 체크, 완료된 제목은 가운데 줄 */
+.research-entry h3 { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.research-check {
+  appearance: none;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  border: 2px solid #d8bd87;
+  border-radius: 2px;
+  background: #1a2f31;
+  cursor: pointer;
+  display: grid;
+  place-content: center;
+}
+.research-check::after { content: ''; width: 9px; height: 5px; border: solid #20383a; border-width: 0 0 2px 2px; transform: rotate(-45deg) translate(1px, -1px); opacity: 0; }
+.research-check:checked { background: #d8bd87; }
+.research-check:checked::after { opacity: 1; }
+.research-check:focus-visible { outline: 2px solid #b2dfdb; outline-offset: 2px; }
+.research-done .research-title { text-decoration: line-through; text-decoration-thickness: 2px; opacity: .6; }

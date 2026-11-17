@@ -69,6 +69,6 @@ class ResearchServiceTest {
      * @return 임의 식별자와 작성 시각을 가진 요약
      */
     private static ResearchSummary summary(String title) {
-        return new ResearchSummary(UUID.randomUUID(), title, "summary", OffsetDateTime.now());
+        return new ResearchSummary(UUID.randomUUID(), title, "summary", OffsetDateTime.now(), false);
     }
 }
