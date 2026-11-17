@@ -64,7 +64,9 @@ function createScene(room = 'lobby') {
       this.physics = { add: { collider() {} } }
       // E와 I는 따로 누른다(I: 가방). 나머지 키는 E 대역을 함께 쓴다.
       state.iKey = { _justDown: false }
-      this.input = { keyboard: { addKey: code => code === 'I' ? state.iKey : key, resetKeys: () => { state.resets++ } } }
+      state.capture = true
+      this.input = { keyboard: { addKey: code => code === 'I' ? state.iKey : key, resetKeys: () => { state.resets++ },
+        disableGlobalCapture: () => { state.capture = false }, enableGlobalCapture: () => { state.capture = true } } }
       this.add = {
         text: () => ({
           visible: true,
@@ -528,4 +530,17 @@ test('방명록: 로비 컴퓨터는 방명록 창을 열고, 연구 기록은 �
   assert.equal(lab.scene.interactionHint.text, 'E · 연구 기록')
   lab.key._justDown = true; lab.scene.update()
   assert.equal(labResearch, 1)
+})
+
+test('글 입력 칸에 포커스가 있으면 게임 키 가로채기를 꺼서 띄어쓰기가 입력되고, 벗어나면 다시 켠다', () => {
+  const { scene, state } = createScene()
+  scene.update()
+  assert.equal(state.capture, true, '게임 중에는 Space·방향키가 페이지를 스크롤하지 않게 가로챈다')
+  state.textFocused = true; scene.update()
+  assert.equal(state.capture, false, '게시판·방명록 입력 중에는 Space를 막지 않는다')
+  state.textFocused = false; scene.update()
+  assert.equal(state.capture, true)
+  state.textFocused = true; scene.update()
+  scene.events.emit('shutdown')
+  assert.equal(state.capture, true, '장면이 끝나면 원래대로 돌린다')
 })
