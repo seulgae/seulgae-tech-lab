@@ -45,3 +45,41 @@ test('가방: 비회원은 쓸 수 없고, 동전이 늘면 동전 연출 이벤
     assert.equal(await inventoryStore.storeFish('붕어', 23), false, '가방이 꽉 차면 false')
   } finally { globalThis.fetch = original; globalThis.removeEventListener(COIN_EVENT, listener); delete globalThis.addEventListener; delete globalThis.removeEventListener; delete globalThis.dispatchEvent }
 })
+
+test('HP·피로도: 간식 구매 결과를 구분하고, 바뀐 만큼 변화 이벤트를 보내며, 지치면 오락실을 시작하지 않는다', async () => {
+  const { VITALS_EVENT, SNACKS, WORK_COST, vitalsText } = await import('../src/features/inventory/inventoryStore.ts')
+  assert.deepEqual(WORK_COST, { hp: 3, fatigue: 5 })
+  assert.equal(SNACKS.CAKE.price, 3); assert.equal(SNACKS.CAKE.hp, 10)
+  assert.equal(SNACKS.COFFEE.price, 2); assert.equal(SNACKS.COFFEE.fatigue, 5)
+  assert.equal(vitalsText({ hp: -3, fatigue: -5 }), 'HP -3 · 피로도 -5')
+  assert.equal(vitalsText({ hp: 10, fatigue: 0 }), 'HP +10')
+
+  const original = globalThis.fetch
+  const changes = []
+  const target = new EventTarget()
+  Object.assign(globalThis, { addEventListener: target.addEventListener.bind(target), removeEventListener: target.removeEventListener.bind(target), dispatchEvent: target.dispatchEvent.bind(target) })
+  const listener = event => changes.push(event.detail)
+  globalThis.addEventListener(VITALS_EVENT, listener)
+  const view = (coins, hp, fatigue) => new Response(JSON.stringify({ coins, items: [], rewardsLeftToday: 9, hp, hpMax: 50, fatigue, fatigueMax: 50 }), { headers: { 'Content-Type': 'application/json' } })
+  try {
+    globalThis.fetch = async () => view(10, 47, 45)
+    await inventoryStore.refresh()
+    changes.length = 0 // 앞 테스트의 상태에서 바뀐 첫 읽기는 세지 않는다
+    await inventoryStore.refresh()
+    assert.deepEqual(changes, [], '그대로면 이벤트 없음')
+    let sent
+    globalThis.fetch = async (url, options) => { sent = [url, JSON.parse(options.body)]; return view(7, 50, 45) }
+    assert.equal(await inventoryStore.buySnack('CAKE'), 'bought')
+    assert.deepEqual(sent, ['/api/inventory/snack', { kind: 'CAKE' }])
+    assert.deepEqual(changes, [{ hp: 3, fatigue: 0 }], '최대치에서 멈춘 실제 변화량')
+    assert.equal(inventoryStore.get().hp, 50)
+    globalThis.fetch = async () => new Response('', { status: 422 })
+    assert.equal(await inventoryStore.buySnack('CAKE'), 'full')
+    globalThis.fetch = async () => new Response('', { status: 409 })
+    assert.equal(await inventoryStore.buySnack('COFFEE'), 'broke')
+    globalThis.fetch = async () => new Response('', { status: 423 })
+    assert.equal(await inventoryStore.payArcade(), 'tired', '기운이 없으면 오락실을 시작하지 않는다')
+    globalThis.fetch = async () => new Response('', { status: 401 })
+    assert.equal(await inventoryStore.buySnack('COFFEE'), 'guest', '비회원은 무료로 즐기기만')
+  } finally { globalThis.fetch = original; globalThis.removeEventListener(VITALS_EVENT, listener); delete globalThis.addEventListener; delete globalThis.removeEventListener; delete globalThis.dispatchEvent }
+})

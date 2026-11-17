@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { BALL_RADIUS, BREAKOUT_HIGH_SCORE_KEY, BRICK_SIZE, FIELD, PADDLE, newGame, stepBreakout } from './breakout'
 import type { Breakout, BreakoutInput } from './breakout'
 import { playSfx } from '../../audio/AudioManager'
-import { inventoryStore } from '../inventory/inventoryStore'
+import { TIRED_MESSAGE, inventoryStore } from '../inventory/inventoryStore'
 import '../research/components/ResearchPanel.css'
 import './arcade.css'
 
@@ -22,7 +22,7 @@ const readHigh = () => { try { return Number(localStorage.getItem(BREAKOUT_HIGH_
 export default function ArcadePanel({ onClose }: { onClose: () => void }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [notice, setNotice] = useState('Space·클릭·탭으로 시작해요. 회원은 한 판에 1원이에요.')
+  const [notice, setNotice] = useState('Space·클릭·탭으로 시작해요. 회원은 한 판에 1원, HP -3, 피로도 -5예요.')
   const [hud, setHud] = useState({ score: 0, lives: 3, level: 1, phase: 'ready' as Breakout['phase'], high: readHigh() })
 
   useEffect(() => { const dialog = dialogRef.current; dialog?.showModal(); return () => dialog?.close() }, [])
@@ -78,8 +78,9 @@ export default function ArcadePanel({ onClose }: { onClose: () => void }) {
           void inventoryStore.payArcade().then(result => {
             paying = false
             if (result === 'broke') { setNotice('동전이 부족해요. 사무실 게시판에 글을 등록하면 10원을 받아요.'); playSfx('error', { volume: 0.5 }); return }
+            if (result === 'tired') { setNotice(TIRED_MESSAGE); playSfx('error', { volume: 0.5 }); return }
             paid = true; input.launch = true
-            setNotice(result === 'paid' ? '동전 1원을 넣었어요. 행운을 빌어요!' : '비회원은 무료로 즐겨요.')
+            setNotice(result === 'paid' ? '동전 1원을 넣었어요(HP -3, 피로도 -5). 행운을 빌어요!' : '비회원은 무료로 즐겨요.')
           })
         }
       }

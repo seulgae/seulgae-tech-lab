@@ -49,4 +49,51 @@ class InventoryServiceTest {
         assertEquals(99, service.playArcade(me));
         assertEquals(99, service.view(me).coins());
     }
+
+    @Test void workAndArcadeCostHpAndFatigueAndSnacksRecoverThem() {
+        var start = service.view(me);
+        assertEquals(50, start.hp()); assertEquals(50, start.hpMax());
+        assertEquals(50, start.fatigue()); assertEquals(50, start.fatigueMax());
+
+        service.ensureFit(me);
+        service.spendWork(me);
+        assertEquals(47, service.view(me).hp(), "일하면 HP -3");
+        assertEquals(45, service.view(me).fatigue(), "일하면 피로도 -5");
+
+        var full = assertThrows(ResponseStatusException.class, () -> service.buySnack(friend, "CAKE"));
+        assertEquals(InventoryService.ALREADY_FULL, full.getStatusCode(), "가득이면 사지 않는다(동전도 그대로)");
+
+        var broke = assertThrows(ResponseStatusException.class, () -> service.buySnack(me, "CAKE"));
+        assertEquals(409, broke.getStatusCode().value(), "동전이 없으면 살 수 없다");
+
+        service.rewardWorkPost(me); // 10원
+        var cake = service.buySnack(me, "CAKE");
+        assertEquals(50, cake.hp(), "HP +10이지만 최대 50에서 멈춘다");
+        assertEquals(7, cake.coins(), "케이크 3원");
+        var coffee = service.buySnack(me, "COFFEE");
+        assertEquals(50, coffee.fatigue(), "커피 피로도 +5");
+        assertEquals(5, coffee.coins(), "커피 2원");
+        assertThrows(ResponseStatusException.class, () -> service.buySnack(me, "BEER"));
+
+        int coinsBefore = service.view(me).coins();
+        service.playArcade(me);
+        var afterGame = service.view(me);
+        assertEquals(coinsBefore - 1, afterGame.coins());
+        assertEquals(47, afterGame.hp(), "오락도 HP -3");
+        assertEquals(45, afterGame.fatigue(), "오락도 피로도 -5");
+    }
+
+    @Test void tooTiredMembersCannotWorkOrPlayUntilTheyRest() {
+        for (int i = 0; i < 10; i++) service.spendWork(me); // 피로도 50 → 0
+        assertEquals(0, service.view(me).fatigue());
+        assertEquals(20, service.view(me).hp());
+        var tired = assertThrows(ResponseStatusException.class, () -> service.ensureFit(me));
+        assertEquals(InventoryService.TIRED, tired.getStatusCode());
+        service.rewardWorkPost(me);
+        int coins = service.view(me).coins();
+        assertEquals(InventoryService.TIRED, assertThrows(ResponseStatusException.class, () -> service.playArcade(me)).getStatusCode());
+        assertEquals(coins, service.view(me).coins(), "지쳐서 못 하면 동전도 그대로");
+        service.buySnack(me, "COFFEE");
+        service.ensureFit(me);
+    }
 }

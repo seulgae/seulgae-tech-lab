@@ -31,8 +31,15 @@ public class WorkItemController {
         this.service = service; this.limiter = limiter; this.auth = auth; this.inventory = inventory;
     }
 
-    /** 회원이 게시물을 등록하면 동전 10원(하루 10번까지, 도배 방지) */
-    private void reward(UUID author) { if (author != null) inventory.rewardWorkPost(author); }
+    /** 일하기 전: 회원은 HP 3·피로도 5가 남아 있어야 한다(모자라면 423). */
+    private void ensureFit(UUID author) { if (author != null) inventory.ensureFit(author); }
+
+    /** 회원이 게시물을 등록하면 HP -3, 피로도 -5, 동전 10원(하루 10번까지, 도배 방지) */
+    private void reward(UUID author) {
+        if (author == null) return;
+        try { inventory.spendWork(author); } catch (org.springframework.web.server.ResponseStatusException ignored) { /* 동시에 여러 글을 올려 모자라졌으면 넘어간다 */ }
+        inventory.rewardWorkPost(author);
+    }
 
     /** @param board QA, MAINTENANCE, OPERATION */
     @GetMapping
@@ -46,6 +53,7 @@ public class WorkItemController {
     public WorkItem createQa(@RequestBody(required = false) QaRequest body, HttpServletRequest request) {
         var author = auth.writer(request).orElse(null);
         limiter.check(request);
+        ensureFit(author);
         var created = service.createQa(body == null ? null : body.title(), body == null ? null : body.content(), author);
         reward(author);
         return created;
@@ -55,6 +63,7 @@ public class WorkItemController {
     public WorkItemService.Thread maintain(@PathVariable UUID id, @RequestBody(required = false) MaintenanceRequest body, HttpServletRequest request) {
         var author = auth.writer(request).orElse(null);
         limiter.check(request);
+        ensureFit(author);
         var thread = service.maintain(id, body == null ? null : body.content(), body == null ? null : body.guide(), body != null && Boolean.TRUE.equals(body.done()), author);
         reward(author);
         return thread;
@@ -65,6 +74,7 @@ public class WorkItemController {
         var author = auth.writer(request).orElse(null);
         limiter.check(request);
         if (body == null || body.approved() == null) throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "approved must be true or false");
+        ensureFit(author);
         var thread = service.operate(id, body.content(), body.approved(), author);
         reward(author);
         return thread;

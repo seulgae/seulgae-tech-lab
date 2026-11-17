@@ -44,6 +44,18 @@ export default function InventoryPanel({ client, onClose }: { client: () => Mult
       )}
       {inventory.available && (
         <>
+          <div className="inventory-vitals">
+            {([['HP', inventory.hp, inventory.hpMax, 'hp'], ['피로도', inventory.fatigue, inventory.fatigueMax, 'fatigue']] as const).map(([label, value, max, key]) => (
+              <div key={key} className={`inventory-vital vital-${key}`}>
+                <span>{label}</span>
+                <span className="inventory-bar" role="meter" aria-label={label} aria-valuemin={0} aria-valuemax={max} aria-valuenow={value}>
+                  <span style={{ width: `${Math.round(value / max * 100)}%` }} />
+                </span>
+                <strong>{value}/{max}</strong>
+              </div>
+            ))}
+            <small>게시판 일·오락 한 번에 HP -3, 피로도 -5 · 로비 데스크 케이크 3원(HP +10), 커피 2원(피로도 +5)</small>
+          </div>
           <div className="inventory-coins">
             <span className="inventory-coin" aria-hidden="true" />
             <strong>{inventory.coins.toLocaleString('ko-KR')}원</strong>

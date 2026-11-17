@@ -47,8 +47,8 @@ export function roomProps(id: RoomId): RoomInteraction[] {
     id: `lobby-bookshelf-${index}`, kind: 'bookshelf', label: '책 꺼내 보기', ...object.body, range: 40,
   }))
   return [
-    { id: 'lobby-cake', kind: 'cake', label: '케이크 먹기', x: 355, y: 190, width: 56, height: 64, range: 40 },
-    { id: 'lobby-coffee', kind: 'coffee', label: '커피 마시기', x: 445, y: 190, width: 56, height: 64, range: 40 },
+    { id: 'lobby-cake', kind: 'cake', label: '케이크 먹기 · 3원', x: 355, y: 190, width: 56, height: 64, range: 40 },
+    { id: 'lobby-coffee', kind: 'coffee', label: '커피 마시기 · 2원', x: 445, y: 190, width: 56, height: 64, range: 40 },
     ...shelves,
   ]
 }

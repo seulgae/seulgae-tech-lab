@@ -12,3 +12,11 @@
 .research-panel .inventory-grid button { padding: 3px 10px; font-size: 12px; }
 .bag-button { position: absolute; right: 10px; top: 10px; z-index: 5; padding: 6px 10px; border: 1px solid var(--room-border, #496057); background: rgba(11, 15, 20, .75); color: #fff2d2; font-size: 12px; cursor: pointer; }
 .bag-button:focus-visible { outline: 2px solid var(--room-accent, #e5c28b); }
+.inventory-vitals { display: grid; gap: 6px; margin: 14px 0 0; padding: 10px 12px; border: 1px solid #4d6b62; background: #1a2f31; }
+.inventory-vital { display: grid; grid-template-columns: 48px 1fr 52px; align-items: center; gap: 8px; font-size: 12px; color: #d8e2da; }
+.inventory-vital strong { justify-self: end; font: 12px monospace; color: #f1f6f4; }
+.inventory-bar { display: block; height: 10px; border: 1px solid #0b1416; background: #0f1d1f; }
+.inventory-bar span { display: block; height: 100%; transition: width .3s; }
+.vital-hp .inventory-bar span { background: linear-gradient(#ff8a8a, #e05a6c); }
+.vital-fatigue .inventory-bar span { background: linear-gradient(#9fe0ff, #38bdf8); }
+.inventory-vitals small { font-size: 11px; color: #aab9a3; line-height: 1.5; }
