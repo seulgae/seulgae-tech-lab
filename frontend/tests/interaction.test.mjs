@@ -225,7 +225,7 @@ test('터치 E는 범위 밖에서 예약되지 않고 패널 동안 재실행�
 })
 
 test('모든 방에 스폰과 겹치지 않는 상호작용이 있고 위치별로 하나만 고른다', () => {
-  const kinds = new Set(['research', 'build-info', 'server-status', 'table-talk', 'agenda', 'cctv', 'fishing'])
+  const kinds = new Set(['research', 'build-info', 'server-status', 'table-talk', 'agenda', 'cctv', 'fishing', 'work-board', 'arcade'])
   for (const [id, room] of Object.entries(ROOMS)) {
     assert.ok(room.interactions.length > 0, id)
     for (const interaction of room.interactions) {

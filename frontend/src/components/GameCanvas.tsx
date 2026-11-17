@@ -12,6 +12,9 @@ import type { RoomPanelKind } from '../features/lab/model/labTypes'
 import AgendaPanel from '../features/boards/AgendaPanel'
 import BookPanel from '../features/books/BookPanel'
 import CctvPanel from '../features/cctv/CctvPanel'
+import WorkBoardPanel from '../features/work/WorkBoardPanel'
+import { OFFICE_BOARDS } from '../features/work/workApi'
+import ArcadePanel from '../features/arcade/ArcadePanel'
 import MultiplayerStatus from '../features/multiplayer/components/MultiplayerStatus'
 import { INITIAL_CONNECTION, MULTIPLAYER_EVENTS } from '../features/multiplayer/model/protocol'
 import type { ConnectionInfo, ChatMessage, ChatError } from '../features/multiplayer/model/protocol'
@@ -169,7 +172,9 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
       {labPanel === 'agenda' && <AgendaPanel onClose={closeLabPanel} />}
       {labPanel === 'bookshelf' && <BookPanel onClose={closeLabPanel} />}
       {labPanel === 'cctv' && <CctvPanel client={getClient} onClose={closeLabPanel} />}
-      {labPanel && labPanel !== 'agenda' && labPanel !== 'bookshelf' && labPanel !== 'cctv' && <LabInfoPanel kind={labPanel} onClose={closeLabPanel} />}
+      {labPanel === 'work-board' && OFFICE_BOARDS[connection.roomId ?? ''] && <WorkBoardPanel board={OFFICE_BOARDS[connection.roomId ?? '']!} onClose={closeLabPanel} />}
+      {labPanel === 'arcade' && <ArcadePanel onClose={closeLabPanel} />}
+      {(labPanel === 'server-status' || labPanel === 'build-info') && <LabInfoPanel kind={labPanel} onClose={closeLabPanel} />}
     </>
   )
 }
