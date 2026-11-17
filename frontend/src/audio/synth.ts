@@ -252,7 +252,7 @@ export function renderAmbience(key: AmbienceKey) {
 export const EFFECTS = [
   'footstep', 'footstep-carpet', 'footstep-grass', 'footstep-wood', 'door-open', 'door-close', 'transition', 'chair-sit', 'chair-stand',
   'typing', 'marker', 'kiosk', 'leaves', 'page', 'click', 'panel-open', 'panel-close', 'chat', 'success', 'error', 'notify', 'announce',
-  'beep', 'alarm', 'sip', 'munch', 'splash', 'plop', 'cast',
+  'beep', 'alarm', 'sip', 'munch', 'splash', 'plop', 'cast', 'coin',
 ] as const
 export type EffectKey = typeof EFFECTS[number]
 
@@ -292,6 +292,8 @@ export function renderEffect(key: EffectKey) {
     case 'munch': for (let k = 0; k < 3; k++) addNoise(out, k * 0.13, 0.08, random, { lowpass: 3000, highpass: 300, decay: 0.025, gain: 0.5 }); break
     case 'splash': addNoise(out, 0, 0.45, random, { lowpass: 2600, highpass: 200, attack: 0.005, decay: 0.12, gain: 0.6 }); break
     case 'plop': addTone(out, 0, 0.12, 700, { glideTo: 220, decay: 0.05, gain: 0.4 }); break
+    // 동전 땡: 맑은 벨 두 음(B5 → E6)
+    case 'coin': addTone(out, 0, 0.08, mtof(83), { wave: 'bell', decay: 0.06, gain: 0.22 }); addTone(out, 0.07, 0.45, mtof(88), { wave: 'bell', decay: 0.25, gain: 0.24 }); break
     case 'cast': addNoise(out, 0, 0.3, random, { highpass: 1500, lowpass: 5000, attack: 0.12, decay: 0.08, gain: 0.25 }); break
   }
   roomReverb(out, key.startsWith('footstep') ? 0 : 0.25)

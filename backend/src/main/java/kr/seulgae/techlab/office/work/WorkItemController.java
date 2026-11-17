@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.UUID;
 import kr.seulgae.techlab.auth.AuthService;
 import kr.seulgae.techlab.common.write.WriteRateLimiter;
+import kr.seulgae.techlab.inventory.InventoryService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,8 +25,14 @@ public class WorkItemController {
     private final WorkItemService service;
     private final WriteRateLimiter limiter;
     private final AuthService auth;
+    private final InventoryService inventory;
 
-    public WorkItemController(WorkItemService service, WriteRateLimiter limiter, AuthService auth) { this.service = service; this.limiter = limiter; this.auth = auth; }
+    public WorkItemController(WorkItemService service, WriteRateLimiter limiter, AuthService auth, InventoryService inventory) {
+        this.service = service; this.limiter = limiter; this.auth = auth; this.inventory = inventory;
+    }
+
+    /** 회원이 게시물을 등록하면 동전 10원(하루 10번까지, 도배 방지) */
+    private void reward(UUID author) { if (author != null) inventory.rewardWorkPost(author); }
 
     /** @param board QA, MAINTENANCE, OPERATION */
     @GetMapping
@@ -39,14 +46,18 @@ public class WorkItemController {
     public WorkItem createQa(@RequestBody(required = false) QaRequest body, HttpServletRequest request) {
         var author = auth.writer(request).orElse(null);
         limiter.check(request);
-        return service.createQa(body == null ? null : body.title(), body == null ? null : body.content(), author);
+        var created = service.createQa(body == null ? null : body.title(), body == null ? null : body.content(), author);
+        reward(author);
+        return created;
     }
 
     @PostMapping("/{id}/maintenance")
     public WorkItemService.Thread maintain(@PathVariable UUID id, @RequestBody(required = false) MaintenanceRequest body, HttpServletRequest request) {
         var author = auth.writer(request).orElse(null);
         limiter.check(request);
-        return service.maintain(id, body == null ? null : body.content(), body == null ? null : body.guide(), body != null && Boolean.TRUE.equals(body.done()), author);
+        var thread = service.maintain(id, body == null ? null : body.content(), body == null ? null : body.guide(), body != null && Boolean.TRUE.equals(body.done()), author);
+        reward(author);
+        return thread;
     }
 
     @PostMapping("/{id}/operation")
@@ -54,6 +65,8 @@ public class WorkItemController {
         var author = auth.writer(request).orElse(null);
         limiter.check(request);
         if (body == null || body.approved() == null) throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "approved must be true or false");
-        return service.operate(id, body.content(), body.approved(), author);
+        var thread = service.operate(id, body.content(), body.approved(), author);
+        reward(author);
+        return thread;
     }
 }

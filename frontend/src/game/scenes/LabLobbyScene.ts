@@ -24,6 +24,9 @@ import type { GameLike } from '../../audio/AudioManager'
 import { FootstepTracker, footstepSound } from '../../audio/soundRules'
 import type { EffectKey } from '../../audio/synth'
 import { skyPhase } from '../rooms/timeOfDay'
+import { COIN_EVENT, OPEN_INVENTORY_EVENT, inventoryStore } from '../../features/inventory/inventoryStore'
+import type { GroundItem } from '../../features/multiplayer/model/protocol'
+import { FISH_COLORS } from '../rooms/fishingLogic'
 
 /** 패널을 열 때 함께 나는 장비 소리(컴퓨터 타이핑, 키오스크, 화이트보드 마커 등) */
 const PANEL_SOUNDS: Partial<Record<string, EffectKey>> = {
@@ -51,6 +54,14 @@ export default class LabLobbyScene extends Phaser.Scene {
   private restartPending = false
   private interactionHint?: Phaser.GameObjects.Text
   private interactKey?: Phaser.Input.Keyboard.Key
+  /** I: 가방(인벤토리) 열기 */
+  private inventoryKey?: Phaser.Input.Keyboard.Key
+  /** 방 바닥에 놓인 아이템(누구나 E로 줍는다) */
+  private readonly groundSprites = new Map<string, Phaser.GameObjects.Image>()
+  private ground: GroundItem[] = []
+  private groundSubscription?: () => void
+  private readonly openInventoryFromButton = () => { if (!this.panelOpen && !this.transition) this.openInventory() }
+  private readonly showCoin = (event: Event) => this.coinPop((event as CustomEvent<{ amount: number }>).detail?.amount ?? 0)
   private panelOpen = false
   private tableTalk = false
   /** 회의실 의자에 앉아 자동으로 켠 테이블 대화 */
@@ -156,6 +167,15 @@ export default class LabLobbyScene extends Phaser.Scene {
     } })
     this.uiEvents.once(MULTIPLAYER_EVENTS.dispose, this.stopMultiplayer)
     this.interactKey = this.input.keyboard?.addKey('E')
+    this.inventoryKey = this.input.keyboard?.addKey('I')
+    this.groundSubscription = this.client.subscribe({
+      ground: items => this.drawGround(items),
+      inventoryChanged: () => { void inventoryStore.refresh() },
+      inventoryError: reason => this.floatText(reason === 'login' ? '로그인하면 가방을 쓸 수 있어요' : '지금은 할 수 없어요'),
+    })
+    this.drawGround(this.client.ground?.() ?? [])
+    globalThis.addEventListener?.(COIN_EVENT, this.showCoin)
+    globalThis.addEventListener?.(OPEN_INVENTORY_EVENT, this.openInventoryFromButton)
     this.interactionHint = crispText(this, 0, 0, '', {
       fontSize: '14px', fontStyle: 'bold', color: '#fff2d2',
       backgroundColor: '#243f43', padding: { x: 12, y: 8 },
@@ -172,6 +192,12 @@ export default class LabLobbyScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.roomSubscription?.()
       this.roomSubscription = undefined
+      this.groundSubscription?.()
+      this.groundSubscription = undefined
+      globalThis.removeEventListener?.(COIN_EVENT, this.showCoin)
+      globalThis.removeEventListener?.(OPEN_INVENTORY_EVENT, this.openInventoryFromButton)
+      for (const sprite of this.groundSprites.values()) sprite.destroy()
+      this.groundSprites.clear()
       this.multiplayer?.stopInput()
       this.stopMultiplayer()
       this.player = undefined
@@ -205,7 +231,8 @@ export default class LabLobbyScene extends Phaser.Scene {
     this.multiplayer?.update(delta)
     const door = ROOMS[this.activeRoom].doors.find(d => Math.hypot(this.player!.x - d.x, this.player!.y - d.y) <= 56)
     // 출입구가 우선이며, E 한 번에 한 대상만 실행한다.
-    const target = door ? undefined : nearestInteraction(this.activeRoom, this.player.x, this.player.y)
+    // 바닥 아이템이 바로 발밑에 있으면 줍기가 먼저다.
+    const target = door ? undefined : this.nearestPickup() ?? nearestInteraction(this.activeRoom, this.player.x, this.player.y)
     this.syncSeat()
     // 테이블 범위를 벗어나면 서버 거부를 기다리지 않고 근거리 대화를 끈다. 회의실 의자에 앉아 있는 동안은 유지한다.
     if (this.tableTalk && target?.kind !== 'table-talk' && !this.seatTalk) this.setTableTalk(false)
@@ -225,6 +252,10 @@ export default class LabLobbyScene extends Phaser.Scene {
     const pressed = this.interactKey && Phaser.Input.Keyboard.JustDown(this.interactKey)
     const touchPressed = this.touchInteraction
     this.touchInteraction = false
+    if (enabled && this.inventoryKey && this.inventoryKey !== this.interactKey && Phaser.Input.Keyboard.JustDown(this.inventoryKey)) {
+      this.openInventory()
+      return
+    }
     if (!(pressed || touchPressed) || !enabled) return
     if (door) {
       this.resetChatInput()
@@ -235,6 +266,10 @@ export default class LabLobbyScene extends Phaser.Scene {
       return
     }
     if (!target) return
+    if (target.kind === 'pickup') {
+      if (this.client.pickItem?.(target.id)) playSfx('click', { volume: 0.6 })
+      return
+    }
     if (this.fx?.intercept(target)) return
     if (target.kind === 'table-talk') {
       this.setTableTalk(!this.tableTalk)
@@ -255,6 +290,64 @@ export default class LabLobbyScene extends Phaser.Scene {
     // 책장은 책이 날아오는 연출(RoomFx)이 끝난 뒤 책 읽기 창을 연다.
     else if (target.kind === 'bookshelf') this.time.delayedCall(450, () => { if (this.panelOpen) this.uiEvents.emit(LAB_EVENTS.openPanel, 'bookshelf') })
     else this.uiEvents.emit(LAB_EVENTS.openPanel, target.kind)
+  }
+
+  /** 가방(인벤토리) 창을 연다. 장면 입력은 패널이 닫힐 때까지 멈춘다. */
+  private openInventory() {
+    this.panelOpen = true
+    this.resetChatInput()
+    this.interactionHint?.setVisible(false)
+    this.interactionHighlight?.setVisible(false)
+    playSfx('panel-open', { volume: 0.6 })
+    this.uiEvents.emit(LAB_EVENTS.openPanel, 'inventory')
+  }
+
+  /** 발밑 28px 안의 바닥 아이템을 줍기 대상으로 만든다. */
+  private nearestPickup(): RoomInteraction | undefined {
+    if (!this.player) return undefined
+    let best: GroundItem | undefined
+    let bestDistance = 28
+    for (const item of this.ground) {
+      const distance = Math.hypot(item.x - this.player.x, item.y - this.player.y)
+      if (distance <= bestDistance) { best = item; bestDistance = distance }
+    }
+    return best && { id: best.id, kind: 'pickup', label: `${best.name}${best.sizeCm ? ` ${best.sizeCm}cm` : ''} 줍기`, x: best.x, y: best.y - 6, width: 24, height: 14, range: 28 }
+  }
+
+  /** 바닥 아이템을 물고기 그림으로 그린다(새 목록으로 통째로 다시 그린다). */
+  private drawGround(items: GroundItem[]) {
+    this.ground = items
+    if (!this.add?.image) return
+    const ids = new Set(items.map(item => item.id))
+    for (const [id, sprite] of this.groundSprites) if (!ids.has(id)) { sprite.destroy(); this.groundSprites.delete(id) }
+    for (const item of items) {
+      if (this.groundSprites.has(item.id)) continue
+      const sprite = this.add.image(item.x, item.y - 4, 'fish').setScale(2).setTint(FISH_COLORS[item.name] ?? 0xffffff).setDepth(item.y - 8)
+      this.tweens?.add({ targets: sprite, y: sprite.y - 2, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' })
+      this.groundSprites.set(item.id, sprite)
+    }
+  }
+
+  /** 동전이 늘거나 줄면 머리 위로 동전이 "땡" 하고 튀어 오른다. */
+  private coinPop(amount: number) {
+    if (!this.player || !amount || !this.add?.image) return
+    playSfx(amount > 0 ? 'coin' : 'click', { volume: 0.7 })
+    const coin = this.add.image(this.player.x, this.player.y - 46, 'coin').setScale(2).setDepth(1001)
+    const label = crispText(this, this.player.x, this.player.y - 62, `${amount > 0 ? '+' : ''}${amount}원`, {
+      fontSize: '12px', fontStyle: 'bold', color: amount > 0 ? '#ffd23f' : '#f0a08f', stroke: '#3b2418', strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(1001)
+    this.tweens.add({ targets: coin, y: coin.y - 26, duration: 420, ease: 'Back.easeOut' })
+    this.tweens.add({ targets: coin, scaleX: { from: 2, to: 0.2 }, duration: 160, yoyo: true, repeat: 2 })
+    this.tweens.add({ targets: [coin, label], alpha: 0, delay: 900, duration: 300, onComplete: () => { coin.destroy(); label.destroy() } })
+    this.tweens.add({ targets: label, y: label.y - 18, duration: 900 })
+  }
+
+  /** 장면 위에 잠깐 뜨는 안내(가방 오류 등) */
+  private floatText(message: string) {
+    if (!this.player) return
+    const text = crispText(this, this.player.x, this.player.y - 70, message, { fontSize: '12px', color: '#fff2d2', backgroundColor: '#000000aa', padding: { x: 6, y: 3 } })
+      .setOrigin(0.5).setDepth(1001)
+    this.tweens.add({ targets: text, alpha: 0, delay: 1600, duration: 300, onComplete: () => text.destroy() })
   }
 
   /** 테이블 대화 상태가 바뀔 때만 React 채팅 패널에 알린다. */

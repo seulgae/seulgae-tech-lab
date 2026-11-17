@@ -6,6 +6,8 @@ export type MoveCommand = MoveInput & { seq: number; ms: number }
 /** seat: 서버가 확인한 앉은 의자 id(예: meeting-room-chair-1), 서 있으면 null. 구형 서버는 보내지 않는다. */
 /** 관제실(cctv 상호작용이 있는 방)에 있을 때만 서버가 보내는 방별 참가자 목록 */
 export type RoomFeeds = Partial<Record<RoomId, PlayerState[]>>
+/** 방 바닥에 놓인 아이템(누구나 주울 수 있다) */
+export type GroundItem = { id: string; kind: string; name: string; sizeCm: number | null; x: number; y: number }
 export type PlayerState = { id: string; nickname: string; x: number; y: number; facing: Facing; moving: boolean; ack: number; seat?: string | null }
 export type ConnectionInfo = { roomId?: RoomId; roomOnline?: number; totalOnline?: number; travelling?: boolean; roomError?: string; phase: 'connecting' | 'online' | 'reconnecting' | 'replaced'; nickname: string; online: number; maxPlayers: number; message: string }
 export type ChatMessage = { type: 'chat_message'; messageId: string; playerId: string; nickname: string; message: string; sentAt: string; scope?: ChatScope }
@@ -23,6 +25,9 @@ export type ServerMessage = RoomMeta & (
   | { type: 'left'; id: string }
   | { type: 'room_changed'; selfId: string; players: PlayerState[]; time?: number }
   | { type: 'room_error'; reason: string }
+  | { type: 'ground'; items: GroundItem[] }
+  | { type: 'inventory_changed' }
+  | { type: 'inventory_error'; reason: 'login' | 'unavailable' }
 )
 
 export const MULTIPLAYER_EVENTS = { dispose: 'multiplayer:dispose' } as const
@@ -69,6 +74,9 @@ export function parseServerMessage(raw: string): ServerMessage {
     && message.messages.every(validChat) && new Set(message.messages.map((item: ChatMessage) => item.messageId)).size === message.messages.length) return message
   if (message.type === 'chat_error' && ['empty', 'too_long', 'rate_limited', 'unavailable', 'invalid', 'not_at_table'].includes(message.reason)) return message
   if (message.type === 'room_error' && typeof message.reason === 'string' && message.reason.length <= 100) return message
+  if (message.type === 'ground' && Array.isArray(message.items) && message.items.length <= 30 && message.items.every(validGroundItem)) return message
+  if (message.type === 'inventory_changed') return message
+  if (message.type === 'inventory_error' && (message.reason === 'login' || message.reason === 'unavailable')) return message
   const players = message.players
   if (!Array.isArray(players) || players.length > 5 || !players.every(validPlayer) || new Set(players.map(p => p.id)).size !== players.length) throw new Error('Invalid players')
   if (message.type === 'room_changed' && isRoomId(message.roomId) && Number.isSafeInteger(message.roomEpoch) && validId(message.selfId) && players.some(p => p.id === message.selfId)) return message
@@ -91,6 +99,13 @@ export const REPLACED_CLOSE_CODE = 4409
 export const REPLACED_MESSAGE = '다른 창에서 접속해 이 창의 연결을 끊었어요. 새로고침하면 이 창으로 다시 접속해요.'
 
 /** 방 id는 공유 맵에 있는 것만, 전체 인원은 정원(5) 이하, 한 사람은 한 방에만 있어야 한다. */
+function validGroundItem(value: unknown): value is GroundItem {
+  const item = value as GroundItem
+  return Boolean(item) && validId(item.id) && typeof item.kind === 'string' && item.kind.length <= 20 && typeof item.name === 'string'
+    && item.name.length >= 1 && item.name.length <= 30 && (item.sizeCm === null || Number.isSafeInteger(item.sizeCm))
+    && Number.isFinite(item.x) && Number.isFinite(item.y) && item.x >= 0 && item.x <= 800 && item.y >= 0 && item.y <= 600
+}
+
 function validFeeds(feeds: unknown): feeds is RoomFeeds {
   if (!feeds || typeof feeds !== 'object' || Array.isArray(feeds)) return false
   const entries = Object.entries(feeds)

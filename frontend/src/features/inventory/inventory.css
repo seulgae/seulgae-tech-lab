@@ -1,0 +1,14 @@
+.research-panel.inventory-panel { width: min(520px, calc(100vw - 32px)); }
+.inventory-coins { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 14px 0; padding: 10px 12px; border: 1px solid #4d6b62; background: #1a2f31; }
+.inventory-coins strong { font-size: 22px; color: #ffd23f; }
+.inventory-coins small { flex-basis: 100%; font-size: 11px; color: #aab9a3; }
+.inventory-coin { width: 18px; height: 18px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff2a8, #ffd23f 45%, #b8860b); }
+.inventory-note { margin: 8px 0; font-size: 13px; color: #c8d3c9; }
+.inventory-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; margin: 8px 0 0; padding: 0; list-style: none; }
+.inventory-grid li { display: grid; justify-items: center; gap: 4px; padding: 10px 6px; border: 1px solid #4d6b62; background: rgba(255, 255, 255, .04); }
+.inventory-grid strong { font-size: 13px; color: #f1f6f4; }
+.inventory-grid small { font-size: 11px; color: #d8bd87; }
+.inventory-fish { width: 28px; height: 14px; border-radius: 50% 40% 40% 50%; box-shadow: inset -4px 0 0 rgba(0, 0, 0, .15); }
+.research-panel .inventory-grid button { padding: 3px 10px; font-size: 12px; }
+.bag-button { position: absolute; right: 10px; top: 10px; z-index: 5; padding: 6px 10px; border: 1px solid var(--room-border, #496057); background: rgba(11, 15, 20, .75); color: #fff2d2; font-size: 12px; cursor: pointer; }
+.bag-button:focus-visible { outline: 2px solid var(--room-accent, #e5c28b); }

@@ -4,6 +4,7 @@ import { LOGIN_URL, canWrite, useAuth } from '../auth/authStore'
 import { addMaintenance, addOperation, codeName, createQa, fetchBoard, fetchThread } from './workApi'
 import type { BoardView, Thread, WorkBoard, WorkItem } from './workApi'
 import { playSfx } from '../../audio/AudioManager'
+import { inventoryStore } from '../inventory/inventoryStore'
 import '../research/components/ResearchPanel.css'
 import './work.css'
 
@@ -58,6 +59,8 @@ export default function WorkBoardPanel({ board, onClose }: { board: WorkBoard; o
       playSfx('success', { volume: 0.6 })
       setTitle(''); setContent(''); setGuide('')
       setReload(n => n + 1)
+      // 회원 게시물은 10원 보상(하루 한도 안): 가방을 다시 읽으면 늘어난 만큼 동전이 튀어 오른다.
+      void inventoryStore.refresh()
       if (thread) setThread(await fetchThread(thread.ticket.id))
       setError(done)
     } catch (cause) {
