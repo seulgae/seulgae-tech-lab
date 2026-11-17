@@ -42,7 +42,7 @@ class SeatTest {
     @Test void everyRoomExposesItsChairsAsSeats() {
         assertTrue(world.seats("lobby").isEmpty(), "로비 의자는 모두 치웠다");
         assertEquals(List.of("control-room-chair-0", "control-room-chair-1"), world.seats("control-room").stream().map(LobbyWorld.Seat::id).toList());
-        assertEquals(3, world.seats("meeting-room").size());
+        assertEquals(6, world.seats("meeting-room").size(), "세로 테이블 양옆 3개씩");
         assertEquals(2, world.seats("development-lab").size());
         assertTrue(world.seats("server-room").isEmpty());
     }
@@ -75,5 +75,30 @@ class SeatTest {
         assertTrue(room.sit(b.id(), "control-room-chair-0"));
         assertTrue(room.sit(b.id(), null));
         assertNull(room.player(b.id()).seat());
+    }
+
+    /**
+     * 운영 버그(일지 #5): 걷다가 바로 E를 누르면, 앉기 요청보다 먼저 보낸 걸음이 서버에서 늦게 처리되며 일으켜 세웠다.
+     * 앉기 전에 보낸 걸음은 일으키지 않고, 그 걸음을 마친 뒤 앉는다. 앉은 뒤에 보낸 걸음만 일으킨다.
+     */
+    @Test void stepsSentBeforeSittingDoNotStandThePlayerUp() {
+        var a = room.join("앉는사람");
+        walk(a.id(), 730, 260);
+        room.changeRoom(a.id(), "lobby-to-control", clock.get());
+        walk(a.id(), 340, 395);
+        stop(a.id());
+        long now = clock.get();
+        long seq = room.player(a.id()).ack();
+        // 같은 시각에 좌우로 오가는 걸음 32개(1.6초)를 보내 일부가 서버 대기열에 남게 한다.
+        for (int batch = 0; batch < 4; batch++) {
+            var commands = new java.util.ArrayList<LobbyRoom.MoveCommand>();
+            for (int i = 0; i < 8; i++) commands.add(new LobbyRoom.MoveCommand(i % 2 == 0 ? 1 : -1, 0, 50, ++seq));
+            assertTrue(room.commands(a.id(), commands, now));
+        }
+        assertTrue(room.sit(a.id(), "control-room-chair-0"), "앉기 요청은 받아 둔다");
+        for (int i = 0; i < 40; i++) room.step(.05, clock.addAndGet(50_000_000L));
+        assertEquals("control-room-chair-0", room.player(a.id()).seat(), "앉기 전 걸음을 마친 뒤 앉아 있다");
+        assertTrue(room.commands(a.id(), List.of(new LobbyRoom.MoveCommand(0, 1, 50, ++seq)), clock.addAndGet(50_000_000L)));
+        assertNull(room.player(a.id()).seat(), "앉은 뒤에 보낸 걸음은 일으킨다");
     }
 }

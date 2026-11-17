@@ -245,3 +245,43 @@ test('같은 주소의 새 창이 연결을 가져가면(4409) 다시 연결하�
     t.mock.timers.reset()
   }
 })
+
+test('로그인 확인이 늦게 끝나면 회원 닉네임으로 한 번만 바로 다시 접속한다(모바일 이름 버그)', t => {
+  t.mock.method(console, 'warn', () => {})
+  t.mock.timers.enable({ apis: ['setTimeout', 'setInterval', 'Date'], now: 1000 })
+  const originals = { window: globalThis.window, document: globalThis.document, WebSocket: globalThis.WebSocket, sessionStorage: globalThis.sessionStorage }
+  const storage = new Map()
+  class Socket {
+    static instances = []
+    readyState = 0
+    bufferedAmount = 0
+    constructor(url) { this.url = url; Socket.instances.push(this) }
+    open() { this.readyState = 1; this.onopen?.() }
+    receive(message) { this.onmessage?.({ data: JSON.stringify(message) }) }
+    send() {}
+    close(code = 1000) { this.readyState = 3; this.lastCloseCode = code; this.onclose?.({ code, reason: '', wasClean: true }) }
+  }
+  globalThis.window = Object.assign(new EventTarget(), { location: { protocol: 'http:', host: 'localhost:5188' } })
+  globalThis.document = Object.assign(new EventTarget(), { hidden: false })
+  globalThis.sessionStorage = { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) }
+  globalThis.WebSocket = Socket
+  const client = new MultiplayerClient({})
+  try {
+    client.start()
+    const a = Socket.instances[0]
+    a.open(); a.receive(welcome())
+    assert.equal(client.applyNickname('bad name!'), false, '규칙에 맞지 않는 이름은 무시')
+    assert.equal(client.applyNickname('슬개'), true)
+    assert.equal(a.lastCloseCode, 4006)
+    assert.equal(Socket.instances.length, 2, '기다리지 않고 바로 다시 접속')
+    assert.match(decodeURIComponent(Socket.instances[1].url), /nickname=슬개/)
+    assert.equal(client.applyNickname('슬개'), false, '같은 이름은 한 번만 시도(중복 이름 반복 접속 방지)')
+  } finally {
+    client.destroy()
+    for (const [key, value] of Object.entries(originals)) {
+      if (value === undefined) delete globalThis[key]
+      else globalThis[key] = value
+    }
+    t.mock.timers.reset()
+  }
+})

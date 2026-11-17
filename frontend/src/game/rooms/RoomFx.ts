@@ -237,12 +237,13 @@ function meetingFx(ctx: Context): RoomHandlers {
   const sign = ctx.text(260, 32, '회의 대기', 12, '#c4b8a2', 62)
   const stopBoard = agendaBoard(ctx)
 
-  const pendant = ctx.glow(400, 250, '#ffe2b0', 9, 5, 0.2, -30)
-  for (const x of [376, 424]) {
-    scene.add.particles(x, 228, 'dot', { speedY: { min: -14, max: -6 }, speedX: { min: -3, max: 3 }, lifespan: 1400, frequency: 380, scale: { start: 1, end: 2 }, alpha: { start: 0.35, end: 0 } }).setDepth(320)
+  const pendant = ctx.glow(400, 280, '#ffe2b0', 6, 9, 0.2, -30)
+  // 세로 테이블 위 커피 두 잔의 김
+  for (const [x, y] of [[400, 186], [400, 326]] as const) {
+    scene.add.particles(x, y - 12, 'dot', { speedY: { min: -14, max: -6 }, speedX: { min: -3, max: 3 }, lifespan: 1400, frequency: 380, scale: { start: 1, end: 2 }, alpha: { start: 0.35, end: 0 } }).setDepth(430)
   }
   const dim = scene.add.rectangle(400, 300, 800, 600, 0x0b0805, 0).setDepth(DIM_DEPTH)
-  const spot = ctx.glow(400, 290, '#ffe2b0', 12, 7, 0, DIM_DEPTH + 1)
+  const spot = ctx.glow(400, 280, '#ffe2b0', 8, 10, 0, DIM_DEPTH + 1)
   return {
     setTableTalk: (active, quiet) => {
       scene.tweens.killTweensOf([dim, spot, pendant])

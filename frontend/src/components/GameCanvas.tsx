@@ -19,6 +19,7 @@ import MultiplayerClient from '../features/multiplayer/MultiplayerClient'
 import ChatPanel from '../features/multiplayer/components/ChatPanel'
 import MobileControls from './MobileControls'
 import { playSfx } from '../audio/AudioManager'
+import { useAuth } from '../features/auth/authStore'
 import { MOBILE_INPUT } from '../game/input/mobileInput'
 import type { DirectionInput } from '../game/input/mobileInput'
 
@@ -43,6 +44,9 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
   const [controlsReset, setControlsReset] = useState(0)
   const [labPanel, setLabPanel] = useState<RoomPanelKind | null>(null)
   const [tableTalk, setTableTalk] = useState(false)
+  // 로그인 확인이 게임 시작보다 늦게 끝나도(모바일) 회원 닉네임으로 다시 접속한다.
+  const memberNickname = useAuth().member?.nickname
+  useEffect(() => { if (memberNickname) clientRef.current?.applyNickname(memberNickname) }, [memberNickname, connection.phase])
 
   /** 다른 UI 갱신 중에도 조이스틱의 입력 콜백을 유지한다. */
   const moveMobile = useCallback((input: DirectionInput) => {

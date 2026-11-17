@@ -157,7 +157,7 @@ export function floorData(roomId: RoomId): number[][] {
       return (row * 7 + column * 3) % 5 === 0 ? 1 : 0
     }
     // 회의실: 테이블 주변 카펫과 엇갈린 원목 마루
-    if (row >= 6 && row <= 12 && column >= 7 && column <= 17) return 2
+    if (row >= 4 && row <= 14 && column >= 8 && column <= 16) return 2
     return (column + (row >> 1)) % 2
   }))
 }
