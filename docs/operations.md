@@ -206,7 +206,7 @@ V3까지는 "머지 = 새 스키마가 필요한 코드 배포"라서, 마이그
 
 V4와 같은 3단계다. 확장 PR의 릴리스는 `db_schema` **4..5**, 기능 PR은 **5..5**다.
 
-1. 확장 PR 머지(새 테이블 `lab.common_codes`, `lab.work_items`와 공통코드 초기 데이터만 추가)
+1. 확장 PR 머지(새 테이블 `lab.common_codes`, `lab.work_items`, `lab.inventories`, `lab.coin_events`, `lab.items`와 공통코드 초기 데이터만 추가)
 2. 서버에서 `python3 deploy/migrate-prod.py`(백업 후 V4 → V5)
 3. 기능 PR(Draft) Ready로 바꾼 뒤 머지
 
