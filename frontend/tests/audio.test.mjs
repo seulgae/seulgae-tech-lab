@@ -90,7 +90,7 @@ test('방별 사운드: 방마다 음악, 서버실 팬·개발실 타자·관�
   assert.equal(roomSoundscape('outdoor', 'noon').ambience, 'meadow-day')
   assert.equal(roomSoundscape('outdoor', 'evening').ambience, 'meadow-night')
   for (const id of Object.keys(ROOMS)) assert.ok(SONGS[roomSoundscape(id, 'noon').bgm], id)
-  assert.equal(roomSoundscape('office-3', 'noon').ambience, 'keyboard')
+  assert.equal(roomSoundscape('office-3', 'noon').ambience, 'electronics')
 })
 
 test('발걸음: 실제로 움직인 거리만큼, 막히면·멈추면 소리 없음, 순간이동 무시, 바닥 재질', () => {

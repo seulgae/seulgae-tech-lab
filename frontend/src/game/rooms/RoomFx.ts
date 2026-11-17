@@ -43,7 +43,7 @@ export function createRoomFx(scene: Phaser.Scene, roomId: RoomId, options: Optio
   const builders = {
     lobby: lobbyFx, 'development-lab': developmentFx, 'server-room': serverFx, 'meeting-room': meetingFx,
     'control-room': controlRoomFx, outdoor: outdoorFx,
-    'office-1': officeFx, 'office-2': officeFx, 'office-3': officeFx, 'office-4': officeFx,
+    'office-1': officeFx, 'office-2': officeFx, 'office-3': arcadeFx, 'office-4': officeFx,
   } as const
   const room = builders[roomId](new Context(scene, banner, { ...options, room: roomId }))
   const shakePlant = plantShaker(scene, options.plants ?? new Map())
@@ -409,5 +409,19 @@ function officeFx(ctx: Context): RoomHandlers {
   const lamp = ctx.glow(400, 230, ROOM_THEMES[ctx.options.room ?? 'office-1'].light, 7, 4, 0.22, -30)
   ctx.scene.tweens.add({ targets: lamp, alpha: 0.14, duration: 2600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' })
   wallClock(ctx, 640, '#5f3d24', '#8c2f39')
+  return { destroy: () => ctx.stop() }
+}
+
+/** 3번 오락실: 벽의 네온 간판, 오락기마다 번갈아 깜빡이는 네온 빛, 가끔 터지는 반짝이 */
+function arcadeFx(ctx: Context): RoomHandlers {
+  const { scene } = ctx
+  scene.add.rectangle(400, 32, 220, 34, 0x05020a, 0.9).setStrokeStyle(2, 0xf472b6).setDepth(61)
+  const sign = ctx.text(400, 32, '★ SEULGAE ARCADE ★', 13, '#ffd23f', 62, true)
+  scene.tweens.add({ targets: sign, alpha: 0.45, duration: 700, yoyo: true, repeat: -1, ease: 'Stepped' })
+  const colors = ['#f472b6', '#38bdf8', '#a78bfa', '#4ade80']
+  const glows = [[130, 200], [210, 200], [590, 200], [670, 200], [400, 200], [160, 430], [640, 430]].map(([x, y], i) => ctx.glow(x!, y!, colors[i % colors.length]!, 3.5, 5, 0.25, 820))
+  ctx.every(300, 300, () => { for (const glow of glows) if (Math.random() < 0.35) glow.setAlpha(glow.alpha > 0.2 ? 0.08 : 0.3) })
+  const sparkle = scene.add.particles(0, 0, 'spark', { emitting: false, lifespan: 700, speed: { min: 40, max: 120 }, scale: { start: 2, end: 0 }, tint: [0xf472b6, 0x38bdf8, 0xffd23f] }).setDepth(950)
+  ctx.every(6000, 11000, () => sparkle.explode(14, 400, 180))
   return { destroy: () => ctx.stop() }
 }

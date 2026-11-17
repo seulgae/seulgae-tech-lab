@@ -16,6 +16,10 @@ import kr.seulgae.techlab.auth.MemberRepository;
 import kr.seulgae.techlab.common.write.Ownership;
 import kr.seulgae.techlab.common.write.WriteRateLimiter;
 import kr.seulgae.techlab.lab.status.LabStatusController;
+import kr.seulgae.techlab.office.work.InMemoryWorkStore;
+import kr.seulgae.techlab.office.work.WorkItemController;
+import kr.seulgae.techlab.office.work.WorkItemService;
+import kr.seulgae.techlab.office.work.WorkStore;
 import kr.seulgae.techlab.meeting.agendas.MeetingAgenda;
 import kr.seulgae.techlab.meeting.agendas.MeetingAgendaController;
 import kr.seulgae.techlab.meeting.agendas.MeetingAgendaRepository;
@@ -52,13 +56,17 @@ import org.springframework.context.annotation.Import;
 @Import({LobbyWebSocketConfig.class, LobbySocketHandler.class, LobbyRoom.class, LobbyWorld.class, LobbyChat.class,
     ResearchController.class, ResearchService.class, ApiExceptionHandler.class, LabStatusController.class,
     ResearchIdeaController.class, ResearchIdeaService.class, MeetingAgendaController.class, MeetingAgendaService.class, WriteRateLimiter.class,
-    AuthSettings.class, AuthService.class, AuthController.class, KakaoClient.class})
+    AuthSettings.class, AuthService.class, AuthController.class, KakaoClient.class, WorkItemController.class, WorkItemService.class})
 public class LocalLobbyTestApplication {
     public static final UUID RECORD_ID = UUID.fromString("00000000-0000-4000-8000-000000000001");
     private static final OffsetDateTime CREATED_AT = OffsetDateTime.parse("2026-11-15T12:00:00+09:00");
 
     /** 테스트 클래스 경로에서만 실행되며 운영 JAR에는 포함되지 않는다. */
     public static void main(String[] args) { SpringApplication.run(LocalLobbyTestApplication.class, args); }
+
+    /** 사무실 업무 게시판(DB 없는 로컬 실행) */
+    @Bean
+    WorkStore fixtureWorkStore() { return new InMemoryWorkStore(); }
 
     @Bean
     ResearchRepository fixtureResearchRepository() {

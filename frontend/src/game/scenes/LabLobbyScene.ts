@@ -28,6 +28,7 @@ import { skyPhase } from '../rooms/timeOfDay'
 /** 패널을 열 때 함께 나는 장비 소리(컴퓨터 타이핑, 키오스크, 화이트보드 마커 등) */
 const PANEL_SOUNDS: Partial<Record<string, EffectKey>> = {
   research: 'kiosk', 'build-info': 'typing', 'server-status': 'beep', agenda: 'marker', bookshelf: 'page', cctv: 'beep',
+  'work-board': 'typing', arcade: 'success',
 }
 
 /**

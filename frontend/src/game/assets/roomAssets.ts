@@ -22,6 +22,7 @@ export function createRoomAssets(scene: Phaser.Scene) {
   meetingFurniture(scene)
   serverFurniture(scene)
   controlFurniture(scene)
+  arcadeFurniture(scene)
   outdoorScenery(scene)
   effects(scene)
 }
@@ -325,6 +326,38 @@ function serverFurniture(scene: Phaser.Scene) {
  * x = 120 + tx·2, y = 40 + ty·2 (공유 맵의 모니터 월: 중심 400, 바닥 168)이다. RoomFx가 이 위에 실시간 화면을 그린다.
  */
 export const MONITOR_SCREENS = [0, 1, 2, 3, 4, 5].map(index => ({ x: 4 + (index % 3) * 93, y: 5 + Math.floor(index / 3) * 30, width: 86, height: 26 }))
+
+/** 3번 오락실: 기존 가구 크기(컴퓨터 64×64, 랙 32×64, 의자 20×28, 장비 56×48)에 맞춘 오락기들 */
+function arcadeFurniture(scene: Phaser.Scene) {
+  texture(scene, 'arcade-machine', 64, 64, p => {
+    p('#05020a', 6, 60, 52, 4); p(ink, 8, 0, 48, 60); p('#3d2466', 10, 2, 44, 56); p('#f472b6', 10, 2, 44, 2)
+    p('#ffd23f', 14, 5, 36, 6); p('#3d2466', 16, 7, 32, 2)
+    p('#05020a', 14, 14, 36, 24); p('#0b0618', 15, 15, 34, 22)
+    const bricks = ['#ff4d8d', '#ff8a3d', '#ffd23f', '#4ade80']
+    for (let row = 0; row < 4; row++) for (let column = 0; column < 6; column++) p(bricks[row]!, 17 + column * 5, 17 + row * 3, 4, 2)
+    p('#ffffff', 30, 31, 2, 2); p('#f472b6', 26, 35, 10, 1)
+    p('#2a1748', 10, 40, 44, 10); p('#ff4d8d', 18, 43, 4, 4); p('#38bdf8', 26, 44, 3, 3); p('#4ade80', 31, 44, 3, 3); p('#05020a', 42, 41, 2, 6); p('#f472b6', 41, 40, 4, 2)
+    p('#38bdf8', 10, 56, 44, 1)
+  })
+  texture(scene, 'arcade-cabinet', 32, 64, p => {
+    p('#05020a', 2, 60, 29, 3); p(ink, 2, 0, 28, 60); p('#2a1748', 4, 2, 24, 56); p('#38bdf8', 4, 2, 24, 2)
+    p('#f472b6', 6, 5, 20, 4)
+    p('#05020a', 6, 12, 20, 16); p('#1e3a5f', 7, 13, 18, 14); p('#4ade80', 10, 16, 3, 3); p('#ffd23f', 18, 22, 3, 3); p('#ff4d8d', 14, 19, 2, 2)
+    p('#3d2466', 4, 32, 24, 8); p('#ff4d8d', 9, 34, 3, 3); p('#ffd23f', 18, 34, 3, 3)
+    p('#05020a', 12, 46, 8, 3); p('#ffd23f', 14, 47, 4, 1)
+  })
+  texture(scene, 'arcade-stool', 20, 28, p => {
+    p('#05020a', 5, 25, 10, 3); p('#6b7280', 9, 12, 2, 13); p('#4b5563', 6, 22, 8, 2)
+    p(ink, 3, 6, 14, 7); p('#f472b6', 4, 7, 12, 5); p('#f9a8d4', 5, 7, 10, 1)
+  })
+  texture(scene, 'claw-machine', 56, 48, p => {
+    p('#05020a', 3, 44, 50, 4); p(ink, 4, 0, 48, 44); p('#2a1748', 6, 2, 44, 40); p('#ffd23f', 6, 2, 44, 3)
+    p('#9bd8f5', 9, 7, 38, 20); p('#c7ecfb', 10, 8, 10, 2)
+    p('#6b7280', 27, 7, 2, 7); p('#9ca3af', 24, 14, 8, 2); p('#9ca3af', 24, 16, 2, 3); p('#9ca3af', 30, 16, 2, 3)
+    for (const [x, c] of [[12, '#ff4d8d'], [18, '#4ade80'], [34, '#ffd23f'], [40, '#38bdf8']] as const) { p(c, x, 21, 5, 5); p('#ffffff', x + 1, 22, 1, 1) }
+    p('#3d2466', 6, 29, 44, 11); p('#f472b6', 10, 32, 6, 6); p('#05020a', 36, 31, 2, 7); p('#ff4d8d', 35, 30, 4, 2)
+  })
+}
 
 function controlFurniture(scene: Phaser.Scene) {
   texture(scene, 'monitor-wall', 280, 64, p => {
