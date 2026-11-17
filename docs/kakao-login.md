@@ -57,7 +57,28 @@
 | `lab.auth.cookie-secure` | `LAB_AUTH_COOKIE_SECURE` | 아님 | 기본 `true`. http로 접속하는 로컬 시험에서만 `false` |
 
 - **운영**: 백엔드는 이미 `SPRING_CONFIG_IMPORT=configtree:/run/secrets/`를 쓴다. 비밀 값은 Compose secret의 **target 이름을 속성 이름으로**(예: `lab.auth.session-secret`, `lab.auth.kakao.client-secret`) 마운트하면 그대로 읽힌다. 비밀이 아닌 두 값은 Compose `environment`에 넣는다.
-- **compose.yml**: 키가 아직 없어 이 PR에서는 바꾸지 않았다. 키를 받은 뒤 사용자가 추가한다. 추가 전까지 운영은 로그인이 꺼진 채(현재와 같은 동작)로 돈다.
+- **compose.yml**(2026-11-17 반영):
+  - REST API 키와 Redirect URI는 `environment`에 둔다.
+  - 비밀 값 두 개는 Compose secret으로 `/run/secrets/lab.auth.kakao.client-secret`·`/run/secrets/lab.auth.session-secret`에 마운트한다.
+  - `ops.py check`가 두 파일의 존재, 길이(세션 비밀값 32바이트 이상), 권한(컨테이너 UID 10001이 읽을 수 있는지)을 배포 전에 확인한다.
+
+### 운영 비밀 파일 만들기 (머지 전에 서버에서)
+
+main에 머지하면 자동 배포된다. 아래 두 파일이 없으면 배포가 사전 점검에서 멈추므로, **머지하기 전에** 만든다.
+
+```bash
+cd /opt/homeserver/config/seulgae-tech-lab
+umask 077
+# 세션 서명 비밀값: 서버에서 임의로 만든다(바꾸면 모든 로그인이 풀린다).
+openssl rand -base64 48 | tr -d '\n' > auth-session-secret
+# 카카오 클라이언트 시크릿: 콘솔의 "REST API 키 수정 > 클라이언트 시크릿 > 카카오 로그인" 코드를 붙여 넣는다(화면에 보이지 않음).
+read -rs -p 'Kakao client secret: ' secret && printf '%s' "$secret" > kakao-client-secret; unset secret; echo
+# 디렉터리는 0700으로 막혀 있고, 컨테이너(UID 10001)가 읽을 수 있게 파일만 0444로 둔다(prod-app-password와 같은 방식).
+chmod 0444 auth-session-secret kakao-client-secret
+wc -c auth-session-secret kakao-client-secret
+```
+
+`wc -c`로 두 파일 모두 0바이트가 아닌지 확인한다. 세션 비밀값은 64바이트 안팎이다. 비밀 값은 채팅·Git·로그에 남기지 않는다.
 - **로컬**: 위 환경변수를 넣고 백엔드를 실행한 뒤, Vite(5188)로 접속해 "카카오 로그인"을 누른다.
 
 ## 검증

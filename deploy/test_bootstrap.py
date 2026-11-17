@@ -216,16 +216,19 @@ class PreflightTests(unittest.TestCase):
         self.state.mkdir()
         self.enterContext(patch.object(ops, 'STATE', self.state))
         self.enterContext(patch.dict(os.environ, STLAB_SECRETS_DIR=str(self.secret)))
-        for name, mode in [('prod-app-password', 0o444), ('prod-migrator-password', 0o600)]:
+        for name, mode in [('prod-app-password', 0o444), ('prod-migrator-password', 0o600),
+                           ('kakao-client-secret', 0o444), ('auth-session-secret', 0o444)]:
             p = self.secret / name
-            p.write_text('disposable-test-only')
+            p.write_text('disposable-test-only-' + 'x' * 32)
             p.chmod(mode)
         self.config = {'services': {'backend': {'environment': {
             'DB_URL': 'jdbc:postgresql://postgres-postgres-1:5432/stlab_prod?currentSchema=lab',
             'DB_USERNAME': 'stlab_prod_app', 'SPRING_SQL_INIT_MODE': 'never',
             'SPRING_FLYWAY_ENABLED': 'false', 'SPRING_CONFIG_IMPORT': 'configtree:/run/secrets/',
             'LAB_MULTIPLAYER_ALLOWED_ORIGINS': 'https://seulgae-home-server.tailac4b36.ts.net,http://127.0.0.1:5188,http://localhost:5188'}}, 'frontend': {}},
-            'secrets': {'prod_db_password': {'file': str(self.secret / 'prod-app-password')}}}
+            'secrets': {'prod_db_password': {'file': str(self.secret / 'prod-app-password')},
+                        'kakao_client_secret': {'file': str(self.secret / 'kakao-client-secret')},
+                        'auth_session_secret': {'file': str(self.secret / 'auth-session-secret')}}}
         self.enterContext(patch.object(ops, 'shared_snapshot', return_value={}))
         self.database = container(ops.DATABASE)
         self.enterContext(patch.object(ops, 'containers', return_value=[self.database]))
@@ -243,6 +246,20 @@ class PreflightTests(unittest.TestCase):
         ops.preflight()
         for c in self.command.call_args_list:
             self.assertFalse(set(c.args[0]) & {'pull', 'up', 'restart', 'down', 'migrate'})
+
+    def test_missing_short_or_private_login_secrets_are_rejected(self):
+        session = self.secret / 'auth-session-secret'
+        session.chmod(0o600)
+        with self.assertRaisesRegex(ops.OpsError, '10001'):
+            ops.preflight()
+        session.chmod(0o644)
+        session.write_text('too-short')
+        session.chmod(0o444)
+        with self.assertRaisesRegex(ops.OpsError, 'too short'):
+            ops.preflight()
+        (self.secret / 'kakao-client-secret').unlink()
+        with self.assertRaisesRegex(ops.OpsError, 'kakao-client-secret'):
+            ops.preflight()
 
     def test_existing_v2_and_v3_schemas_are_accepted_but_unknown_versions_are_not(self):
         for version in (2, 3):

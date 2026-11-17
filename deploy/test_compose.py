@@ -31,6 +31,15 @@ class ComposeTests(unittest.TestCase):
             'https://seulgae-home-server.tailac4b36.ts.net', 'http://127.0.0.1:5188', 'http://localhost:5188'])
         self.assertNotIn('DB_PASSWORD', backend['environment'])
         self.assertEqual(backend['image'], env['BACKEND_IMAGE'])
-        self.assertEqual(backend['secrets'], [{'source': 'prod_db_password', 'target': 'DB_PASSWORD'}])
-        self.assertEqual(set(config['secrets']), {'prod_db_password'})
+        self.assertEqual(backend['secrets'], [{'source': 'prod_db_password', 'target': 'DB_PASSWORD'},
+                                              {'source': 'kakao_client_secret', 'target': 'lab.auth.kakao.client-secret'},
+                                              {'source': 'auth_session_secret', 'target': 'lab.auth.session-secret'}])
+        self.assertEqual(set(config['secrets']), {'prod_db_password', 'kakao_client_secret', 'auth_session_secret'})
+        self.assertEqual(backend['environment']['LAB_AUTH_KAKAO_REDIRECT_URI'],
+                         'https://seulgae-home-server.tailac4b36.ts.net/api/auth/kakao/callback')
+        self.assertRegex(backend['environment']['LAB_AUTH_KAKAO_CLIENT_ID'], r'^[0-9a-f]{32}
+        self.assertNotIn('homeserver-net', str(config))
+)
+        self.assertNotIn('LAB_AUTH_SESSION_SECRET', backend['environment'])
+        self.assertNotIn('LAB_AUTH_KAKAO_CLIENT_SECRET', backend['environment'])
         self.assertNotIn('homeserver-net', str(config))

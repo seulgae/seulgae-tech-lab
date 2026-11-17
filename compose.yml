@@ -41,10 +41,18 @@ services:
       SPRING_FLYWAY_ENABLED: "false"
       LAB_MULTIPLAYER_ALLOWED_ORIGINS: https://seulgae-home-server.tailac4b36.ts.net,http://127.0.0.1:5188,http://localhost:5188
       SERVER_ADDRESS: 0.0.0.0
+      # 카카오 로그인(docs/kakao-login.md). REST API 키와 Redirect URI는 공개 값이고, 비밀 값은 아래 secrets로만 넣는다.
+      LAB_AUTH_KAKAO_CLIENT_ID: 8e235c19470d153bef77ad4ddddc3f23
+      LAB_AUTH_KAKAO_REDIRECT_URI: https://seulgae-home-server.tailac4b36.ts.net/api/auth/kakao/callback
       JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=65 -XX:ActiveProcessorCount=2
     secrets:
       - source: prod_db_password
         target: DB_PASSWORD
+      # configtree가 파일 이름을 속성 이름으로 읽는다.
+      - source: kakao_client_secret
+        target: lab.auth.kakao.client-secret
+      - source: auth_session_secret
+        target: lab.auth.session-secret
     networks: [app, database]
     restart: unless-stopped
     mem_limit: 512m
@@ -70,3 +78,7 @@ networks:
 secrets:
   prod_db_password:
     file: ${STLAB_SECRETS_DIR:-/opt/homeserver/config/seulgae-tech-lab}/prod-app-password
+  kakao_client_secret:
+    file: ${STLAB_SECRETS_DIR:-/opt/homeserver/config/seulgae-tech-lab}/kakao-client-secret
+  auth_session_secret:
+    file: ${STLAB_SECRETS_DIR:-/opt/homeserver/config/seulgae-tech-lab}/auth-session-secret
