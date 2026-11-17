@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import kr.seulgae.techlab.common.write.WriteRateLimiter;
+import kr.seulgae.techlab.admin.AdminAccess;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -46,11 +47,12 @@ public class AuthController {
      * 로그인 사용 가능 여부와 현재 회원(없으면 null)
      * @param kakaoEnabled 카카오 로그인 설정 여부
      * @param member 현재 회원
+     * @param admin 관리자(방장) 회원이면 true. 관리자실 문과 쿼리 콘솔에 쓴다(실제 권한은 관리자 API가 매번 확인).
      * @author seulgae
-     * @version 1.0, 내 정보 응답
+     * @version 1.1, 내 정보 응답(관리자 여부)
      * @see "None"
      */
-    public record Me(boolean kakaoEnabled, MemberView member) {}
+    public record Me(boolean kakaoEnabled, MemberView member, boolean admin) {}
     /**
      * 닉네임 변경 요청
      * @param nickname 새 닉네임
@@ -63,11 +65,15 @@ public class AuthController {
     private final AuthService auth;
     private final MemberRepository members;
     private final WriteRateLimiter limiter;
-    public AuthController(AuthService auth, MemberRepository members, WriteRateLimiter limiter) { this.auth = auth; this.members = members; this.limiter = limiter; }
+    private final AdminAccess admins;
+    public AuthController(AuthService auth, MemberRepository members, WriteRateLimiter limiter, AdminAccess admins) {
+        this.auth = auth; this.members = members; this.limiter = limiter; this.admins = admins;
+    }
 
     @GetMapping("/me")
     public Me me(HttpServletRequest request) {
-        return new Me(auth.enabled(), auth.current(request).map(member -> new MemberView(member.id(), member.nickname())).orElse(null));
+        var member = auth.current(request);
+        return new Me(auth.enabled(), member.map(m -> new MemberView(m.id(), m.nickname())).orElse(null), member.map(m -> admins.isAdmin(m.id())).orElse(false));
     }
 
     /** 로그인한 회원이 쓴 최근 글 ID. 화면이 "내 글" 표시와 수정·삭제 버튼에 쓴다. */

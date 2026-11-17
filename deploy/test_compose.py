@@ -40,5 +40,7 @@ class ComposeTests(unittest.TestCase):
                          'https://seulgae-home-server.tailac4b36.ts.net/api/auth/kakao/callback')
         self.assertRegex(backend['environment']['LAB_AUTH_KAKAO_CLIENT_ID'], r'^[0-9a-f]{32}$')
         self.assertNotIn('LAB_AUTH_SESSION_SECRET', backend['environment'])
+        # 관리자실 쿼리 콘솔은 회원 id(UUID)로만 연다.
+        self.assertRegex(backend['environment']['LAB_ADMIN_MEMBER_IDS'], r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
         self.assertNotIn('LAB_AUTH_KAKAO_CLIENT_SECRET', backend['environment'])
         self.assertNotIn('homeserver-net', str(config))

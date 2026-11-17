@@ -30,7 +30,7 @@ import { FISH_COLORS } from '../rooms/fishingLogic'
 
 /** 패널을 열 때 함께 나는 장비 소리(컴퓨터 타이핑, 키오스크, 화이트보드 마커 등) */
 const PANEL_SOUNDS: Partial<Record<string, EffectKey>> = {
-  research: 'kiosk', 'build-info': 'typing', 'server-status': 'beep', agenda: 'marker', bookshelf: 'page', cctv: 'beep',
+  research: 'kiosk', 'build-info': 'typing', 'server-status': 'beep', agenda: 'marker', bookshelf: 'page', 'admin-console': 'typing',
   'work-board': 'typing', arcade: 'success', guestbook: 'kiosk',
 }
 
@@ -298,6 +298,12 @@ export default class LabLobbyScene extends Phaser.Scene {
     if (!(pressed || touchPressed) || !enabled) return
     if (door) {
       this.resetChatInput()
+      // 관리자실은 관리자 회원만(문만 막는 것이고, 쿼리 콘솔 API는 서버가 따로 확인한다)
+      if (this.client.canEnter?.(door.target) === false) {
+        playSfx('error', { volume: 0.5 })
+        this.floatText('관리자만 들어갈 수 있어요')
+        return
+      }
       if (this.client.changeRoom(door.id)) {
         this.openingDoor = door.id
         this.fx?.doors.open(door.id)

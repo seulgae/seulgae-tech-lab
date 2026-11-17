@@ -562,16 +562,16 @@
       ]
     },
     "control-room": {
-      "name": "관제실",
+      "name": "관리자실",
       "interactions": [
         {
-          "id": "control-cctv",
-          "kind": "cctv",
-          "label": "관제 모니터 보기",
+          "id": "admin-console",
+          "kind": "admin-console",
+          "label": "쿼리 콘솔",
           "x": 400,
-          "y": 286,
+          "y": 198,
           "width": 240,
-          "height": 56,
+          "height": 64,
           "range": 56
         }
       ],
@@ -589,25 +589,14 @@
       ],
       "objects": [
         {
+          "texture": "supercomputer",
           "x": 400,
-          "bottom": 168,
-          "texture": "monitor-wall",
+          "bottom": 230,
           "body": {
-            "y": 132,
             "x": 400,
-            "height": 72,
-            "width": 560
-          }
-        },
-        {
-          "x": 400,
-          "bottom": 314,
-          "texture": "control-console",
-          "body": {
-            "y": 286,
-            "x": 400,
-            "height": 56,
-            "width": 240
+            "y": 198,
+            "width": 240,
+            "height": 64
           }
         },
         {

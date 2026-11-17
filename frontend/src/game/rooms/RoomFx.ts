@@ -14,7 +14,7 @@ import { SKY_PALETTES, clockAngles, clockLabel, skyPhase } from './timeOfDay'
 import { AGENDAS_CHANGED, fetchAgendas } from '../../features/boards/boardsApi'
 import { playSfx } from '../../audio/AudioManager'
 import { SNACKS, inventoryStore } from '../../features/inventory/inventoryStore'
-import { controlRoomFx } from './controlRoomFx'
+import { adminRoomFx } from './adminRoomFx'
 import { outdoorFx } from './outdoorFx'
 
 /** Scene이 사용하는 방 연출 핸들. 문·장식·이벤트를 한 번에 정리한다. */
@@ -43,7 +43,7 @@ export function createRoomFx(scene: Phaser.Scene, roomId: RoomId, options: Optio
   const banner = new Banner(scene, ROOM_THEMES[roomId].page.accent)
   const builders = {
     lobby: lobbyFx, 'development-lab': developmentFx, 'server-room': serverFx, 'meeting-room': meetingFx,
-    'control-room': controlRoomFx, outdoor: outdoorFx,
+    'control-room': adminRoomFx, outdoor: outdoorFx,
     'office-1': officeFx, 'office-2': officeFx, 'office-3': arcadeFx, 'office-4': officeFx,
   } as const
   const room = builders[roomId](new Context(scene, banner, { ...options, room: roomId }))

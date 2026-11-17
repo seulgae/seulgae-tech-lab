@@ -233,7 +233,7 @@ test('터치 E는 범위 밖에서 예약되지 않고 패널 동안 재실행�
 })
 
 test('모든 방에 스폰과 겹치지 않는 상호작용이 있고 위치별로 하나만 고른다', () => {
-  const kinds = new Set(['research', 'guestbook', 'build-info', 'server-status', 'table-talk', 'agenda', 'cctv', 'fishing', 'work-board', 'arcade'])
+  const kinds = new Set(['research', 'guestbook', 'build-info', 'server-status', 'table-talk', 'agenda', 'admin-console', 'fishing', 'work-board', 'arcade'])
   for (const [id, room] of Object.entries(ROOMS)) {
     assert.ok(room.interactions.length > 0, id)
     for (const interaction of room.interactions) {
@@ -247,7 +247,7 @@ test('모든 방에 스폰과 겹치지 않는 상호작용이 있고 위치별�
   assert.equal(nearestInteraction('development-lab', 400, 440)?.id, 'development-build')
   assert.equal(nearestInteraction('meeting-room', 400, 420)?.kind, 'table-talk')
   assert.equal(nearestInteraction('meeting-room', 400, 460), undefined)
-  assert.equal(nearestInteraction('control-room', 400, 330)?.kind, 'cctv')
+  assert.equal(nearestInteraction('control-room', 400, 280)?.kind, 'admin-console')
   assert.equal(nearestInteraction('outdoor', 612, 500)?.kind, 'fishing')
 })
 
@@ -543,4 +543,23 @@ test('글 입력 칸에 포커스가 있으면 게임 키 가로채기를 꺼서
   state.textFocused = true; scene.update()
   scene.events.emit('shutdown')
   assert.equal(state.capture, true, '장면이 끝나면 원래대로 돌린다')
+})
+
+test('관리자실 문: 관리자가 아니면 열지 않고 안내만 하며, 관리자는 들어간다', () => {
+  const { scene, key, state } = createScene('lobby')
+  const door = ROOMS.lobby.doors.find(entry => entry.target === 'control-room')
+  let admin = false
+  const changes = []
+  scene.client.canEnter = target => target !== 'control-room' || admin
+  const changeRoom = scene.client.changeRoom
+  scene.client.changeRoom = id => { changes.push(id); return changeRoom?.call(scene.client, id) ?? true }
+  scene.tweens ??= { add() {} } // 안내 문구가 떠오르는 연출
+  scene.player.x = door.x; scene.player.y = door.y
+  key._justDown = true; scene.update()
+  assert.deepEqual(changes, [], '관리자가 아니면 방 이동을 요청하지 않는다')
+  assert.equal(state.sounds.at(-1), 'error')
+  admin = true
+  scene.time.now += 3000
+  key._justDown = true; scene.update()
+  assert.deepEqual(changes, [door.id])
 })

@@ -46,6 +46,8 @@ services:
       # 카카오 로그인(docs/kakao-login.md). REST API 키와 Redirect URI는 공개 값이고, 비밀 값은 아래 secrets로만 넣는다.
       LAB_AUTH_KAKAO_CLIENT_ID: 8e235c19470d153bef77ad4ddddc3f23
       LAB_AUTH_KAKAO_REDIRECT_URI: https://seulgae-home-server.tailac4b36.ts.net/api/auth/kakao/callback
+      # 관리자실(쿼리 콘솔)에 들어갈 수 있는 회원 id(lab.members.id). IP가 바뀌어도 로그인 회원으로 확인한다.
+      LAB_ADMIN_MEMBER_IDS: 45678072-690e-4b6f-a647-f083cf3d95c9
       JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=65 -XX:ActiveProcessorCount=2
     secrets:
       - source: prod_db_password

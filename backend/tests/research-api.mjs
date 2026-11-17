@@ -79,7 +79,10 @@ assert.ok(changed.updatedAt)
 assert.equal((await fetch(`${agendas}/${madeAgenda.agenda.id}`, json('DELETE', null, madeAgenda.editToken))).status, 204)
 assert.equal((await fetch(`${agendas}/00000000-0000-0000-0000-000000000000`, json('DELETE', null, madeAgenda.editToken))).status, 404)
 // V3: 카카오 키가 없는 환경에서는 로그인이 꺼지고, 글쓰기는 기존 수정 키 방식 그대로다.
-assert.deepEqual(await (await fetch(`${base}/api/auth/me`)).json(), { kakaoEnabled: false, member: null })
+// 관리자실(쿼리 콘솔): 로그인하지 않았으면 관리자가 아니다. 관리자 API는 로그인부터 요구한다.
+assert.deepEqual(await (await fetch(`${base}/api/auth/me`)).json(), { kakaoEnabled: false, member: null, admin: false })
+assert.equal((await fetch(`${base}/api/admin/tables`)).status, 401)
+assert.equal((await fetch(`${base}/api/admin/sql`, json('POST', { sql: 'SELECT 1' }))).status, 401)
 assert.deepEqual(await (await fetch(`${base}/api/auth/me/owned`)).json(), { recordIds: [], agendaIds: [] })
 assert.equal((await fetch(`${base}/api/auth/kakao/login`, { redirect: 'manual' })).status, 404)
 console.log('Disposable PostgreSQL HTTP integration checks passed: creation, roundtrip, pagination, validation, 404, idea journal and agenda ownership, auth disabled.')

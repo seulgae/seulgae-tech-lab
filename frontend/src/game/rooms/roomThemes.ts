@@ -61,15 +61,15 @@ export const ROOM_THEMES: Record<RoomId, RoomTheme> = {
     notes: { title: '함께 고민하면\n더 멀리 가요.', body: '따뜻한 원목 테이블에\n둘러앉아 이야기해요.', missionTitle: '테이블 대화', mission: '테이블 가까이에서 E를 누르면 테이블 대화가 켜지고 조명이 회의 모드로 바뀌어요.' },
   },
   'control-room': {
-    mood: '어두운 관제실에 CCTV 모니터 월과 앰버 콘솔이 빛나는 상황실',
-    camera: '#070a0d', light: '#ffb547',
-    floor: { base: '#1a2026', baseLine: '#12171c', alt: '#1d242b', altLine: '#141a20', accent: '#22201a', accentLine: '#17150f', accentDetail: '#ffb547' },
-    wall: { upper: '#151b21', upperLight: '#1f2830', lower: '#0d1115', lowerDark: '#080b0e', trim: '#ffb547', detail: '#4ade80', side: '#11161b', bottom: '#0b0f13' },
-    door: { frame: '#080b0e', frameLight: '#ffb547', panel: '#26303a', panelLight: '#38454f', handle: '#ffb547', sign: '#4ade80' },
-    page: { background: '#080b0f', card: '#10161c', border: '#2a3540', accent: '#ffb547', muted: '#9aa8b5' },
-    // 모니터 월·콘솔은 공유 맵에 전용 텍스처 키(monitor-wall, control-console)로 들어 있다.
-    textures: { chair: 'operator-chair', rack: 'control-rack' },
-    notes: { title: '모든 방을\n한눈에.', body: '모니터 월에서 각 방의\n연구원을 실시간으로 봐요.', missionTitle: 'CCTV 관제', mission: '벽 모니터에 각 방의 연구원이 실시간으로 보여요. 콘솔에서 E를 누르면 이름과 위치를 크게 볼 수 있어요.' },
+    mood: '월넛 벽과 버건디 카펫, 금빛 장식 사이에 운영 DB 슈퍼컴퓨터가 한 대 있는 관리자실',
+    camera: '#120b0a', light: '#e7c66f',
+    floor: { base: '#4a1f24', baseLine: '#3d191d', alt: '#521f26', altLine: '#3a171b', accent: '#5e2830', accentLine: '#46191f', accentDetail: '#c9a24b' },
+    wall: { upper: '#3b2418', upperLight: '#5a3a2a', lower: '#24150f', lowerDark: '#160d09', trim: '#c9a24b', detail: '#e7c66f', side: '#2e1c13', bottom: '#1a100b' },
+    door: { frame: '#160d09', frameLight: '#c9a24b', panel: '#4a2c1e', panelLight: '#6b4430', handle: '#e7c66f', sign: '#c9a24b' },
+    page: { background: '#140c0a', card: '#211512', border: '#5a3a2a', accent: '#e7c66f', muted: '#c8ab8e' },
+    // 슈퍼컴퓨터는 공유 맵에 전용 텍스처 키(supercomputer)로 들어 있다.
+    textures: { chair: 'armchair', rack: 'bookshelf' },
+    notes: { title: '관리자만\n들어올 수 있어요.', body: '운영 DB를 직접\n살피는 곳입니다.', missionTitle: '쿼리 콘솔', mission: '가운데 슈퍼컴퓨터에서 E를 누르면 쿼리 콘솔이 열려요. 왼쪽 테이블 이름을 누르면 조회 쿼리가 들어가고, 바꾸는 쿼리는 실행 전에 한 번 더 확인해요.' },
   },
   'office-1': {
     mood: '밝은 원목 책상과 책장이 있는 단정한 개인 오피스',
