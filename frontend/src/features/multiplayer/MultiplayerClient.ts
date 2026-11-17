@@ -1,5 +1,5 @@
 import type { RoomId } from '../../game/maps/rooms'
-import { INITIAL_CONNECTION, closeCause, lobbySocketUrl, parseServerMessage, normalizeChat, validChatText } from './model/protocol.ts'
+import { INITIAL_CONNECTION, REPLACED_CLOSE_CODE, REPLACED_MESSAGE, closeCause, lobbySocketUrl, parseServerMessage, normalizeChat, validChatText } from './model/protocol.ts'
 
 /**
  * 운영 경로(Tailscale Funnel)는 요청 왕복이 약 1초, 연결 수립이 3~5초까지 걸린다.
@@ -311,6 +311,8 @@ export default class MultiplayerClient {
         try { sessionStorage.removeItem('lab.nickname') } catch { }
         this.info.nickname = ''
       }
+      // 같은 주소의 다른 창이 연결을 가져갔다. 다시 연결하면 서로 끊어 내므로 여기서 멈춘다.
+      if (event.code === REPLACED_CLOSE_CODE) { this.updateStatus({ phase: 'replaced', online: 0, message: REPLACED_MESSAGE }); return }
       this.updateStatus({ phase: 'reconnecting', online: 0, message: event.code === 1013 ? '로비 정원이 가득 찼어요. 잠시 후 다시 연결합니다.' : '연결이 끊겼어요. 다시 연결 중… 혼자 둘러볼 수 있어요.' })
       this.retry()
     }

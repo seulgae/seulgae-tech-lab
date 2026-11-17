@@ -5,7 +5,7 @@ export type MoveInput = { x: number; y: number }
 export type MoveCommand = MoveInput & { seq: number; ms: number }
 /** seat: 서버가 확인한 앉은 의자 id(예: meeting-room-chair-1), 서 있으면 null. 구형 서버는 보내지 않는다. */
 export type PlayerState = { id: string; nickname: string; x: number; y: number; facing: Facing; moving: boolean; ack: number; seat?: string | null }
-export type ConnectionInfo = { roomId?: RoomId; roomOnline?: number; totalOnline?: number; travelling?: boolean; roomError?: string; phase: 'connecting' | 'online' | 'reconnecting'; nickname: string; online: number; maxPlayers: number; message: string }
+export type ConnectionInfo = { roomId?: RoomId; roomOnline?: number; totalOnline?: number; travelling?: boolean; roomError?: string; phase: 'connecting' | 'online' | 'reconnecting' | 'replaced'; nickname: string; online: number; maxPlayers: number; message: string }
 export type ChatMessage = { type: 'chat_message'; messageId: string; playerId: string; nickname: string; message: string; sentAt: string; scope?: ChatScope }
 /** room은 같은 방 전체, table은 서버가 확인한 회의 테이블 주변 참가자에게만 전달한다. */
 export type ChatScope = 'room' | 'table'
@@ -79,12 +79,17 @@ export function parseServerMessage(raw: string): ServerMessage {
  * 콘솔(F12)에서 끊김 원인을 바로 알 수 있도록 종료 코드를 사람이 읽는 설명으로 바꾼다.
  * 4001~4005는 클라이언트가 스스로 닫은 경우, 그 밖은 서버·브라우저가 닫은 경우다.
  */
+/** 같은 주소(IP)에서 새 창이 접속해 이 연결을 대신했다는 서버 종료 코드. 이 코드에서는 다시 연결하지 않는다. */
+export const REPLACED_CLOSE_CODE = 4409
+export const REPLACED_MESSAGE = '다른 창에서 접속해 이 창의 연결을 끊었어요. 새로고침하면 이 창으로 다시 접속해요.'
+
 export function closeCause(code: number, reason = '') {
   const causes: Record<number, string> = {
     1000: '정상 종료', 1001: '페이지 이동 또는 서버 종료', 1006: '네트워크 단절(종료 프레임 없음)',
     1008: `서버가 입력을 거부함${reason ? `: ${reason}` : ''}`, 1009: '메시지가 너무 큼', 1011: '서버 오류', 1013: '로비 정원 초과',
     4001: '클라이언트: 10초간 서버 메시지 없음', 4002: '클라이언트: 잘못된 서버 메시지', 4003: '클라이언트: 업로드 지연으로 입력이 쌓임',
     4004: '클라이언트: 이동 확인(ack) 지연', 4005: '클라이언트: 방 이동 응답 지연', 4500: '서버: 전송 지연·대기열 초과로 연결 정리',
+    4409: '서버: 같은 주소의 새 연결로 대체됨',
   }
   return causes[code] ?? `알 수 없는 종료 코드 ${code}${reason ? `: ${reason}` : ''}`
 }

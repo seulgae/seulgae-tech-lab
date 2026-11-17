@@ -50,6 +50,10 @@ public class LobbySocketHandler extends TextWebSocketHandler {
     static final int SEND_BUFFER_LIMIT_BYTES = 131072;
     /** 방 이동 때 승인·기록·입장 알림이 한꺼번에 쌓여도 넘치지 않는 제어 메시지 대기열 */
     static final int CONTROL_QUEUE_CAPACITY = 64;
+    /** 핸드셰이크가 연결 속성에 남기는 방문자 주소 키 */
+    public static final String CLIENT_ADDRESS = "lab.clientAddress";
+    /** 같은 주소의 새 연결이 기존 연결을 대신할 때 보내는 종료 코드. 클라이언트는 이 코드에서 재연결하지 않는다. */
+    public static final CloseStatus REPLACED = new CloseStatus(4409, "Replaced by a newer connection from the same address");
     /**
      * 연결별 송신 큐와 입력 제한·진단 정보를 보관한다.
      * @author seulgae
@@ -59,6 +63,7 @@ public class LobbySocketHandler extends TextWebSocketHandler {
     private static final class Peer {
         final WebSocketSession socket;
         final String playerId;
+        final String address;
         final AtomicBoolean sending = new AtomicBoolean();
         final ArrayBlockingQueue<WebSocketMessage<?>> controls = new ArrayBlockingQueue<>(CONTROL_QUEUE_CAPACITY);
         final AtomicReference<WebSocketMessage<?>> latestState = new AtomicReference<>();
@@ -68,7 +73,7 @@ public class LobbySocketHandler extends TextWebSocketHandler {
         long replenishedAt = connectedAt, receivedInputs;
         long ignoredInputs;
         double inputTokens = INPUT_BURST_CAPACITY;
-        Peer(WebSocketSession socket, String playerId) { this.socket = socket; this.playerId = playerId; }
+        Peer(WebSocketSession socket, String playerId, String address) { this.socket = socket; this.playerId = playerId; this.address = address; }
         synchronized boolean allow(long now) {
             receivedInputs++;
             // 수신 시각에 몰린 정상 입력은 여유분으로 흡수하고 지속적인 과다 전송은 제한한다.
@@ -85,15 +90,32 @@ public class LobbySocketHandler extends TextWebSocketHandler {
     private final JsonMapper json = JsonMapper.builder().build();
     private final ConcurrentHashMap<String, Peer> peers = new ConcurrentHashMap<>();
     private final ExecutorService senders = Executors.newFixedThreadPool(LobbyRoom.MAX_PLAYERS);
+    private final boolean singleConnectionPerAddress;
     private long lastTick = System.nanoTime(), tick;
 
-    public LobbySocketHandler(LobbyRoom room, LobbyChat chat) { this.room = room; this.chat = chat; }
+    public LobbySocketHandler(LobbyRoom room, LobbyChat chat) { this(room, chat, false); }
+
+    /**
+     * @param singleConnectionPerAddress true면 한 주소에 연결 하나만 두고, 같은 주소의 새 연결이 기존 연결을 끊는다.
+     *     로컬 개발·테스트는 모든 창이 127.0.0.1이라 기본값은 false이고, 운영 Compose에서 켠다.
+     */
+    @org.springframework.beans.factory.annotation.Autowired
+    public LobbySocketHandler(LobbyRoom room, LobbyChat chat,
+                              @org.springframework.beans.factory.annotation.Value("${lab.multiplayer.single-connection-per-address:false}") boolean singleConnectionPerAddress) {
+        this.room = room; this.chat = chat; this.singleConnectionPerAddress = singleConnectionPerAddress;
+    }
 
     /** 검증된 임시 이름으로 접속시키고 본인 ID와 전체 스냅샷을 먼저 전송한다. */
     @Override
     public synchronized void afterConnectionEstablished(WebSocketSession session) throws Exception {
         session.setTextMessageSizeLimit(1024);
         session.setBinaryMessageSizeLimit(128);
+        String address = session.getAttributes().get(CLIENT_ADDRESS) instanceof String value ? value : null;
+        if (singleConnectionPerAddress && address != null) {
+            // 새 창·새로고침이 같은 주소의 이전 연결을 대신한다. 입장 전에 정리해 정원 계산에서도 빠지게 한다.
+            peers.entrySet().stream().filter(entry -> address.equals(entry.getValue().address)).map(Map.Entry::getKey).toList()
+                .forEach(id -> disconnect(id, REPLACED));
+        }
         LobbyRoom.PlayerView player;
         try {
             var query = UriComponentsBuilder.fromUri(session.getUri()).build(true).getQueryParams();
@@ -113,7 +135,7 @@ public class LobbySocketHandler extends TextWebSocketHandler {
         try {
             // 입장 기록과 실시간 방송 사이에 메시지가 빠지지 않게 같은 채팅 잠금을 사용한다.
             synchronized (chat) {
-                var peer = new Peer(socket, player.id());
+                var peer = new Peer(socket, player.id(), address);
                 peer.controls.add(new TextMessage(json.writeValueAsString(Map.of("type", "welcome", "selfId", player.id(), "players", room.snapshot("lobby"), "maxPlayers", LobbyRoom.MAX_PLAYERS, "protocolVersion", 4, "time", System.nanoTime() / 1_000_000d, "roomId", "lobby", "roomEpoch", 0))));
                 peer.controls.add(new TextMessage(json.writeValueAsString(Map.of("type", "chat_history", "messages", chat.history()))));
                 peers.put(session.getId(), peer);
