@@ -43,8 +43,9 @@ export function createRoomFx(scene: Phaser.Scene, roomId: RoomId, options: Optio
   const builders = {
     lobby: lobbyFx, 'development-lab': developmentFx, 'server-room': serverFx, 'meeting-room': meetingFx,
     'control-room': controlRoomFx, outdoor: outdoorFx,
+    'office-1': officeFx, 'office-2': officeFx, 'office-3': officeFx, 'office-4': officeFx,
   } as const
-  const room = builders[roomId](new Context(scene, banner, options))
+  const room = builders[roomId](new Context(scene, banner, { ...options, room: roomId }))
   const shakePlant = plantShaker(scene, options.plants ?? new Map())
   if (roomId !== 'lobby' && roomId !== 'outdoor') banner.show(`${ROOMS[roomId].name}에 들어왔어요`)
   return {
@@ -400,4 +401,12 @@ function treatTable(ctx: Context) {
       onComplete: () => scene.tweens.add({ targets: book, alpha: 0, scale: 3, duration: 200, onComplete: () => book.destroy() }) })
   }
   return { enjoy, pullBook }
+}
+
+/** 개인 사무실: 방 테마 색의 책상 조명과 벽시계(세부 연출은 추후) */
+function officeFx(ctx: Context): RoomHandlers {
+  const lamp = ctx.glow(400, 230, ROOM_THEMES[ctx.options.room ?? 'office-1'].light, 7, 4, 0.22, -30)
+  ctx.scene.tweens.add({ targets: lamp, alpha: 0.14, duration: 2600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' })
+  wallClock(ctx, 640, '#5f3d24', '#8c2f39')
+  return { destroy: () => ctx.stop() }
 }

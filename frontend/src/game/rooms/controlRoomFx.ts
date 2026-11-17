@@ -26,7 +26,7 @@ export function controlRoomFx(ctx: Context): RoomHandlers {
   scene.tweens.add({ targets: consoleGlow, alpha: 0.08, duration: 1800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' })
   scene.add.rectangle(400, 300, 800, 600, 0x000000, 0.18).setDepth(-20)
 
-  const screens = CCTV_ROOMS.map((roomId, index) => {
+  const screens = CCTV_ROOMS.slice(0, MONITOR_SCREENS.length).map((roomId, index) => {
     const s = MONITOR_SCREENS[index]!
     const x = WALL_LEFT + s.x * 2, y = WALL_TOP + s.y * 2, height = s.height * 2
     // 왼쪽은 4:3 평면도, 오른쪽은 방 이름과 인원
