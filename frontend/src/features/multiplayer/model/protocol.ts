@@ -108,9 +108,6 @@ export function validGroundItem(value: unknown): value is GroundItem {
     && Number.isFinite(item.x) && Number.isFinite(item.y) && item.x >= 0 && item.x <= 800 && item.y >= 0 && item.y <= 600
 }
 
-/** 관제실 CCTV 목록(REST)을 검사한다. 잘못되면 null */
-export function parseFeeds(value: unknown): RoomFeeds | null { return validFeeds(value) ? value : null }
-
 function validFeeds(feeds: unknown): feeds is RoomFeeds {
   if (!feeds || typeof feeds !== 'object' || Array.isArray(feeds)) return false
   const entries = Object.entries(feeds)

@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { ROOMS, doorHint, doorLabel, nearestInteraction, roomObjects, roomObstacles, roomSeats } from '../src/game/maps/rooms.ts'
-import { CCTV_ROOMS, feedPoint } from '../src/game/rooms/cctvLayout.ts'
 import { parseServerMessage } from '../src/features/multiplayer/model/protocol.ts'
 import {
   FISH, FISH_LOG_KEY, catchMessage, catchZone, inZone, needleAt, recordCatch, rollCatch, waitBeforeBite,
@@ -11,7 +10,7 @@ import { setRoomObstacles, constrainedPosition } from '../src/game/multiplayer/n
 const player = (id, x = 400, y = 400) => ({ id, nickname: '연구원', x, y, facing: 'down', moving: false, ack: 1 })
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
 
-test('로비 문 배치: 왼쪽 위 개발 연구실, 오른쪽 위 관제실, 왼쪽 아래 서버실, 오른쪽 아래 회의실, 아래 가운데 나가기', () => {
+test('로비 문 배치: 왼쪽 위 개발 연구실, 오른쪽 위 관리자실, 왼쪽 아래 서버실, 오른쪽 아래 회의실, 아래 가운데 나가기', () => {
   const doors = Object.fromEntries(ROOMS.lobby.doors.map(door => [door.target, [door.x, door.y]]))
   assert.deepEqual(doors, { 'development-lab': [70, 250], 'control-room': [730, 250], 'server-room': [70, 520], 'meeting-room': [730, 520], outdoor: [400, 540] })
   const exit = ROOMS.lobby.doors.find(door => door.target === 'outdoor')
@@ -30,15 +29,13 @@ test('로비 소파·의자와 개발 연구실 화분을 치웠고, 책장은 �
   }
 })
 
-test('관제실: 모니터 월·콘솔·의자 두 개, 콘솔에서 CCTV, 여섯 방 화면', () => {
-  assert.equal(ROOMS['control-room'].name, '관제실')
+test('관리자실: 슈퍼컴퓨터 한 대(쿼리 콘솔)와 의자 두 개, CCTV 모니터는 없다', () => {
+  assert.equal(ROOMS['control-room'].name, '관리자실')
+  assert.equal(doorHint(ROOMS.lobby.doors.find(door => door.target === 'control-room')), 'E · 관리자실 입장')
   assert.equal(roomSeats('control-room').length, 2)
-  assert.equal(nearestInteraction('control-room', 400, 330)?.kind, 'cctv')
-  assert.deepEqual([...CCTV_ROOMS].sort(), Object.keys(ROOMS).sort(), '모든 방을 한 화면씩 보여 준다')
-  const screen = { x: 10, y: 20, width: 80, height: 60 }
-  assert.deepEqual(feedPoint(screen, 0, 0), { x: 10, y: 20 })
-  assert.deepEqual(feedPoint(screen, 800, 600), { x: 90, y: 80 })
-  assert.deepEqual(feedPoint(screen, 9999, -5), { x: 90, y: 20 }, '화면 밖 좌표는 가장자리에 붙인다')
+  assert.deepEqual(roomObjects('control-room').filter(object => object.texture === 'supercomputer').length, 1)
+  assert.ok(!roomObjects('control-room').some(object => object.texture === 'monitor-wall'))
+  assert.equal(nearestInteraction('control-room', 400, 280)?.kind, 'admin-console')
 })
 
 test('상태 메시지의 feeds는 알려진 방·정원 이하·중복 없는 참가자만 받는다', () => {

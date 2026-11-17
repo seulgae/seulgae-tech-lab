@@ -57,18 +57,16 @@ test('모든 방의 스폰은 가구 밖이고 출입구는 로비 중심으로 
  setRoomObstacles(roomObstacles('lobby'))
 })
 
-test('회의실 밖에서도 바닥 아이템은 REST로 읽고 버리며, 관제실은 회의실 CCTV 목록을 2초마다 읽는다', async t=>{
+test('회의실 밖에서도 바닥 아이템은 REST로 읽고 버리며, 관리자실 문은 관리자만 연다', async t=>{
  t.mock.timers.enable({apis:['setTimeout','setInterval']})
  const original={window:globalThis.window,document:globalThis.document,WebSocket:globalThis.WebSocket,fetch:globalThis.fetch}
  const calls=[]
  const fish={id:'00000000-0000-4000-8000-0000000000aa',kind:'FISH',name:'붕어',sizeCm:23,x:600,y:470}
- const meeting={id:'00000000-0000-4000-8000-000000000001',nickname:'회의중',x:400,y:480,facing:'down',moving:false,ack:-1}
  globalThis.fetch=async (url,options={})=>{calls.push([url,options.method??'GET',options.body?JSON.parse(options.body):null])
-  if(url==='/api/lobby/feeds')return new Response(JSON.stringify({'meeting-room':[meeting]}))
   return new Response(JSON.stringify(url.includes('outdoor')||options.body?[fish]:[]))}
  Object.assign(globalThis,{window:Object.assign(new EventTarget(),{location:{protocol:'http:',host:'localhost:5188'}}),document:Object.assign(new EventTarget(),{hidden:false}),WebSocket:class{constructor(){throw new Error('회의실 밖에서는 연결하지 않는다')}}})
- const grounds=[],feeds=[]
- const c=new MultiplayerClient({ground:items=>grounds.push(items),feeds:f=>feeds.push(f)})
+ const grounds=[]
+ const c=new MultiplayerClient({ground:items=>grounds.push(items)})
  const settle=()=>new Promise(resolve=>setImmediate(resolve))
  try {
   c.start();c.changeRoom('lobby-to-outdoor');t.mock.timers.tick(0);await settle()
@@ -78,13 +76,10 @@ test('회의실 밖에서도 바닥 아이템은 REST로 읽고 버리며, 관�
   assert.equal(c.dropItem(fish.id),true);await settle()
   assert.deepEqual(calls.at(-1),['/api/inventory/drop','POST',{itemId:fish.id,room:'outdoor',x:610,y:473}],'내 위치를 함께 보낸다')
   c.changeRoom('outdoor-to-lobby');t.mock.timers.tick(0);await settle()
-  c.changeRoom('lobby-to-control');t.mock.timers.tick(0);await settle()
-  assert.equal(feeds.length,1);assert.equal(c.latestFeeds()['meeting-room'][0].nickname,'회의중')
-  t.mock.timers.tick(2000);await settle()
-  assert.equal(feeds.length,2,'2초마다 다시 읽는다')
-  c.changeRoom('control-to-lobby');t.mock.timers.tick(0);await settle()
-  const n=calls.filter(([url])=>url==='/api/lobby/feeds').length
-  t.mock.timers.tick(6000);await settle()
-  assert.equal(calls.filter(([url])=>url==='/api/lobby/feeds').length,n,'관제실을 나오면 멈춘다');assert.equal(c.latestFeeds(),null)
+  assert.equal(c.canEnter('control-room'),false);assert.equal(c.canEnter('server-room'),true)
+  assert.equal(c.changeRoom('lobby-to-control'),false,'관리자가 아니면 관리자실에 들어가지 않는다')
+  c.setAdmin(true)
+  assert.equal(c.changeRoom('lobby-to-control'),true);t.mock.timers.tick(0);await settle()
+  assert.equal(c.currentRoom(),'control-room')
  } finally {c.destroy();Object.assign(globalThis,original)}
 })

@@ -21,7 +21,6 @@ export function createRoomAssets(scene: Phaser.Scene) {
   devFurniture(scene)
   meetingFurniture(scene)
   serverFurniture(scene)
-  controlFurniture(scene)
   arcadeFurniture(scene)
   outdoorScenery(scene)
   effects(scene)
@@ -339,12 +338,6 @@ function serverFurniture(scene: Phaser.Scene) {
   })
 }
 
-/**
- * 관제실 화면 영역(텍스처 좌표). 모니터 월(280×64)을 2배로 그리므로 월드 좌표는
- * x = 120 + tx·2, y = 40 + ty·2 (공유 맵의 모니터 월: 중심 400, 바닥 168)이다. RoomFx가 이 위에 실시간 화면을 그린다.
- */
-export const MONITOR_SCREENS = [0, 1, 2, 3, 4, 5].map(index => ({ x: 4 + (index % 3) * 93, y: 5 + Math.floor(index / 3) * 30, width: 86, height: 26 }))
-
 /** 3번 오락실: 기존 가구 크기(컴퓨터 64×64, 랙 32×64, 의자 20×28, 장비 56×48)에 맞춘 오락기들 */
 function arcadeFurniture(scene: Phaser.Scene) {
   texture(scene, 'arcade-machine', 64, 64, p => {
@@ -374,39 +367,6 @@ function arcadeFurniture(scene: Phaser.Scene) {
     p('#6b7280', 27, 7, 2, 7); p('#9ca3af', 24, 14, 8, 2); p('#9ca3af', 24, 16, 2, 3); p('#9ca3af', 30, 16, 2, 3)
     for (const [x, c] of [[12, '#ff4d8d'], [18, '#4ade80'], [34, '#ffd23f'], [40, '#38bdf8']] as const) { p(c, x, 21, 5, 5); p('#ffffff', x + 1, 22, 1, 1) }
     p('#3d2466', 6, 29, 44, 11); p('#f472b6', 10, 32, 6, 6); p('#05020a', 36, 31, 2, 7); p('#ff4d8d', 35, 30, 4, 2)
-  })
-}
-
-function controlFurniture(scene: Phaser.Scene) {
-  texture(scene, 'monitor-wall', 280, 64, p => {
-    p('#05070a', 0, 0, 280, 64); p('#1b232b', 1, 1, 278, 62); p('#2a343e', 1, 1, 278, 1)
-    for (const s of MONITOR_SCREENS) {
-      p('#05070a', s.x - 1, s.y - 1, s.width + 2, s.height + 2)
-      p('#0b1a12', s.x, s.y, s.width, s.height)
-      p('#ff4d4d', s.x + s.width - 4, s.y + 2, 2, 2)
-    }
-    // 아래 받침과 케이블 덕트
-    p('#11171d', 0, 60, 280, 4); p('#ffb547', 6, 61, 12, 1); p('#4ade80', 262, 61, 12, 1)
-  })
-  texture(scene, 'control-console', 120, 44, p => {
-    p('#05070a', 2, 40, 116, 4); p(ink, 0, 10, 120, 30)
-    p('#2a343e', 2, 12, 116, 6); p('#1b232b', 2, 18, 116, 20)
-    // 작은 모니터 세 대와 키보드, 버튼
-    for (const x of [14, 50, 86]) { p('#05070a', x, 0, 20, 13); p('#13261b', x + 1, 1, 18, 10); p('#4ade80', x + 3, 4, 8, 1); p('#ffb547', x + 3, 7, 12, 1); p('#2a343e', x + 8, 13, 4, 2) }
-    for (const x of [10, 46, 82]) { p('#3b4752', x, 20, 26, 6); for (let i = 0; i < 6; i++) p('#56636f', x + 2 + i * 4, 21, 3, 2) }
-    for (let i = 0; i < 8; i++) p(i % 3 ? '#4ade80' : '#ffb547', 12 + i * 13, 30, 3, 3)
-    p('#ffb547', 2, 12, 116, 1)
-  })
-  texture(scene, 'operator-chair', 20, 28, p => {
-    p('#05070a', 4, 25, 12, 3); p('#2a343e', 9, 18, 2, 7)
-    p(ink, 2, 2, 16, 18); p('#3b4752', 3, 3, 14, 16); p('#ffb547', 3, 3, 14, 1); p('#56636f', 5, 6, 10, 9)
-  })
-  texture(scene, 'control-rack', 32, 64, p => {
-    p('#05070a', 2, 60, 29, 3); p(ink, 1, 0, 30, 60); p('#1b232b', 3, 2, 26, 56)
-    for (let row = 0; row < 7; row++) {
-      p('#2a343e', 5, 5 + row * 8, 22, 6)
-      p(row % 2 ? '#4ade80' : '#ffb547', 7, 7 + row * 8, 2, 2); p('#4ade80', 11, 7 + row * 8, 2, 2)
-    }
   })
 }
 

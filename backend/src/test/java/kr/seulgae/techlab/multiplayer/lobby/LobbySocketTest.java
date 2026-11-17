@@ -71,7 +71,7 @@ class LobbySocketTest {
 
     private int port() { return environment.getProperty("local.server.port", Integer.class); }
 
-    /** 멀티플레이는 회의실에서만: 소켓은 회의실로 바로 입장하고, 서버 방 이동은 거절하며, 관제실 CCTV 목록에 회의실 참가자가 보인다. */
+    /** 멀티플레이는 회의실에서만: 소켓은 회의실로 바로 입장하고, 서버 방 이동은 거절한다. */
     @Test void joinsMeetingRoomDirectlyAndRefusesServerRoomChanges() throws Exception {
         var a = connect(""); var welcome = a.type("welcome");
         String id = welcome.get("selfId").stringValue();
@@ -87,10 +87,6 @@ class LobbySocketTest {
         assertEquals("meeting-room", room.roomId(id), "서버 방 이동은 하지 않는다");
         a.send("{\"type\":\"chat\",\"message\":\"회의 시작할게요\"}");
         assertEquals("회의 시작할게요", b.type("chat_message").get("message").stringValue());
-        var feeds = JSON.readTree(http.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port() + "/api/lobby/feeds")).GET().build(),
-            HttpResponse.BodyHandlers.ofString()).body());
-        assertEquals(2, feeds.get("meeting-room").size(), "관제실 CCTV는 회의실 참가자를 REST로 본다");
-        assertTrue(feeds.get("lobby").isEmpty());
         assertFalse(a.closed.isDone());
     }
 

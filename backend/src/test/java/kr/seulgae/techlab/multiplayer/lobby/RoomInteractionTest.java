@@ -45,26 +45,8 @@ class RoomInteractionTest {
         clock.addAndGet(1_100_000_000L);
     }
 
-    /** 관제실만 모든 방을 볼 수 있고, 방별 목록은 빈 방까지 맵 순서대로 담는다. */
-    @Test void controlRoomSeesEveryRoomByName() {
-        var watcher = room.join("관제원");
-        var guest = room.join("손님");
-        walk(watcher.id(), 730, 260);
-        room.changeRoom(watcher.id(), "lobby-to-control", clock.get());
-        sequence = 0;
-        assertTrue(room.monitorsAllRooms("control-room"));
-        assertFalse(room.monitorsAllRooms("lobby"));
-        assertFalse(room.monitorsAllRooms("outdoor"));
-        var feeds = room.snapshotsByRoom();
-        assertEquals(world.roomIds(), java.util.List.copyOf(feeds.keySet()));
-        assertEquals("손님", feeds.get("lobby").get(0).nickname());
-        assertEquals("관제원", feeds.get("control-room").get(0).nickname());
-        assertTrue(feeds.get("outdoor").isEmpty());
-        assertEquals(guest.id(), feeds.get("lobby").get(0).id());
-    }
-
     @Test void everyRoomHasInteractionsOutsideSpawnAndOnlyKnownKinds() {
-        var kinds = java.util.Set.of("research", "guestbook", "build-info", "server-status", "table-talk", "agenda", "cctv", "fishing", "work-board", "arcade");
+        var kinds = java.util.Set.of("research", "guestbook", "build-info", "server-status", "table-talk", "agenda", "admin-console", "fishing", "work-board", "arcade");
         for (var roomId : world.roomIds()) {
             var interactions = world.interactions(roomId);
             assertFalse(interactions.isEmpty(), roomId);

@@ -1,0 +1,22 @@
+.research-panel.sql-console { width: min(1100px, calc(100vw - 32px)); max-height: calc(100vh - 32px); }
+.sql-help { margin: 6px 0 0; font-size: 12px; color: #e8c9a0; }
+.sql-layout { display: grid; grid-template-columns: 220px 1fr; gap: 12px; margin-top: 12px; min-height: 0; }
+.sql-tables { display: flex; flex-direction: column; gap: 6px; max-height: 60vh; overflow: auto; border: 1px solid #5a3a2a; padding: 8px; background: rgba(0, 0, 0, .2); }
+.sql-tables input { box-sizing: border-box; width: 100%; padding: 4px 6px; border: 1px solid #6b4b36; background: #1a1210; color: #f6e7c8; font: 12px monospace; }
+.sql-tables ul { margin: 0; padding: 0; list-style: none; }
+.research-panel .sql-tables button { width: 100%; padding: 3px 4px; border: 0; background: transparent; color: #f6e7c8; text-align: left; font: 12px monospace; cursor: pointer; overflow-wrap: anywhere; }
+.research-panel .sql-tables button:hover, .research-panel .sql-tables button:focus-visible { background: rgba(201, 162, 75, .2); }
+.sql-tables small { color: #a8876a; }
+.sql-tables em { color: #c9a24b; font-size: 10px; }
+.sql-count { margin: 0; font-size: 11px; color: #a8876a; }
+.sql-main { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.sql-main textarea { box-sizing: border-box; width: 100%; min-height: 120px; padding: 8px; border: 1px solid #6b4b36; background: #120c0b; color: #f8eeda; font: 13px/1.5 monospace; resize: vertical; tab-size: 2; }
+.sql-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 12px; color: #e8c9a0; }
+.sql-error { margin: 0; padding: 8px; border: 1px solid #b4474f; background: rgba(180, 71, 79, .15); color: #ffd1d4; font: 12px/1.5 monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+.sql-result { max-height: 45vh; overflow: auto; border: 1px solid #5a3a2a; }
+.sql-result table { border-collapse: collapse; font: 12px monospace; color: #f6e7c8; }
+.sql-result th { position: sticky; top: 0; background: #3b2418; color: #e7c66f; text-align: left; }
+.sql-result th, .sql-result td { padding: 4px 8px; border-bottom: 1px solid #3b2a22; white-space: pre; max-width: 360px; overflow: hidden; text-overflow: ellipsis; }
+.sql-result tr:nth-child(even) td { background: rgba(255, 255, 255, .03); }
+.sql-null { color: #8a6f5c; font-style: italic; }
+@media (max-width: 720px) { .sql-layout { grid-template-columns: 1fr; } .sql-tables { max-height: 25vh; } }

@@ -1,6 +1,6 @@
 import { ROOMS } from '../../game/maps/rooms.ts'
 import type { RoomId } from '../../game/maps/rooms'
-import { SOLO_MESSAGE, parseFeeds, validGroundItem, INITIAL_CONNECTION, NICKNAME_CLOSE_CODE, REPLACED_CLOSE_CODE, validNickname, REPLACED_MESSAGE, closeCause, lobbySocketUrl, parseServerMessage, normalizeChat, validChatText } from './model/protocol.ts'
+import { SOLO_MESSAGE, validGroundItem, INITIAL_CONNECTION, NICKNAME_CLOSE_CODE, REPLACED_CLOSE_CODE, validNickname, REPLACED_MESSAGE, closeCause, lobbySocketUrl, parseServerMessage, normalizeChat, validChatText } from './model/protocol.ts'
 
 /**
  * 운영 경로(Tailscale Funnel)는 요청 왕복이 약 1초, 연결 수립이 3~5초까지 걸린다.
@@ -11,15 +11,13 @@ export const ROOM_RESPONSE_TIMEOUT_MS = 15000
 export const INPUT_BACKPRESSURE_BYTES = 16384
 /** 멀티플레이는 회의실에서만 연다. 다른 방은 서버 없이 혼자 둘러보고, 방 이동도 바로 한다. */
 export const MEETING_ROOM: RoomId = 'meeting-room'
-/** 관제실 CCTV가 회의실 참가자 목록을 다시 읽는 간격 */
-export const FEED_POLL_MS = 2000
-import type { ConnectionInfo, MoveInput, MoveCommand, PlayerState, ChatMessage, ChatError, ChatScope, GroundItem, RoomFeeds, ServerMessage } from './model/protocol'
+/** 관리자실(관리자 회원만 들어간다. 실제 권한은 서버의 관리자 API가 확인한다) */
+export const ADMIN_ROOM: RoomId = 'control-room'
+import type { ConnectionInfo, MoveInput, MoveCommand, PlayerState, ChatMessage, ChatError, ChatScope, GroundItem, ServerMessage } from './model/protocol'
 
 type Callbacks = { room?: (roomId: RoomId, pending: boolean) => void; snapshot?: (players: PlayerState[], selfId: string | null, serverTime?: number) => void; status?: (info: ConnectionInfo) => void;
   chat?: (event: ChatMessage) => void; history?: (messages: ChatMessage[]) => void; chatError?: (reason: ChatError) => void; inputSent?: (sequence: number) => void;
   predicted?: (command: MoveCommand) => void
-  /** 관제실에서만 오는 방별 참가자 목록(약 5Hz) */
-  feeds?: (feeds: RoomFeeds) => void
   /** 지금 방 바닥 아이템 목록이 바뀌었을 때 */
   ground?: (items: GroundItem[]) => void
   /** 내 가방이 바뀌었을 때(버리기·줍기 성공) */
@@ -41,7 +39,8 @@ export default class MultiplayerClient {
   private joining = false
   /** 장면이 알려 주는 내 위치(회의실 밖에서는 서버가 모른다). 버리기·줍기에 쓴다. */
   private position = { x: 400, y: 400 }
-  private feedTimer: ReturnType<typeof setInterval> | undefined
+  /** 로그인 회원이 관리자인지(관리자실 문) */
+  private admin = false
   private roomEpoch = 0
   private scoped = false
   private travelling = false
@@ -71,7 +70,6 @@ export default class MultiplayerClient {
   private selfId: string | null = null
   private input: MoveInput = { x: 0, y: 0 }
   private players = new Map<string, PlayerState>()
-  private lastFeeds: RoomFeeds | null = null
   private groundItems: GroundItem[] = []
   private appliedNickname: string | null = null
   private info = { ...INITIAL_CONNECTION }
@@ -82,7 +80,6 @@ export default class MultiplayerClient {
   constructor(callbacks: Callbacks = {}) { this.listeners.add(callbacks) }
 
   /** Scene은 구독만 교체하고 React 게임 컴포넌트가 소켓 수명을 소유한다. */
-  /** 관제실에서 마지막으로 받은 방별 참가자 목록. 관제실 밖이면 null이다. */
   /**
    * 회원 닉네임을 적용한다. 같은 소켓으로는 이름을 바꿀 수 없으므로, 이미 다른 이름으로 접속했다면 바로 다시 접속한다.
    * 모바일처럼 로그인 확인이 게임 시작(2.5초)보다 늦게 끝나면 임시 이름 "연구원-xxxx"로 남던 문제를 막는다.
@@ -101,7 +98,10 @@ export default class MultiplayerClient {
   /** 내 연구원 id(채팅 알림음에서 내 메시지를 거른다) */
   selfPlayerId() { return this.selfId }
 
-  latestFeeds() { return this.roomId === 'control-room' ? this.lastFeeds : null }
+  /** 로그인 상태가 바뀌면 화면이 관리자 여부를 알려 준다. */
+  setAdmin(admin: boolean) { this.admin = admin }
+  /** 이 방에 들어갈 수 있는지(관리자실은 관리자만) */
+  canEnter(target: string) { return target !== ADMIN_ROOM || this.admin }
 
   subscribe(callbacks: Callbacks) {
     this.listeners.add(callbacks)
@@ -254,22 +254,6 @@ export default class MultiplayerClient {
     this.notify(callbacks => callbacks.ground?.(this.groundItems))
   }
 
-  /** 관제실에 있는 동안 회의실 참가자 목록(CCTV)을 주기적으로 읽는다. */
-  private syncFeeds() {
-    clearInterval(this.feedTimer); this.feedTimer = undefined; this.lastFeeds = null
-    if (this.roomId !== 'control-room' || typeof fetch !== 'function') return
-    const poll = () => void fetch('/api/lobby/feeds', { headers: { Accept: 'application/json' } })
-      .then(response => response.ok ? response.json() : null)
-      .then(value => {
-        const feeds = parseFeeds(value)
-        if (!feeds || this.roomId !== 'control-room') return
-        this.lastFeeds = feeds
-        this.notify(callbacks => callbacks.feeds?.(feeds))
-      }).catch(() => { this.lastFeeds = null })
-    poll()
-    this.feedTimer = setInterval(poll, FEED_POLL_MS)
-  }
-
   /** 회의실 연결이 살아 있는지(의자·채팅은 서버가 확인한다) */
   isOnline() { return this.online && !!this.selfId && this.socket?.readyState === 1 }
 
@@ -286,7 +270,7 @@ export default class MultiplayerClient {
   changeRoom(doorId: string) {
     if (this.travelling || this.disposed) return false
     const door = (ROOMS[this.roomId].doors as { id: string; target: string }[]).find(entry => entry.id === doorId)
-    if (!door) return false
+    if (!door || !this.canEnter(door.target)) return false
     const target = door.target as RoomId
     this.setInput({x:0,y:0})
     this.travelling = true
@@ -315,7 +299,6 @@ export default class MultiplayerClient {
     this.updateStatus({ roomId: target, travelling: false, roomError: undefined, phase: 'solo', online: 0, roomOnline: undefined, message: SOLO_MESSAGE })
     this.notify(c => c.room?.(target, false))
     this.loadGround()
-    this.syncFeeds()
   }
 
   /** 회의실 연결을 끝낸다(나가기). 재연결하지 않는다. */
@@ -388,7 +371,7 @@ export default class MultiplayerClient {
         if (message.type === 'room_changed') {
           if (!this.travelling || message.roomEpoch! <= this.roomEpoch || message.selfId !== this.selfId) return
           clearTimeout(this.travelTimer)
-          this.roomId = message.roomId!; this.roomEpoch = message.roomEpoch!; this.travelling = false; this.lastFeeds = null
+          this.roomId = message.roomId!; this.roomEpoch = message.roomEpoch!; this.travelling = false
           this.sequence = 0; this.lastTick = -1; this.commands = []; this.lastMovementBatch = []; this.lastQueuedInput = null
           this.input = {x:0,y:0}; this.lastSentInput = null; this.lastInputSent = -Infinity; this.serverTime = message.time
           this.messages = []; this.seenMessages.clear(); this.notify(c => c.history?.([]))
@@ -401,7 +384,7 @@ export default class MultiplayerClient {
         }
         if (message.type === 'welcome') {
           this.scoped = message.roomId !== undefined; this.roomId = message.roomId ?? MEETING_ROOM; this.roomEpoch = message.roomEpoch ?? 0
-          this.travelling = false; this.joining = false; clearTimeout(this.travelTimer); this.syncFeeds()
+          this.travelling = false; this.joining = false; clearTimeout(this.travelTimer)
           this.updateStatus({roomId:this.roomId, travelling:false, roomError:undefined})
           this.notify(c => c.room?.(this.roomId, false))
           this.serverTime = message.time
@@ -448,8 +431,6 @@ export default class MultiplayerClient {
           this.lastTick = message.tick
           this.serverTime = message.time
           this.players = new Map(message.players.map(player => [player.id, player]))
-          const feeds = message.feeds
-          if (feeds) { this.lastFeeds = feeds; this.notify(callbacks => callbacks.feeds?.(feeds)) }
         } else if (message.type === 'joined') this.players.set(message.player.id, message.player)
         else if (message.type === 'left') this.players.delete(message.id)
         this.notify(callbacks => callbacks.snapshot?.([...this.players.values()], this.selfId, this.serverTime))
@@ -512,7 +493,7 @@ export default class MultiplayerClient {
   /** 재시도·입력 타이머와 브라우저 이벤트를 먼저 해제한 뒤 소켓을 닫는다. */
   destroy() {
     this.disposed = true
-    clearTimeout(this.travelTimer); clearTimeout(this.retryTimer); clearInterval(this.inputTimer); clearInterval(this.feedTimer)
+    clearTimeout(this.travelTimer); clearTimeout(this.retryTimer); clearInterval(this.inputTimer)
     window.removeEventListener('blur', this.stopInput)
     document.removeEventListener('visibilitychange', this.onVisibility)
     if (this.socket) {

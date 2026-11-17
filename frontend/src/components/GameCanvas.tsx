@@ -11,7 +11,7 @@ import { LAB_EVENTS } from '../features/lab/labEvents'
 import type { RoomPanelKind } from '../features/lab/model/labTypes'
 import AgendaPanel from '../features/boards/AgendaPanel'
 import BookPanel from '../features/books/BookPanel'
-import CctvPanel from '../features/cctv/CctvPanel'
+import SqlConsolePanel from '../features/admin/SqlConsolePanel'
 import WorkBoardPanel from '../features/work/WorkBoardPanel'
 import { OFFICE_BOARDS } from '../features/work/workApi'
 import ArcadePanel from '../features/arcade/ArcadePanel'
@@ -50,7 +50,10 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
   const [labPanel, setLabPanel] = useState<RoomPanelKind | null>(null)
   const [tableTalk, setTableTalk] = useState(false)
   // 로그인 확인이 게임 시작보다 늦게 끝나도(모바일) 회원 닉네임으로 다시 접속한다.
-  const memberNickname = useAuth().member?.nickname
+  const auth = useAuth()
+  const memberNickname = auth.member?.nickname
+  // 관리자실 문: 관리자 회원만 들어간다.
+  useEffect(() => { clientRef.current?.setAdmin(auth.admin) }, [auth.admin, connection.phase])
   useEffect(() => { if (memberNickname) clientRef.current?.applyNickname(memberNickname) }, [memberNickname, connection.phase])
 
   /** 다른 UI 갱신 중에도 조이스틱의 입력 콜백을 유지한다. */
@@ -174,7 +177,7 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
       {researchOpen && <ResearchPanel onClose={closeResearch} />}
       {labPanel === 'agenda' && <AgendaPanel onClose={closeLabPanel} />}
       {labPanel === 'bookshelf' && <BookPanel onClose={closeLabPanel} />}
-      {labPanel === 'cctv' && <CctvPanel client={getClient} onClose={closeLabPanel} />}
+      {labPanel === 'admin-console' && <SqlConsolePanel onClose={closeLabPanel} />}
       {labPanel === 'work-board' && OFFICE_BOARDS[connection.roomId ?? ''] && <WorkBoardPanel board={OFFICE_BOARDS[connection.roomId ?? '']!} onClose={closeLabPanel} />}
       {labPanel === 'arcade' && <ArcadePanel onClose={closeLabPanel} />}
       {labPanel === 'inventory' && <InventoryPanel client={getClient} onClose={closeLabPanel} />}
