@@ -25,6 +25,8 @@ SHARED = ('invencore-app-frontend-1', 'invencore-app-backend-1',
           'invencore-pg-local-proxy', 'kafka-kafka-1', 'postgres-postgres-1')
 DATABASE = 'postgres-postgres-1'
 DATABASE_NETWORK = 'postgres_backend'
+# Set when deploy re-executes itself after moving the checkout, so it never loops.
+SYNCED_ENV = 'STLAB_DEPLOY_SYNCED'
 
 
 class OpsError(RuntimeError):
@@ -125,6 +127,23 @@ def select_release(fetch=request_json):
             raise OpsError('CI provenance mismatch')
         return release
     raise OpsError('No successful main CI release with a published image manifest. Nothing deployed.')
+
+
+def sync_checkout(candidate, git=command):
+    """Detach the server checkout at the release commit so compose.yml and ops.py match the images.
+
+    CI deployments only run ./deploy.sh; without this the checkout keeps old Compose settings
+    (new environment variables and secrets never reach the containers). Returns True if HEAD moved.
+    """
+    root = str(ROOT)
+    git(['git', '-C', root, 'fetch', '--quiet', 'origin', 'main'])
+    git(['git', '-C', root, 'merge-base', '--is-ancestor', candidate['sha'], 'origin/main'])
+    if git(['git', '-C', root, 'rev-parse', 'HEAD'], capture=True) == candidate['sha']:
+        return False
+    if git(['git', '-C', root, 'status', '--porcelain', '--untracked-files=no'], capture=True):
+        raise OpsError('Server checkout has local changes to tracked files; discard them before deploying')
+    git(['git', '-C', root, 'checkout', '--quiet', '--detach', candidate['sha']])
+    return True
 
 
 def containers(names):
@@ -452,6 +471,14 @@ def main(argv):
             event('rollback', 'recovered-interrupted-operation', sha=target['sha'])
             print(f'SUCCESS recovered previous application: {target["sha"]}')
             return
+        if action == 'deploy' and not os.environ.get(SYNCED_ENV):
+            candidate = select_release()
+            if sync_checkout(candidate):
+                # Run the release's own ops.py so preflight and Compose files match the images.
+                # The lock file is opened non-inheritable, so exec releases the lock for the new process.
+                print(f'Checkout moved to release {candidate["sha"]}; continuing with its deployment files', flush=True)
+                os.environ[SYNCED_ENV] = candidate['sha']
+                os.execv(sys.executable, [sys.executable, str(ROOT / 'deploy' / 'ops.py'), 'deploy'])
         preflight()
         if action == 'check':
             return
@@ -462,15 +489,16 @@ def main(argv):
             raise OpsError('No managed application yet; run ./deploy.sh for first installation')
         if action == 'deploy':
             candidate = select_release()
-            command(['git', '-C', str(ROOT), 'fetch', '--quiet', 'origin', 'main'])
-            command(['git', '-C', str(ROOT), 'merge-base', '--is-ancestor', candidate['sha'], 'origin/main'])
+            if sync_checkout(candidate):
+                raise OpsError('A newer release was published during this deployment; run ./deploy.sh again')
             compatible(candidate, schema_version())
             for service in SERVICES:
                 command(['docker', 'pull', candidate['images'][service]])
             verify_images(candidate)
             if current and candidate['images'] == current['images']:
-                health(current)
-                print(f'Already running latest verified release {current["sha"]}')
+                # Same images, but Compose settings may have changed with the checkout: up -d recreates only changed services.
+                activate(current)
+                print(f'Already running latest verified release {current["sha"]}; Compose configuration re-applied')
             else:
                 transact(candidate, current, action)
         elif action == 'rollback':
