@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
-"""Explicit production migration up to the latest schema (V3). Never called by deploy/start/rollback.
+"""Explicit production migration up to the latest schema (V4). Never called by deploy/start/rollback.
 
-Supported paths: empty DB, V1 or V2 -> V3. A verified pg_dump backup is taken first;
+Supported paths: empty DB, V1, V2 or V3 -> V4. A verified pg_dump backup is taken first;
 there is no automatic DB rollback.
+
+Expand-then-use: a schema change first ships in a release whose db_schema range already includes the
+new version (for V4: 3..4), so it deploys on the old schema. This script then migrates while that
+release keeps running, and only afterwards does code that needs the new schema (4..4) get merged.
 """
 import fcntl
 import os
@@ -13,17 +17,24 @@ import sys
 import tempfile
 import ops
 
-LATEST_SCHEMA = 3
+LATEST_SCHEMA = 4
 
 
-def migration_plan(version, release):
-    """Return the target schema, or None when production is already current."""
+def migration_plan(version, release, running=None):
+    """Return the target schema, or None when production is already current.
+
+    release: latest main release (source of the migration files); its range must include the target.
+    running: release currently serving production (current.json); when present it must also accept
+    the target, so migrating never breaks the live application.
+    """
     if version == LATEST_SCHEMA:
         return None
     if not 0 <= version < LATEST_SCHEMA:
         raise ops.OpsError(f'Unsupported production schema V{version}; inspect schema manually')
-    if release['db_schema'] != {'min': LATEST_SCHEMA, 'max': LATEST_SCHEMA}:
+    if not release['db_schema']['min'] <= LATEST_SCHEMA <= release['db_schema']['max']:
         raise ops.OpsError(f'Release does not declare schema V{LATEST_SCHEMA}')
+    if running and not running['db_schema']['min'] <= LATEST_SCHEMA <= running['db_schema']['max']:
+        raise ops.OpsError(f'Running release does not support schema V{LATEST_SCHEMA}; deploy the expand release first')
     return LATEST_SCHEMA
 
 
@@ -39,7 +50,7 @@ def main():
             print(f'Production schema is already V{LATEST_SCHEMA}. No migration performed.')
             return
         release = ops.select_release()
-        target = migration_plan(version, release)
+        target = migration_plan(version, release, ops.read(ops.STATE / 'current.json'))
         ops.command(['git', '-C', str(ops.ROOT), 'fetch', '--quiet', 'origin', 'main'])
         ops.command(['git', '-C', str(ops.ROOT), 'merge-base', '--is-ancestor', release['sha'], 'origin/main'])
         before = ops.shared_snapshot()
