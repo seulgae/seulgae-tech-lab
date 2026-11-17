@@ -28,7 +28,7 @@ export const ROOM_THEMES: Record<RoomId, RoomTheme> = {
     door: { frame: '#3b2418', frameLight: '#c9a24b', panel: '#6e4a33', panelLight: '#8f6446', handle: '#e7c66f', sign: '#c9a24b' },
     page: { background: '#1f1612', card: '#2c1f19', border: '#6b4b36', accent: '#e0b867', muted: '#c9b49a' },
     textures: { reception: 'lobby-desk', rack: 'bookshelf', equipment: 'lounge-sofa', chair: 'armchair', computer: 'kiosk', plant: 'tall-plant' },
-    notes: { title: '어서 오세요,\n연구원님.', body: '대리석 로비에서\n오늘의 탐험을 시작해요.', missionTitle: '안내 데스크와 키오스크', mission: '키오스크에서 E로 연구 기록을 열고, 양옆 네 문으로 각 연구실에, 아래 문으로 바깥 초원에 나가 보세요.' },
+    notes: { title: '어서 오세요,\n연구원님.', body: '대리석 로비에서\n오늘의 탐험을 시작해요.', missionTitle: '안내 데스크와 방명록', mission: '키오스크에서 E로 방명록에 인사를 남기고, 양옆 네 문으로 각 연구실에, 아래 문으로 바깥 초원에 나가 보세요.' },
   },
   'development-lab': {
     mood: '어두운 네이비 위에 네온 그린 모니터가 빛나는 해커 연구실',
@@ -38,7 +38,7 @@ export const ROOM_THEMES: Record<RoomId, RoomTheme> = {
     door: { frame: '#0a0f19', frameLight: '#38bdf8', panel: '#1b2538', panelLight: '#2b3a55', handle: '#39e6b4', sign: '#39e6b4' },
     page: { background: '#0a1019', card: '#101827', border: '#24405a', accent: '#39e6b4', muted: '#8fb3c9' },
     textures: { computer: 'dev-desk', chair: 'gaming-chair', equipment: 'workbench' },
-    notes: { title: '빌드는\n멈추지 않아요.', body: '네온 모니터 앞에서\n코드를 다듬는 곳입니다.', missionTitle: 'CI 파이프라인', mission: '개발 연구원들의 로비예요. 양옆 네 문은 개인 사무실(1~4번)로 이어지고, 책상 컴퓨터에서 E를 누르면 실제 서버 빌드 정보를 볼 수 있어요.' },
+    notes: { title: '빌드는\n멈추지 않아요.', body: '네온 모니터 앞에서\n코드를 다듬는 곳입니다.', missionTitle: 'CI 파이프라인', mission: '개발 연구원들의 로비예요. 양옆 네 문은 개인 사무실(1~4번)로 이어져요. 가운데 슈퍼컴퓨터에서 연구 아이디어를 등록하고, 작업대에서 실제 서버 빌드 정보를 볼 수 있어요.' },
   },
   'server-room': {
     mood: '차가운 파란 조명과 이중 바닥, 경고 줄무늬가 있는 서버실',
@@ -136,8 +136,8 @@ export function floorData(roomId: RoomId): number[][] {
       return (row + column) % 2
     }
     if (roomId === 'development-lab') {
-      // 책상(좌·우)으로 이어지는 네온 케이블 덕트와 4칸 격자
-      if (row === 12 || (row >= 8 && row <= 12 && (column === 5 || column === 19))) return 2
+      // 슈퍼컴퓨터 양옆 의자로 이어지는 네온 케이블 덕트와 4칸 격자
+      if (row === 12 || (row >= 9 && row <= 12 && (column === 9 || column === 15))) return 2
       return row % 4 === 0 || column % 4 === 0 ? 1 : 0
     }
     if (roomId === 'server-room') {

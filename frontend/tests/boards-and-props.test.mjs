@@ -38,7 +38,7 @@ test('의자 id는 서버와 같은 규칙이고, 의자 뒤에서 다가갈 때
   assert.equal(roomSeats('server-room').length, 0)
   assert.equal(seatById('meeting-room-chair-2').x, 322)
   assert.equal(seatById('nope'), undefined)
-  assert.equal(nearestInteraction('lobby', 620, 400)?.kind, 'research', '책상과 의자 사이에서는 컴퓨터')
+  assert.equal(nearestInteraction('lobby', 620, 400)?.kind, 'guestbook', '책상과 의자 사이에서는 컴퓨터(방명록)')
   assert.equal(nearestInteraction('control-room', 340, 395)?.id, 'control-room-chair-0')
   assert.equal(nearestInteraction('meeting-room', 322, 375)?.id, 'meeting-room-chair-4')
   assert.equal(nearestInteraction('meeting-room', 400, 420)?.kind, 'table-talk')

@@ -119,7 +119,8 @@ function developmentFx(ctx: Context): RoomHandlers {
   const { scene } = ctx
   const strip = scene.add.rectangle(400, 66, 752, 3, 0x39e6b4, 0.7).setBlendMode(Phaser.BlendModes.ADD).setDepth(61)
   scene.tweens.add({ targets: strip, alpha: 0.35, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' })
-  for (const x of [180, 620]) {
+  // 슈퍼컴퓨터 캐비닛 불빛이 번갈아 깜박인다.
+  for (const x of [300, 400, 500]) {
     const monitor = ctx.glow(x, 196, '#39e6b4', 4, 2.4, 0.28, 400)
     scene.tweens.add({ targets: monitor, alpha: 0.16, duration: 90, yoyo: true, repeat: -1, repeatDelay: 2600 + x })
   }

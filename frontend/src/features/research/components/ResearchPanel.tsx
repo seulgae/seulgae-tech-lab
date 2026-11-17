@@ -179,7 +179,7 @@ export default function ResearchPanel({ onClose }: ResearchPanelProps) {
           )}
         </section>
       )}
-      <p className="research-footer">ESC 또는 닫기 버튼으로 로비로 돌아갑니다. 목록의 제목을 누르면 내용을 볼 수 있어요.</p>
+      <p className="research-footer">ESC 또는 닫기 버튼으로 개발 연구실로 돌아갑니다. 목록의 제목을 누르면 내용을 볼 수 있어요.</p>
     </dialog>
   )
 }
