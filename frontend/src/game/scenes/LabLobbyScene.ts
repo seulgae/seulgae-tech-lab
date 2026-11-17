@@ -89,6 +89,23 @@ export default class LabLobbyScene extends Phaser.Scene {
     this.client.setInput(this.player.getInput())
   }
   private readonly interactTouch = () => { this.touchInteraction = true }
+  /** 글 입력 칸에 포커스가 있는 동안 게임 키 가로채기를 끈 상태인지 */
+  private keyCaptureReleased = false
+  /**
+   * Phaser는 이동·상호작용 키(방향키, Space, W/A/S/D, E, I)를 창 전체에서 가로챈다(preventDefault).
+   * 게시판·방명록·채팅 입력 칸에 포커스가 있으면 가로채기를 꺼서 띄어쓰기와 영문 글자가 그대로 입력되게 한다.
+   */
+  private syncKeyCapture(textFocused = hasTextInputFocus()) {
+    const keyboard = this.input.keyboard
+    if (!keyboard || textFocused === this.keyCaptureReleased) return
+    this.keyCaptureReleased = textFocused
+    if (textFocused) keyboard.disableGlobalCapture()
+    else keyboard.enableGlobalCapture()
+  }
+  /** 포커스가 바뀌는 즉시 반영한다(다음 프레임 전에 누른 키도 입력 칸에 들어가도록). focusout 때는 포커스가 옮겨진 뒤 확인한다. */
+  private readonly syncKeyCaptureNow = () => this.syncKeyCapture()
+  private readonly onFocusChange = () => { setTimeout(() => this.syncKeyCapture(), 0) }
+
   private readonly resetChatInput = () => {
     this.touchInput = { x: 0, y: 0 }
     this.touchInteraction = false
@@ -176,6 +193,8 @@ export default class LabLobbyScene extends Phaser.Scene {
     this.drawGround(this.client.ground?.() ?? [])
     globalThis.addEventListener?.(COIN_EVENT, this.showCoin)
     globalThis.addEventListener?.(OPEN_INVENTORY_EVENT, this.openInventoryFromButton)
+    globalThis.document?.addEventListener?.('focusin', this.syncKeyCaptureNow)
+    globalThis.document?.addEventListener?.('focusout', this.onFocusChange)
     this.interactionHint = crispText(this, 0, 0, '', {
       fontSize: '14px', fontStyle: 'bold', color: '#fff2d2',
       backgroundColor: '#243f43', padding: { x: 12, y: 8 },
@@ -196,6 +215,9 @@ export default class LabLobbyScene extends Phaser.Scene {
       this.groundSubscription = undefined
       globalThis.removeEventListener?.(COIN_EVENT, this.showCoin)
       globalThis.removeEventListener?.(OPEN_INVENTORY_EVENT, this.openInventoryFromButton)
+      globalThis.document?.removeEventListener?.('focusin', this.syncKeyCaptureNow)
+      globalThis.document?.removeEventListener?.('focusout', this.onFocusChange)
+      this.syncKeyCapture(false)
       for (const sprite of this.groundSprites.values()) sprite.destroy()
       this.groundSprites.clear()
       this.multiplayer?.stopInput()
@@ -221,6 +243,7 @@ export default class LabLobbyScene extends Phaser.Scene {
     if (!this.player) return
 
     const textFocused = hasTextInputFocus()
+    this.syncKeyCapture(textFocused)
     // 낚시처럼 방 연출이 진행 중이면 캐릭터를 멈춘다.
     this.player.update(!this.panelOpen && !this.transition && !textFocused && !this.fx?.locksMovement(), this.touchInput)
     // 앉아 있거나 막혀서 좌표가 그대로면 발걸음이 나지 않는다. 음높이를 조금씩 바꿔 반복감을 줄인다.
