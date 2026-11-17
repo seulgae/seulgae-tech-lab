@@ -13,6 +13,7 @@ import {
 import { SKY_PALETTES, clockAngles, clockLabel, skyPhase } from './timeOfDay'
 import { AGENDAS_CHANGED, fetchAgendas } from '../../features/boards/boardsApi'
 import { playSfx } from '../../audio/AudioManager'
+import { SNACKS, inventoryStore } from '../../features/inventory/inventoryStore'
 import { controlRoomFx } from './controlRoomFx'
 import { outdoorFx } from './outdoorFx'
 
@@ -103,7 +104,7 @@ function lobbyFx(ctx: Context): RoomHandlers {
   const treats = treatTable(ctx)
   return {
     intercept: target => {
-      if (target.kind === 'coffee' || target.kind === 'cake') { treats.enjoy(target.kind); return true }
+      if (target.kind === 'coffee' || target.kind === 'cake') { treats.buy(target.kind); return true }
       // 책장은 책이 날아오는 연출만 하고, 책 읽기 창은 Scene이 연다.
       if (target.kind === 'bookshelf') treats.pullBook(target)
       return false
@@ -366,9 +367,24 @@ function treatTable(ctx: Context) {
   const where = (fallback: { x: number; y: number }) => ctx.options.player?.() ?? fallback
   let busyUntil = 0
 
-  const enjoy = (kind: TreatKind) => {
+  /**
+   * 회원은 동전으로 산다(케이크 3원 HP +10, 커피 2원 피로도 +5). 비회원은 예전처럼 무료로 즐기기만 한다.
+   * 동전이 모자라거나 이미 가득이면 먹지 않고 안내만 한다.
+   */
+  const buy = (kind: TreatKind) => {
     if (scene.time.now < busyUntil) return
     busyUntil = scene.time.now + 900
+    const snack = kind === 'coffee' ? SNACKS.COFFEE : SNACKS.CAKE
+    void inventoryStore.buySnack(kind === 'coffee' ? 'COFFEE' : 'CAKE').then(result => {
+      // 응답 전에 방을 나가 소품이 정리됐으면 아무것도 하지 않는다.
+      if (!props[kind].active) return
+      if (result === 'broke') { playSfx('error', { volume: 0.5 }); ctx.banner.show(`동전이 부족해요 · ${snack.name} ${snack.price}원`, '#e05a6c', 1800); return }
+      if (result === 'full') { ctx.banner.show(kind === 'coffee' ? '피로도가 가득해요 · 지금은 괜찮아요' : 'HP가 가득해요 · 배불러요', '#a7d98a', 1800); return }
+      enjoy(kind, result === 'bought' ? `${snack.name} ${snack.price}원` : undefined)
+    })
+  }
+
+  const enjoy = (kind: TreatKind, paid?: string) => {
     playSfx(kind === 'coffee' ? 'sip' : 'munch', { volume: 0.7 })
     const prop = props[kind]
     const me = where({ x: prop.x, y: prop.y + 60 })
@@ -385,7 +401,7 @@ function treatTable(ctx: Context) {
       store?.setItem(TREAT_STORAGE_KEY, JSON.stringify(log))
       count = log[kind]
     } catch { /* 저장이 막혀도 연출은 계속한다 */ }
-    ctx.banner.show(treatMessage(kind, count), kind === 'coffee' ? '#c9a24b' : '#e05a6c', 1800)
+    ctx.banner.show(paid ? `${treatMessage(kind, count)} · ${paid}` : treatMessage(kind, count), kind === 'coffee' ? '#c9a24b' : '#e05a6c', 1800)
   }
 
   /** 책장에서 책 한 권이 내 캐릭터 쪽으로 포물선을 그리며 날아온다. */
@@ -402,7 +418,7 @@ function treatTable(ctx: Context) {
       },
       onComplete: () => scene.tweens.add({ targets: book, alpha: 0, scale: 3, duration: 200, onComplete: () => book.destroy() }) })
   }
-  return { enjoy, pullBook }
+  return { buy, pullBook }
 }
 
 /** 개인 사무실: 방 테마 색의 책상 조명과 벽시계(세부 연출은 추후) */

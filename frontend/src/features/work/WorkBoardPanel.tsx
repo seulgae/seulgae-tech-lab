@@ -4,7 +4,7 @@ import { LOGIN_URL, canWrite, useAuth } from '../auth/authStore'
 import { addMaintenance, addOperation, codeName, createQa, fetchBoard, fetchThread } from './workApi'
 import type { BoardView, Thread, WorkBoard, WorkItem } from './workApi'
 import { playSfx } from '../../audio/AudioManager'
-import { inventoryStore } from '../inventory/inventoryStore'
+import { TIRED_MESSAGE, TIRED_STATUS, inventoryStore } from '../inventory/inventoryStore'
 import '../research/components/ResearchPanel.css'
 import './work.css'
 
@@ -65,7 +65,8 @@ export default function WorkBoardPanel({ board, onClose }: { board: WorkBoard; o
       setError(done)
     } catch (cause) {
       playSfx('error', { volume: 0.5 })
-      setError(cause instanceof BoardError && cause.status === 409 ? '이미 다른 단계로 넘어간 티켓이에요. 목록을 새로 확인해 주세요.'
+      setError(cause instanceof BoardError && cause.status === TIRED_STATUS ? TIRED_MESSAGE
+        : cause instanceof BoardError && cause.status === 409 ? '이미 다른 단계로 넘어간 티켓이에요. 목록을 새로 확인해 주세요.'
         : cause instanceof BoardError ? cause.message : '저장하지 못했어요.')
     } finally { setBusy(false) }
   }

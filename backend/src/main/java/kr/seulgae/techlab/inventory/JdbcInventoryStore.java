@@ -27,6 +27,23 @@ public class JdbcInventoryStore implements InventoryStore {
         return jdbc.sql("SELECT coins FROM lab.inventories WHERE member_id = :m").param("m", member).query(Integer.class).optional().orElse(0);
     }
 
+    @Override public Vitals vitals(UUID member) {
+        return jdbc.sql("SELECT hp, hp_max, fatigue, fatigue_max FROM lab.inventories WHERE member_id = :m").param("m", member)
+            .query((rs, row) -> vitals(rs)).optional().orElse(new Vitals(50, 50, 50, 50));
+    }
+
+    @Override public Optional<Vitals> changeVitals(UUID member, int hp, int fatigue) {
+        jdbc.sql("INSERT INTO lab.inventories (member_id, coins) VALUES (:m, 0) ON CONFLICT (member_id) DO NOTHING").param("m", member).update();
+        return jdbc.sql("""
+            UPDATE lab.inventories SET hp = LEAST(hp_max, hp + :hp), fatigue = LEAST(fatigue_max, fatigue + :fatigue), updated_at = CURRENT_TIMESTAMP
+            WHERE member_id = :m AND hp + :hp >= 0 AND fatigue + :fatigue >= 0 RETURNING hp, hp_max, fatigue, fatigue_max
+            """).param("m", member).param("hp", hp).param("fatigue", fatigue).query((rs, row) -> vitals(rs)).optional();
+    }
+
+    private static Vitals vitals(ResultSet rs) throws SQLException {
+        return new Vitals(rs.getInt("hp"), rs.getInt("hp_max"), rs.getInt("fatigue"), rs.getInt("fatigue_max"));
+    }
+
     @Override public Optional<Integer> changeCoins(UUID member, int amount, String reason) {
         jdbc.sql("INSERT INTO lab.inventories (member_id, coins) VALUES (:m, 0) ON CONFLICT (member_id) DO NOTHING").param("m", member).update();
         var balance = jdbc.sql("""

@@ -19,7 +19,15 @@ public interface InventoryStore {
      */
     record Item(UUID id, String kind, String name, Integer sizeCm, String roomId, Double x, Double y, OffsetDateTime createdAt) {}
 
+    /** HP·피로도(일지 #10). 피로도는 남은 기력처럼 높을수록 좋다. 최대치는 회원별(기본 50). */
+    record Vitals(int hp, int hpMax, int fatigue, int fatigueMax) {}
+
     int coins(UUID member);
+    Vitals vitals(UUID member);
+    /**
+     * HP·피로도를 더하거나 뺀다. 더할 때는 최대치에서 멈추고, 빼서 0보다 작아지면 빈 값을 돌려준다(아무것도 바꾸지 않음).
+     */
+    Optional<Vitals> changeVitals(UUID member, int hp, int fatigue);
     /** 동전을 더하거나 뺀다. 잔액이 음수가 되면 빈 값을 돌려준다(아무것도 바꾸지 않음). */
     Optional<Integer> changeCoins(UUID member, int amount, String reason);
     /** 오늘(한국 시간) 이 사유로 동전이 바뀐 횟수 */

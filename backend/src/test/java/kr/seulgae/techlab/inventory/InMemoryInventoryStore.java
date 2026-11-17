@@ -26,6 +26,18 @@ public class InMemoryInventoryStore implements InventoryStore {
 
     @Override public int coins(UUID member) { return coins.getOrDefault(member, 0); }
 
+    private final Map<UUID, Vitals> vitals = new ConcurrentHashMap<>();
+
+    @Override public Vitals vitals(UUID member) { return vitals.getOrDefault(member, new Vitals(50, 50, 50, 50)); }
+
+    @Override public synchronized Optional<Vitals> changeVitals(UUID member, int hp, int fatigue) {
+        var now = vitals(member);
+        if (now.hp() + hp < 0 || now.fatigue() + fatigue < 0) return Optional.empty();
+        var next = new Vitals(Math.min(now.hpMax(), now.hp() + hp), now.hpMax(), Math.min(now.fatigueMax(), now.fatigue() + fatigue), now.fatigueMax());
+        vitals.put(member, next);
+        return Optional.of(next);
+    }
+
     @Override public synchronized Optional<Integer> changeCoins(UUID member, int amount, String reason) {
         int next = coins(member) + amount;
         if (next < 0) return Optional.empty();

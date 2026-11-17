@@ -20,6 +20,7 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api/inventory")
 public class InventoryController {
     public record FishRequest(String species, Integer cm) {}
+    public record SnackRequest(String kind) {}
 
     private final InventoryService service;
     private final WriteRateLimiter limiter;
@@ -43,7 +44,15 @@ public class InventoryController {
         return service.view(member);
     }
 
-    /** 오락실 한 판(동전 1원). @return {"coins": 남은 동전} */
+    /** 로비 데스크 간식(CAKE 3원 HP +10, COFFEE 2원 피로도 +5). 가득이면 422, 동전 부족 409. */
+    @PostMapping("/snack")
+    public InventoryService.View buySnack(@RequestBody(required = false) SnackRequest body, HttpServletRequest request) {
+        var member = member(request);
+        limiter.check(request);
+        return service.buySnack(member, body == null ? null : body.kind());
+    }
+
+    /** 오락실 한 판(동전 1원, HP -3, 피로도 -5). 지치면 423, 동전 부족 409. @return {"coins": 남은 동전} */
     @PostMapping("/arcade")
     public Map<String, Integer> playArcade(HttpServletRequest request) {
         return Map.of("coins", service.playArcade(member(request)));

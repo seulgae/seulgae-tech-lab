@@ -406,7 +406,7 @@ test('로비 데스크의 커피·케이크는 방 연출이 처리하고 패널
   const opened = []
   uiEvents.on(LAB_EVENTS.openPanel, value => opened.push(value))
   state.fx.intercepting = true
-  for (const [x, kind, label] of [[445, 'coffee', 'E · 커피 마시기'], [355, 'cake', 'E · 케이크 먹기']]) {
+  for (const [x, kind, label] of [[445, 'coffee', 'E · 커피 마시기 · 2원'], [355, 'cake', 'E · 케이크 먹기 · 3원']]) {
     scene.player.x = x; scene.player.y = 240
     scene.update()
     assert.equal(scene.interactionHint.text, label)
@@ -446,7 +446,7 @@ test('모든 안내 문구는 다가간 뒤 2초만 보이고, 문구가 바뀌�
   scene.player.y = 400; scene.update()
   assert.equal(scene.interactionHint.visible, true, '벗어났다 다시 다가가면 2초 동안 다시 보인다')
   scene.player.x = 445; scene.player.y = 240; scene.update()
-  assert.equal(scene.interactionHint.text, 'E · 커피 마시기')
+  assert.equal(scene.interactionHint.text, 'E · 커피 마시기 · 2원')
   assert.equal(scene.interactionHint.visible, true, '다른 대상으로 옮기면 다시 보인다')
   scene.time.now += 2000; scene.update()
   assert.equal(scene.interactionHint.visible, false, '커피·식물 등 다른 안내도 2초 뒤 사라진다')

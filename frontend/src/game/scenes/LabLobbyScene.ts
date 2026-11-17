@@ -24,7 +24,7 @@ import type { GameLike } from '../../audio/AudioManager'
 import { FootstepTracker, footstepSound } from '../../audio/soundRules'
 import type { EffectKey } from '../../audio/synth'
 import { skyPhase } from '../rooms/timeOfDay'
-import { COIN_EVENT, OPEN_INVENTORY_EVENT, inventoryStore } from '../../features/inventory/inventoryStore'
+import { COIN_EVENT, OPEN_INVENTORY_EVENT, VITALS_EVENT, inventoryStore, vitalsText } from '../../features/inventory/inventoryStore'
 import type { GroundItem } from '../../features/multiplayer/model/protocol'
 import { FISH_COLORS } from '../rooms/fishingLogic'
 
@@ -61,6 +61,17 @@ export default class LabLobbyScene extends Phaser.Scene {
   private ground: GroundItem[] = []
   private groundSubscription?: () => void
   private readonly openInventoryFromButton = () => { if (!this.panelOpen && !this.transition) this.openInventory() }
+  /** HP·피로도 변화량을 캐릭터 위에 띄운다(줄면 붉게, 늘면 초록). */
+  private readonly showVitals = (event: Event) => {
+    const change = (event as CustomEvent<{ hp: number; fatigue: number }>).detail
+    if (!change || !this.player) return
+    const text = vitalsText(change)
+    if (!text) return
+    const gained = change.hp + change.fatigue > 0
+    const label = crispText(this, this.player.x, this.player.y - 88, text, { fontSize: '12px', fontStyle: 'bold', color: gained ? '#a7f3a0' : '#ff9a9a', backgroundColor: '#000000aa', padding: { x: 6, y: 3 } })
+      .setOrigin(0.5).setDepth(1002)
+    this.tweens.add({ targets: label, y: label.y - 22, alpha: 0, delay: 700, duration: 1100, onComplete: () => label.destroy() })
+  }
   private readonly showCoin = (event: Event) => this.coinPop((event as CustomEvent<{ amount: number }>).detail?.amount ?? 0)
   private panelOpen = false
   private tableTalk = false
@@ -192,6 +203,7 @@ export default class LabLobbyScene extends Phaser.Scene {
     })
     this.drawGround(this.client.ground?.() ?? [])
     globalThis.addEventListener?.(COIN_EVENT, this.showCoin)
+    globalThis.addEventListener?.(VITALS_EVENT, this.showVitals)
     globalThis.addEventListener?.(OPEN_INVENTORY_EVENT, this.openInventoryFromButton)
     globalThis.document?.addEventListener?.('focusin', this.syncKeyCaptureNow)
     globalThis.document?.addEventListener?.('focusout', this.onFocusChange)
@@ -214,6 +226,7 @@ export default class LabLobbyScene extends Phaser.Scene {
       this.groundSubscription?.()
       this.groundSubscription = undefined
       globalThis.removeEventListener?.(COIN_EVENT, this.showCoin)
+      globalThis.removeEventListener?.(VITALS_EVENT, this.showVitals)
       globalThis.removeEventListener?.(OPEN_INVENTORY_EVENT, this.openInventoryFromButton)
       globalThis.document?.removeEventListener?.('focusin', this.syncKeyCaptureNow)
       globalThis.document?.removeEventListener?.('focusout', this.onFocusChange)
