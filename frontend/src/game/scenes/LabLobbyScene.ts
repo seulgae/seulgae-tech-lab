@@ -103,7 +103,9 @@ export default class LabLobbyScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(ROOM_THEMES[this.activeRoom].camera)
     const { obstacles, interactionHighlight, plants } = createLobbyMap(this, this.activeRoom)
     this.interactionHighlight = interactionHighlight
-    this.fx = createRoomFx(this, this.activeRoom, { from: data.from, client: this.client, plants })
+    this.fx = createRoomFx(this, this.activeRoom, {
+      from: data.from, client: this.client, plants, player: () => this.player && { x: this.player.x, y: this.player.y },
+    })
     this.player = new Player(this, SPAWN.x, SPAWN.y)
     this.physics.add.collider(this.player, obstacles)
     this.multiplayer = new LobbyMultiplayer(this, this.player, this.client)
@@ -209,20 +211,24 @@ export default class LabLobbyScene extends Phaser.Scene {
     this.interactionHint?.setVisible(false)
     this.interactionHighlight?.setVisible(false)
     if (target.kind === 'research') this.uiEvents.emit(RESEARCH_EVENTS.openResearch)
+    // 책장은 책이 날아오는 연출(RoomFx)이 끝난 뒤 책 읽기 창을 연다.
+    else if (target.kind === 'bookshelf') this.time.delayedCall(450, () => { if (this.panelOpen) this.uiEvents.emit(LAB_EVENTS.openPanel, 'bookshelf') })
     else this.uiEvents.emit(LAB_EVENTS.openPanel, target.kind)
   }
 
   /** 테이블 대화 상태가 바뀔 때만 React 채팅 패널에 알린다. */
-  private setTableTalk(active: boolean) {
+  /** quiet: 회의실 의자로 자동 참여·해제할 때는 배너를 띄우지 않는다. */
+  private setTableTalk(active: boolean, quiet = false) {
     if (this.tableTalk === active) return
     this.tableTalk = active
     this.uiEvents.emit(LAB_EVENTS.tableTalk, active)
-    this.fx?.setTableTalk(active)
+    this.fx?.setTableTalk(active, quiet)
   }
 
   private hintFor(target: RoomInteraction) {
     if (target.kind === 'table-talk') return this.tableTalk ? 'E · 테이블 대화 나가기' : 'E · 테이블 대화 참여'
-    if (target.kind === 'seat') return this.player?.seat?.id === target.id ? 'E · 일어나기' : 'E · 앉기'
+    // 의자는 자주 지나치므로 짧게 E만 보여 준다.
+    if (target.kind === 'seat') return 'E'
     return 'E · ' + target.label
   }
 
@@ -238,13 +244,13 @@ export default class LabLobbyScene extends Phaser.Scene {
     this.player.sit(seat)
     this.sitRequestedAt = this.time.now
     // 회의실 의자에 앉으면 테이블 대화에 자동으로 참여한다.
-    if (this.activeRoom === 'meeting-room') { this.seatTalk = true; this.setTableTalk(true) }
+    if (this.activeRoom === 'meeting-room') { this.seatTalk = true; this.setTableTalk(true, true) }
   }
 
   /** 서버가 1.5초 안에 앉음을 확인하지 않으면(멀거나 빈자리 아님) 일어난다. 일어나면 자동 테이블 대화도 끈다. */
   private syncSeat() {
     const seat = this.player?.seat
     if (seat && this.time.now - this.sitRequestedAt > 1500 && this.client.selfSeat() !== seat.id) this.player!.sit(undefined)
-    if (this.seatTalk && !this.player?.seat) { this.seatTalk = false; this.setTableTalk(false) }
+    if (this.seatTalk && !this.player?.seat) { this.seatTalk = false; this.setTableTalk(false, true) }
   }
 }

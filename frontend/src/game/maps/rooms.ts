@@ -3,6 +3,7 @@ import { isNearObject } from '../interaction.ts'
 export type RoomId = keyof typeof layout.rooms
 /** 공유 맵에 정의한 상호작용과, 가구에서 만든 의자(seat)·식물(plant) 상호작용 */
 export type InteractionKind = 'research' | 'build-info' | 'server-status' | 'table-talk' | 'agenda' | 'seat' | 'plant'
+  | 'coffee' | 'cake' | 'bookshelf'
 export type RoomInteraction = { id: string; kind: InteractionKind; label: string; x: number; y: number; width: number; height: number; range: number }
 /** 의자: 서버 LobbyWorld.Seat와 같은 id(방-chair-순번)와 충돌 영역, 그림 기준선(bottom) */
 export type Seat = RoomInteraction & { kind: 'seat'; bottom: number }
@@ -28,16 +29,34 @@ export function roomPlants(id: RoomId): (RoomInteraction & { bottom: number })[]
   }))
 }
 
-const edgeDistance = (x: number, y: number, area: RoomInteraction) =>
+/**
+ * 로비의 생활 소품(클라이언트 전용 연출). 안내 데스크 왼쪽 끝 케이크, 오른쪽 끝 커피 머신, 그리고 책장(rack 가구)이다.
+ * 위치는 데스크(x 300~500, y 158~222) 위이고 충돌 영역은 기존 가구 그대로다.
+ */
+export function roomProps(id: RoomId): RoomInteraction[] {
+  if (id !== 'lobby') return []
+  const shelves = roomObjects(id).filter(object => object.texture === 'rack').map((object, index): RoomInteraction => ({
+    id: `lobby-bookshelf-${index}`, kind: 'bookshelf', label: '책 꺼내 보기', ...object.body, range: 40,
+  }))
+  return [
+    { id: 'lobby-cake', kind: 'cake', label: '케이크 먹기', x: 355, y: 190, width: 56, height: 64, range: 40 },
+    { id: 'lobby-coffee', kind: 'coffee', label: '커피 마시기', x: 445, y: 190, width: 56, height: 64, range: 40 },
+    ...shelves,
+  ]
+}
+
+const edgeDistance =(x: number, y: number, area: RoomInteraction) =>
   Math.hypot(Math.max(Math.abs(x - area.x) - area.width / 2, 0), Math.max(Math.abs(y - area.y) - area.height / 2, 0))
 
 /**
  * 범위 안 상호작용 중 가장자리 거리가 가장 가까운 하나를 고른다(같으면 공유 맵 상호작용 우선).
  * 의자는 책상·테이블을 바라보므로 의자 뒤(아래쪽)에서 다가갈 때만 앉기 대상이 된다.
+ * 책장도 앞(아래쪽 절반)에서만 꺼낼 수 있어, 위쪽 화분 옆에 서면 화분이 대상이 된다.
  */
 export function nearestInteraction(id: RoomId, x: number, y: number) {
   const seats = roomSeats(id).filter(seat => y >= seat.y + seat.height / 2)
-  const candidates: RoomInteraction[] = [...roomInteractions(id), ...seats, ...roomPlants(id)]
+  const candidates: RoomInteraction[] = [...roomInteractions(id), ...seats, ...roomPlants(id),
+    ...roomProps(id).filter(prop => prop.kind !== 'bookshelf' || y >= prop.y)]
   let best: RoomInteraction | undefined
   let bestDistance = Infinity
   for (const interaction of candidates) {

@@ -295,6 +295,24 @@ function effects(scene: Phaser.Scene) {
   })
   texture(scene, 'spark', 3, 3, (p: Paint) => { p('#ffffff', 1, 0, 1, 3); p('#ffffff', 0, 1, 3, 1) })
   texture(scene, 'dot', 2, 2, p => p('#ffffff', 0, 0, 2, 2))
+  // 로비 데스크 위 커피 머신과 케이크, 먹고 마실 때 머리 위에 뜨는 아이콘, 책장에서 꺼내는 책(tint로 색 변주)
+  texture(scene, 'coffee-machine', 16, 20, p => {
+    p('#1f1a17', 1, 0, 14, 18); p('#3d332d', 2, 1, 12, 6); p('#c9a24b', 3, 2, 3, 1); p('#7fd0a8', 10, 2, 2, 2)
+    p('#2a2320', 3, 8, 10, 3); p('#0f0c0b', 6, 11, 4, 2); p('#f4efe6', 5, 13, 6, 4); p('#6f4628', 6, 13, 4, 1)
+    p('#3b2418', 0, 18, 16, 2)
+  })
+  texture(scene, 'cake-stand', 18, 14, p => {
+    p('#e9e2d4', 1, 11, 16, 2); p('#c9a24b', 8, 12, 2, 2)
+    p('#f6e7c8', 3, 4, 12, 7); p('#e05a6c', 3, 6, 12, 1); p('#fffaf0', 3, 3, 12, 2)
+    p('#d9475c', 5, 1, 2, 2); p('#d9475c', 11, 1, 2, 2); p('#5f9c5e', 8, 0, 1, 2); p('#b57a3c', 3, 9, 12, 2)
+  })
+  texture(scene, 'emote-coffee', 10, 10, p => {
+    p('#ffffff', 1, 3, 7, 6); p('#6f4628', 2, 4, 5, 2); p('#ffffff', 8, 4, 2, 3); p('#cbd5e1', 3, 0, 1, 2); p('#cbd5e1', 5, 0, 1, 2)
+  })
+  texture(scene, 'emote-cake', 10, 10, p => {
+    p('#f6e7c8', 1, 4, 8, 5); p('#fffaf0', 1, 3, 8, 2); p('#e05a6c', 1, 6, 8, 1); p('#d9475c', 4, 1, 2, 2); p('#b57a3c', 1, 8, 8, 1)
+  })
+  texture(scene, 'book', 6, 8, p => { p('#ffffff', 0, 0, 6, 8); p('#d9d9d9', 5, 0, 1, 8); p('#bfbfbf', 1, 1, 1, 6) })
   // 떨어지는 나뭇잎 (tint로 녹색 계열 변주)
   texture(scene, 'leaf', 4, 3, p => { p('#ffffff', 1, 0, 2, 1); p('#ffffff', 0, 1, 4, 1); p('#ffffff', 1, 2, 2, 1) })
   // 의자에 앉은 연구원(뒷모습). 의자 등받이 위로 머리와 어깨만 보인다.

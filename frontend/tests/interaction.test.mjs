@@ -46,7 +46,7 @@ function createScene(room = 'lobby') {
     doors: { open: id => fx.calls.push(['open', id]), close: id => fx.calls.push(['close', id]), remainingOpenMs: () => 0 },
     intercept: target => { fx.calls.push(['intercept', target.kind]); return fx.intercepting },
     hint: () => fx.hintText,
-    setTableTalk: active => fx.calls.push(['tableTalk', active]),
+    setTableTalk: (active, quiet) => fx.calls.push(['tableTalk', active, quiet]),
     destroy: () => fx.calls.push(['destroy']),
   }
   state.fx = fx
@@ -54,7 +54,8 @@ function createScene(room = 'lobby') {
     constructor() {
       this.events = new EventEmitter()
       this.cameras = { main: { setBackgroundColor() {}, fadeIn() {}, fadeOut() {} } }
-      this.time = { now: 0 }
+      // delayedCall은 바로 실행하지 않고 쌓아 두었다가 테스트가 runDelayed로 실행한다.
+      this.time = { now: 0, delayedCall: (_ms, fn) => { (state.delayed ??= []).push(fn) } }
       this.scale = { listeners: new Set(), on(_event, fn) { this.listeners.add(fn) }, off(_event, fn) { this.listeners.delete(fn) } }
       this.physics = { add: { collider() {} } }
       this.input = { keyboard: { addKey: () => key, resetKeys: () => { state.resets++ } } }
@@ -94,7 +95,8 @@ function createScene(room = 'lobby') {
   const scene = new LobbyScene(uiEvents, { currentRoom() { return room }, isTravelling() { return false }, subscribe() { return () => {} }, setInput(input) { state.sentInput = input }, changeRoom(id) { state.changed = id; return true },
     sit(id) { (state.sits ??= []).push(id); return true }, selfSeat() { return state.serverSeat ?? null } })
   scene.create()
-  return { scene, uiEvents, key, state }
+  const runDelayed = () => { const pending = state.delayed ?? []; state.delayed = []; pending.forEach(fn => fn()) }
+  return { scene, uiEvents, key, state, runDelayed }
 }
 
 test('채팅 입력 포커스는 이동과 컴퓨터 E를 막고 키 상태를 초기화한다', () => {
@@ -308,7 +310,7 @@ test('테이블 대화 상태는 방 연출(회의 모드)에도 전달된다', 
   const { scene, key, state } = createScene('meeting-room')
   scene.player.x = 350; scene.player.y = 340
   key._justDown = true; scene.update()
-  assert.deepEqual(state.fx.calls.filter(call => call[0] === 'tableTalk'), [['tableTalk', true]])
+  assert.deepEqual(state.fx.calls.filter(call => call[0] === 'tableTalk'), [['tableTalk', true, false]], 'E로 켠 회의 모드는 배너로 알린다')
 })
 
 test('의자 E는 앉기를 요청하고 같은 의자 E는 일어나며, 서버가 확인하지 않으면 1.5초 뒤 일어난다', () => {
@@ -316,13 +318,12 @@ test('의자 E는 앉기를 요청하고 같은 의자 E는 일어나며, 서버
   // 로비 의자 0(620,418)은 키오스크 아래에 있다. 의자 뒤(아래)에서 다가간다.
   scene.player.x = 620; scene.player.y = 450
   scene.update()
-  assert.equal(scene.interactionHint.text, 'E · 앉기')
+  assert.equal(scene.interactionHint.text, 'E', '의자 안내는 E만 짧게 보여 준다')
   key._justDown = true; scene.update()
   assert.deepEqual(state.sits, ['lobby-chair-0'])
   assert.equal(scene.player.seat.id, 'lobby-chair-0')
-  assert.equal(scene.interactionHint.text, 'E · 앉기')
   scene.update()
-  assert.equal(scene.interactionHint.text, 'E · 일어나기')
+  assert.equal(scene.interactionHint.text, 'E', '앉은 뒤에도 같은 짧은 안내')
   key._justDown = true; scene.update()
   assert.deepEqual(state.sits, ['lobby-chair-0', null])
   assert.equal(scene.player.seat, undefined)
@@ -343,7 +344,7 @@ test('회의실 의자에 앉으면 테이블 대화가 켜지고 일어나면 �
   uiEvents.on(LAB_EVENTS.tableTalk, value => talk.push(value))
   scene.player.x = 400; scene.player.y = 385
   scene.update()
-  assert.equal(scene.interactionHint.text, 'E · 앉기', '의자 뒤에서는 테이블보다 의자가 가깝다')
+  assert.equal(scene.interactionHint.text, 'E', '의자 뒤에서는 테이블보다 의자가 가깝다')
   key._justDown = true; scene.update()
   assert.deepEqual(state.sits, ['meeting-room-chair-1'])
   assert.deepEqual(talk, [true])
@@ -351,6 +352,8 @@ test('회의실 의자에 앉으면 테이블 대화가 켜지고 일어나면 �
   assert.deepEqual(talk, [true], '의자에 앉아 있는 동안 유지한다')
   scene.player.sit(undefined); scene.update()
   assert.deepEqual(talk, [true, false])
+  assert.deepEqual(state.fx.calls.filter(call => call[0] === 'tableTalk'), [['tableTalk', true, true], ['tableTalk', false, true]],
+    '의자로 자동 참여·해제할 때는 배너 없이 조용히 바꾼다')
 })
 
 test('식물과 회의 안건은 방 연출·안건 패널로 전달된다', () => {
@@ -371,4 +374,35 @@ test('식물과 회의 안건은 방 연출·안건 패널로 전달된다', () 
   meeting.key._justDown = true; meeting.scene.update()
   assert.deepEqual(opened, ['agenda'])
   assert.equal(meeting.scene.player.movementEnabled, false)
+})
+
+test('로비 데스크의 커피·케이크는 방 연출이 처리하고 패널을 열지 않는다', () => {
+  const { scene, uiEvents, key, state } = createScene('lobby')
+  const opened = []
+  uiEvents.on(LAB_EVENTS.openPanel, value => opened.push(value))
+  state.fx.intercepting = true
+  for (const [x, kind, label] of [[445, 'coffee', 'E · 커피 마시기'], [355, 'cake', 'E · 케이크 먹기']]) {
+    scene.player.x = x; scene.player.y = 240
+    scene.update()
+    assert.equal(scene.interactionHint.text, label)
+    key._justDown = true; scene.update()
+    assert.deepEqual(state.fx.calls.at(-1), ['intercept', kind])
+  }
+  assert.deepEqual(opened, [])
+  assert.equal(scene.player.movementEnabled, true)
+})
+
+test('책장 E는 책이 날아오는 연출 뒤 책 읽기 창을 연다', () => {
+  const { scene, uiEvents, key, state, runDelayed } = createScene('lobby')
+  const opened = []
+  uiEvents.on(LAB_EVENTS.openPanel, value => opened.push(value))
+  scene.player.x = 112; scene.player.y = 245
+  scene.update()
+  assert.equal(scene.interactionHint.text, 'E · 책 꺼내 보기')
+  key._justDown = true; scene.update()
+  assert.deepEqual(state.fx.calls.at(-1), ['intercept', 'bookshelf'])
+  assert.deepEqual(opened, [], '연출이 끝나기 전에는 열지 않는다')
+  assert.equal(scene.player.movementEnabled, false, '책을 받는 동안 멈춰 선다')
+  runDelayed()
+  assert.deepEqual(opened, ['bookshelf'])
 })

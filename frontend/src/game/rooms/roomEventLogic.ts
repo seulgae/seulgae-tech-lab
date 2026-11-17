@@ -81,3 +81,38 @@ export class ServerAlert {
 }
 
 export const RACK_LABELS = ['R-01', 'R-02', 'R-03', 'R-04'] as const
+
+export type TreatKind = 'coffee' | 'cake'
+/** 이 브라우저에서 오늘 먹고 마신 횟수. 날짜가 바뀌면 처음부터 센다. */
+export type TreatLog = { date: string; coffee: number; cake: number }
+export const TREAT_STORAGE_KEY = 'seulgae.lobby.treats'
+const TREAT_LIMIT = 99
+
+/** 로컬 날짜를 YYYY-MM-DD로 만든다(자정에 하루가 바뀌도록 UTC가 아닌 브라우저 시간대 기준). */
+export function localDay(date: Date) {
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
+/** 저장된 기록(JSON 문자열)을 읽어 kind를 하나 늘린 새 기록을 돌려준다. 깨진 값·지난 날짜는 0부터 센다. */
+export function countTreat(saved: string | null, kind: TreatKind, today: string): TreatLog {
+  const log: TreatLog = { date: today, coffee: 0, cake: 0 }
+  try {
+    const parsed = JSON.parse(saved ?? 'null') as Partial<TreatLog> | null
+    if (parsed?.date === today) for (const key of ['coffee', 'cake'] as const) {
+      const value = parsed[key]
+      if (Number.isSafeInteger(value) && (value as number) >= 0) log[key] = Math.min(value as number, TREAT_LIMIT)
+    }
+  } catch { /* 깨진 기록은 버린다 */ }
+  log[kind] = Math.min(log[kind] + 1, TREAT_LIMIT)
+  return log
+}
+
+/** 먹고 마신 뒤 배너 문구. 커피를 많이 마시면 쉬어 가라고 한다. */
+export function treatMessage(kind: TreatKind, count: number) {
+  if (kind === 'coffee') {
+    if (count === 1) return '오늘 첫 커피! 집중력이 올라가요'
+    return count >= 4 ? `오늘 커피 ${count}잔째 · 물도 한 잔 마셔요` : `오늘 커피 ${count}잔째`
+  }
+  return count === 1 ? '달콤한 케이크로 당 충전 완료!' : `오늘 케이크 ${count}조각째`
+}
