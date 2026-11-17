@@ -65,7 +65,7 @@ import org.springframework.context.annotation.Import;
     ResearchController.class, ResearchService.class, ApiExceptionHandler.class, LabStatusController.class,
     ResearchIdeaController.class, ResearchIdeaService.class, MeetingAgendaController.class, MeetingAgendaService.class, WriteRateLimiter.class,
     AuthSettings.class, AuthService.class, AuthController.class, KakaoClient.class, WorkItemController.class, WorkItemService.class,
-    InventoryController.class, InventoryService.class, GuestbookController.class, GuestbookService.class})
+    InventoryController.class, InventoryService.class, GuestbookController.class, GuestbookService.class, kr.seulgae.techlab.multiplayer.lobby.MeetingFeedController.class})
 public class LocalLobbyTestApplication {
     public static final UUID RECORD_ID = UUID.fromString("00000000-0000-4000-8000-000000000001");
     private static final OffsetDateTime CREATED_AT = OffsetDateTime.parse("2026-11-15T12:00:00+09:00");

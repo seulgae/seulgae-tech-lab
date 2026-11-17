@@ -85,7 +85,7 @@ export default class LobbyMultiplayer {
       snapshot: (players, selfId, serverTime) => this.applySnapshot(players, selfId, serverTime),
       chat: message => this.showChat(message),
       status: info => {
-        this.ownLabel.setText(info.phase === 'online' ? `나 · ${info.nickname}` : '나 · 로컬 연구원')
+        this.ownLabel.setText(`나 · ${info.nickname || '연구원'}`)
       },
     })
     scene.events.on(Phaser.Scenes.Events.POST_UPDATE, this.afterPhysics)

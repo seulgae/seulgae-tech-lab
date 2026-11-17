@@ -4,31 +4,40 @@ import MultiplayerClient from '../src/features/multiplayer/MultiplayerClient.ts'
 import { ROOMS, roomObstacles } from '../src/game/maps/rooms.ts'
 import { constrainedPosition, setRoomObstacles } from '../src/game/multiplayer/networkPosition.ts'
 const own={id:'00000000-0000-4000-8000-000000000001',nickname:'연구원',x:400,y:400,facing:'down',moving:false,ack:-1}
-test('방 전환은 같은 소켓을 유지하고 이전 방 세대의 상태·채팅을 무시한다', t=>{
+test('회의실 밖은 서버 없이 방을 옮기고, 회의실 문에서만 연결하며, 나오면 연결을 끊는다', t=>{
  t.mock.timers.enable({apis:['setTimeout','setInterval','Date']})
  const original={window:globalThis.window,document:globalThis.document,WebSocket:globalThis.WebSocket,sessionStorage:globalThis.sessionStorage}
- class Socket {static all=[];readyState=1;bufferedAmount=0;sent=[];constructor(){Socket.all.push(this)}send(s){this.sent.push(JSON.parse(s))}close(){}receive(m){this.onmessage({data:JSON.stringify(m)})}}
+ class Socket {static all=[];readyState=1;bufferedAmount=0;sent=[];closes=[];constructor(){Socket.all.push(this)}send(s){this.sent.push(JSON.parse(s))}close(code,reason){this.closes.push([code,reason])}receive(m){this.onmessage({data:JSON.stringify(m)})}}
  Object.assign(globalThis,{window:Object.assign(new EventTarget(),{location:{protocol:'http:',host:'localhost:5188'}}),document:Object.assign(new EventTarget(),{hidden:false}),WebSocket:Socket,sessionStorage:{getItem(){return null},setItem(){}}})
- const snapshots=[],chats=[],histories=[],times=[]
- const c=new MultiplayerClient({snapshot:(players, _selfId, time)=>{snapshots.push(players);times.push(time)},chat:m=>chats.push(m),history:m=>histories.push(m)})
+ const snapshots=[],histories=[],rooms=[],statuses=[]
+ const c=new MultiplayerClient({snapshot:(players)=>snapshots.push(players),history:m=>histories.push(m),room:(id,pending)=>rooms.push([id,pending]),status:s=>statuses.push(s)})
  try {
-  c.start();const s=Socket.all[0];s.receive({type:'welcome',selfId:own.id,players:[own],maxPlayers:5,protocolVersion:4,roomId:'lobby',roomEpoch:0})
-  assert.equal(c.changeRoom('lobby-to-development'),true);assert.equal(c.changeRoom('lobby-to-development'),false)
+  c.start()
+  assert.equal(Socket.all.length,0,'시작할 때 연결하지 않는다');assert.equal(statuses.at(-1).phase,'solo')
+  assert.equal(c.changeRoom('lobby-to-development'),true);assert.equal(c.changeRoom('lobby-to-development'),false,'옮기는 중에는 한 번만')
+  assert.equal(c.isTravelling(),true)
+  t.mock.timers.tick(0)
+  assert.equal(c.currentRoom(),'development-lab');assert.equal(c.isTravelling(),false);assert.deepEqual(rooms.at(-1),['development-lab',false])
+  assert.equal(c.changeRoom('lobby-to-meeting'),false,'지금 방에 없는 문은 쓸 수 없다')
+  assert.equal(c.changeRoom('development-to-lobby'),true);t.mock.timers.tick(0)
+  assert.equal(c.currentRoom(),'lobby');assert.equal(Socket.all.length,0,'회의실 밖 이동은 서버 없이')
+  assert.equal(c.changeRoom('lobby-to-meeting'),true)
+  assert.equal(Socket.all.length,1);assert.equal(c.currentRoom(),'lobby','입장 확인 전에는 아직 로비')
+  const s=Socket.all[0]
+  s.receive({type:'welcome',selfId:own.id,players:[{...own,y:480}],maxPlayers:5,protocolVersion:4,time:1000,roomId:'meeting-room',roomEpoch:0})
+  assert.equal(c.currentRoom(),'meeting-room');assert.equal(c.isTravelling(),false);assert.equal(c.isOnline(),true)
+  assert.equal(statuses.at(-1).phase,'online')
   c.recordStep({x:1,y:0},16)
-  assert.equal(s.sent.at(-1).type,'room_change')
-  s.receive({type:'room_error',reason:'거리 부족',roomId:'lobby',roomEpoch:0})
-  assert.equal(c.isTravelling(),false);assert.equal(c.currentRoom(),'lobby')
-  assert.equal(c.changeRoom('lobby-to-development'),true)
-  s.receive({type:'room_changed',selfId:own.id,players:[{...own,y:460}],time:1000,roomId:'development-lab',roomEpoch:1})
-  assert.equal(c.currentRoom(),'development-lab');assert.equal(c.isTravelling(),false);assert.equal(times.at(-1),1000)
-  const n=snapshots.length
-  s.receive({type:'state',tick:999,players:[{...own,x:700}],roomId:'lobby',roomEpoch:0})
-  s.receive({type:'chat_history',messages:[],roomId:'lobby',roomEpoch:0})
-  assert.equal(snapshots.length,n);assert.equal(histories.length,1)
-  c.recordStep({x:1,y:0},16)
-  assert.equal(s.sent.at(-1).inputs[0].seq,1);assert.equal(s.sent.at(-1).roomEpoch,1)
-  s.receive({type:'state',tick:1,players:[{...own,x:403,y:460,ack:1}],roomId:'development-lab',roomEpoch:1})
-  assert.equal(snapshots.at(-1)[0].x,403);assert.equal(Socket.all.length,1);assert.equal(chats.length,0)
+  assert.equal(s.sent.at(-1).type,'move');assert.equal(s.sent.at(-1).roomEpoch,0)
+  s.receive({type:'state',tick:1,players:[{...own,x:403,y:480,ack:1}],roomId:'meeting-room',roomEpoch:0})
+  assert.equal(snapshots.at(-1)[0].x,403)
+  assert.equal(c.changeRoom('meeting-to-lobby'),true)
+  assert.deepEqual(s.closes.at(-1),[1000,'Left meeting room'],'회의실을 나오면 연결을 끊는다')
+  assert.deepEqual(snapshots.at(-1),[]);assert.deepEqual(histories.at(-1),[],'회의실 채팅은 비운다')
+  t.mock.timers.tick(0)
+  assert.equal(c.currentRoom(),'lobby');assert.equal(c.isOnline(),false);assert.equal(statuses.at(-1).phase,'solo')
+  t.mock.timers.tick(20000)
+  assert.equal(Socket.all.length,1,'나온 뒤에는 다시 연결하지 않는다')
  } finally {c.destroy();Object.assign(globalThis,original)}
 })
 
@@ -46,4 +55,36 @@ test('모든 방의 스폰은 가구 밖이고 출입구는 로비 중심으로 
  setRoomObstacles(roomObstacles('server-room'))
  assert.equal(constrainedPosition(100,220,100,0).x,126)
  setRoomObstacles(roomObstacles('lobby'))
+})
+
+test('회의실 밖에서도 바닥 아이템은 REST로 읽고 버리며, 관제실은 회의실 CCTV 목록을 2초마다 읽는다', async t=>{
+ t.mock.timers.enable({apis:['setTimeout','setInterval']})
+ const original={window:globalThis.window,document:globalThis.document,WebSocket:globalThis.WebSocket,fetch:globalThis.fetch}
+ const calls=[]
+ const fish={id:'00000000-0000-4000-8000-0000000000aa',kind:'FISH',name:'붕어',sizeCm:23,x:600,y:470}
+ const meeting={id:'00000000-0000-4000-8000-000000000001',nickname:'회의중',x:400,y:480,facing:'down',moving:false,ack:-1}
+ globalThis.fetch=async (url,options={})=>{calls.push([url,options.method??'GET',options.body?JSON.parse(options.body):null])
+  if(url==='/api/lobby/feeds')return new Response(JSON.stringify({'meeting-room':[meeting]}))
+  return new Response(JSON.stringify(url.includes('outdoor')||options.body?[fish]:[]))}
+ Object.assign(globalThis,{window:Object.assign(new EventTarget(),{location:{protocol:'http:',host:'localhost:5188'}}),document:Object.assign(new EventTarget(),{hidden:false}),WebSocket:class{constructor(){throw new Error('회의실 밖에서는 연결하지 않는다')}}})
+ const grounds=[],feeds=[]
+ const c=new MultiplayerClient({ground:items=>grounds.push(items),feeds:f=>feeds.push(f)})
+ const settle=()=>new Promise(resolve=>setImmediate(resolve))
+ try {
+  c.start();c.changeRoom('lobby-to-outdoor');t.mock.timers.tick(0);await settle()
+  assert.deepEqual(calls.at(-1),['/api/inventory/ground?room=outdoor','GET',null])
+  assert.equal(c.ground()[0].name,'붕어')
+  c.setPosition(610.4,472.6)
+  assert.equal(c.dropItem(fish.id),true);await settle()
+  assert.deepEqual(calls.at(-1),['/api/inventory/drop','POST',{itemId:fish.id,room:'outdoor',x:610,y:473}],'내 위치를 함께 보낸다')
+  c.changeRoom('outdoor-to-lobby');t.mock.timers.tick(0);await settle()
+  c.changeRoom('lobby-to-control');t.mock.timers.tick(0);await settle()
+  assert.equal(feeds.length,1);assert.equal(c.latestFeeds()['meeting-room'][0].nickname,'회의중')
+  t.mock.timers.tick(2000);await settle()
+  assert.equal(feeds.length,2,'2초마다 다시 읽는다')
+  c.changeRoom('control-to-lobby');t.mock.timers.tick(0);await settle()
+  const n=calls.filter(([url])=>url==='/api/lobby/feeds').length
+  t.mock.timers.tick(6000);await settle()
+  assert.equal(calls.filter(([url])=>url==='/api/lobby/feeds').length,n,'관제실을 나오면 멈춘다');assert.equal(c.latestFeeds(),null)
+ } finally {c.destroy();Object.assign(globalThis,original)}
 })

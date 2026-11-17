@@ -96,4 +96,15 @@ class InventoryServiceTest {
         service.buySnack(me, "COFFEE");
         service.ensureFit(me);
     }
+
+    @Test void picksOnlyItemsNearTheReportedPosition() {
+        var fish = service.storeFish(me, "붕어", 20);
+        service.drop(me, fish.id(), "outdoor", 600, 470).orElseThrow();
+        assertEquals(1, service.groundView("outdoor").size());
+        assertEquals(fish.id().toString(), service.groundView("outdoor").get(0).id());
+        assertTrue(service.pickNear(friend, fish.id(), "outdoor", 700, 470).isEmpty(), "48px보다 멀면 주울 수 없다");
+        assertTrue(service.pickNear(friend, fish.id(), "lobby", 600, 470).isEmpty(), "다른 방에서는 주울 수 없다");
+        assertTrue(service.pickNear(friend, fish.id(), "outdoor", 620, 480).isPresent());
+        assertTrue(service.groundView("outdoor").isEmpty());
+    }
 }

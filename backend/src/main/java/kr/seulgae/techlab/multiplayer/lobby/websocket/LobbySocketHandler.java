@@ -50,14 +50,10 @@ public class LobbySocketHandler extends TextWebSocketHandler {
     static final int SEND_BUFFER_LIMIT_BYTES = 131072;
     /** 방 이동 때 승인·기록·입장 알림이 한꺼번에 쌓여도 넘치지 않는 제어 메시지 대기열 */
     static final int CONTROL_QUEUE_CAPACITY = 64;
-    /** 관제실 CCTV 방별 목록 전송 간격(틱). 20Hz 상태 중 4틱마다, 약 5Hz */
-    static final int FEED_EVERY_TICKS = 4;
+    /** 멀티플레이는 회의실에서만 연다. 소켓은 회의실 문을 열 때 연결하고, 회의실을 나가면 끊는다. */
+    public static final String MEETING_ROOM = "meeting-room";
     /** 핸드셰이크가 연결 속성에 남기는 방문자 주소 키 */
     public static final String CLIENT_ADDRESS = "lab.clientAddress";
-    /** 핸드셰이크가 남기는 로그인 회원 id(UUID). 비회원이면 없다. */
-    public static final String MEMBER_ID = "lab.memberId";
-    /** 바닥 아이템을 주울 수 있는 서버 좌표 거리 */
-    static final double PICK_RANGE = 48;
     /** 같은 주소의 새 연결이 기존 연결을 대신할 때 보내는 종료 코드. 클라이언트는 이 코드에서 재연결하지 않는다. */
     public static final CloseStatus REPLACED = new CloseStatus(4409, "Replaced by a newer connection from the same address");
     /**
@@ -70,7 +66,6 @@ public class LobbySocketHandler extends TextWebSocketHandler {
         final WebSocketSession socket;
         final String playerId;
         final String address;
-        java.util.UUID memberId;
         final AtomicBoolean sending = new AtomicBoolean();
         final ArrayBlockingQueue<WebSocketMessage<?>> controls = new ArrayBlockingQueue<>(CONTROL_QUEUE_CAPACITY);
         final AtomicReference<WebSocketMessage<?>> latestState = new AtomicReference<>();
@@ -100,13 +95,7 @@ public class LobbySocketHandler extends TextWebSocketHandler {
     private final boolean singleConnectionPerAddress;
     private long lastTick = System.nanoTime(), tick;
 
-    private kr.seulgae.techlab.inventory.InventoryService inventory;
-
     public LobbySocketHandler(LobbyRoom room, LobbyChat chat) { this(room, chat, false); }
-
-    /** 인벤토리(버리기·줍기). 없으면(테스트) 해당 메시지를 무시한다. */
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    public void setInventory(kr.seulgae.techlab.inventory.InventoryService inventory) { this.inventory = inventory; }
 
     /**
      * @param singleConnectionPerAddress true면 한 주소에 연결 하나만 두고, 같은 주소의 새 연결이 기존 연결을 끊는다.
@@ -136,7 +125,7 @@ public class LobbySocketHandler extends TextWebSocketHandler {
                 throw new IllegalArgumentException("Invalid query");
             }
             String name = query.getFirst("nickname");
-            player = room.join(name == null ? null : UriUtils.decode(name, StandardCharsets.UTF_8));
+            player = room.join(name == null ? null : UriUtils.decode(name, StandardCharsets.UTF_8), MEETING_ROOM);
         } catch (IllegalArgumentException exception) {
             session.close(CloseStatus.POLICY_VIOLATION.withReason("Invalid nickname"));
             return;
@@ -149,14 +138,12 @@ public class LobbySocketHandler extends TextWebSocketHandler {
             // 입장 기록과 실시간 방송 사이에 메시지가 빠지지 않게 같은 채팅 잠금을 사용한다.
             synchronized (chat) {
                 var peer = new Peer(socket, player.id(), address);
-                peer.memberId = session.getAttributes().get(MEMBER_ID) instanceof java.util.UUID member ? member : null;
-                peer.controls.add(new TextMessage(json.writeValueAsString(Map.of("type", "welcome", "selfId", player.id(), "players", room.snapshot("lobby"), "maxPlayers", LobbyRoom.MAX_PLAYERS, "protocolVersion", 4, "time", System.nanoTime() / 1_000_000d, "roomId", "lobby", "roomEpoch", 0))));
-                peer.controls.add(new TextMessage(json.writeValueAsString(Map.of("type", "chat_history", "messages", chat.history()))));
+                peer.controls.add(new TextMessage(json.writeValueAsString(Map.of("type", "welcome", "selfId", player.id(), "players", room.snapshot(MEETING_ROOM), "maxPlayers", LobbyRoom.MAX_PLAYERS, "protocolVersion", 4, "time", System.nanoTime() / 1_000_000d, "roomId", MEETING_ROOM, "roomEpoch", 0))));
+                peer.controls.add(new TextMessage(json.writeValueAsString(Map.of("type", "chat_history", "messages", chat.history(MEETING_ROOM)))));
                 peers.put(session.getId(), peer);
                 drain(session.getId(), peer);
-                sendGround(session.getId(), peer);
             }
-            broadcastIn("lobby", Map.of("type", "joined", "player", player));
+            broadcastIn(MEETING_ROOM, Map.of("type", "joined", "player", player));
         } catch (Exception exception) {
             room.leave(player.id());
             session.close(CloseStatus.SERVER_ERROR);
@@ -177,33 +164,13 @@ public class LobbySocketHandler extends TextWebSocketHandler {
         try {
             var input = json.readTree(message.getPayload());
             if (input.isObject() && input.path("type").stringValue("").equals("room_change")) {
-                try {
-                    if (!peer.allow(now) || !Set.copyOf(input.propertyNames()).equals(Set.of("type", "doorId", "roomEpoch"))
-                            || !input.path("doorId").isString() || !input.path("roomEpoch").isIntegralNumber()
-                            || input.path("roomEpoch").asLong() != room.epoch(peer.playerId)) throw new IllegalArgumentException("Invalid room request");
-                    synchronized (chat) {
-                        String previous = room.roomId(peer.playerId);
-                        room.changeRoom(peer.playerId, input.get("doorId").stringValue(), now);
-                        peer.latestState.set(null);
-                        sendScoped(session.getId(), peer, Map.of("type", "room_changed", "players", room.snapshot(room.roomId(peer.playerId)), "selfId", peer.playerId, "time", now / 1_000_000d));
-                        sendScoped(session.getId(), peer, Map.of("type", "chat_history", "messages", chat.history(room.roomId(peer.playerId))));
-                        sendGround(session.getId(), peer);
-                        broadcastIn(previous, Map.of("type", "left", "id", peer.playerId));
-                        broadcastIn(room.roomId(peer.playerId), Map.of("type", "joined", "player", room.player(peer.playerId)));
-                    }
-                } catch (IllegalArgumentException exception) {
-                    sendScoped(session.getId(), peer, Map.of("type", "room_error", "reason", "출입구와 거리를 확인해 주세요."));
-                }
+                // 회의실 밖은 각자 혼자 둘러본다. 회의실을 나가면 클라이언트가 연결을 끊는다.
+                sendScoped(session.getId(), peer, Map.of("type", "room_error", "reason", "회의실에서만 함께 움직여요. 나가면 연결이 끝나요."));
                 peer.lastSeen = now;
                 return;
             }
             long expectedEpoch = room.epoch(peer.playerId);
             if (input.has("roomEpoch") ? !input.get("roomEpoch").isIntegralNumber() || input.get("roomEpoch").asLong() != expectedEpoch : expectedEpoch != 0) return;
-            if (input.isObject() && (input.path("type").stringValue("").equals("drop") || input.path("type").stringValue("").equals("pick"))) {
-                if (peer.allow(now)) handleItem(session.getId(), peer, input);
-                peer.lastSeen = now;
-                return;
-            }
             if (input.isObject() && input.path("type").stringValue("").equals("seat")) {
                 // 의자 앉기(seatId)·일어나기(null). 조건이 맞지 않으면 무시하고 다음 상태로 결과를 알린다.
                 if (peer.allow(now)) {
@@ -308,13 +275,10 @@ public class LobbySocketHandler extends TextWebSocketHandler {
         lastTick = now;
         if (peers.isEmpty()) return;
         tick++;
-        // 관제실 참가자에게만 방별 참가자 목록(feeds)을 4틱(약 5Hz)마다 덧붙인다.
-        Map<String, java.util.List<LobbyRoom.PlayerView>> feeds = tick % FEED_EVERY_TICKS == 0 ? room.snapshotsByRoom() : null;
         peers.forEach((id, peer) -> {
             String roomId = room.roomId(peer.playerId);
             var state = new java.util.LinkedHashMap<String, Object>(Map.of("type", "state", "tick", tick, "time", now / 1_000_000d,
                 "players", room.snapshot(roomId), "totalOnline", room.snapshot().size()));
-            if (feeds != null && room.monitorsAllRooms(roomId)) state.put("feeds", feeds);
             sendScoped(id, peer, state);
         });
         peers.forEach((id, peer) -> {
@@ -325,48 +289,6 @@ public class LobbySocketHandler extends TextWebSocketHandler {
                 dispatch(id, peer, new PingMessage(), true);
             }
         });
-    }
-
-    /**
-     * 버리기(내 아이템을 지금 서 있는 곳에)·줍기(가까운 바닥 아이템). 로그인 회원만 가능하고,
-     * 성공하면 같은 방에 바닥 목록을 다시 보내고 본인에게 인벤토리가 바뀌었다고 알린다.
-     */
-    private void handleItem(String id, Peer peer, tools.jackson.databind.JsonNode input) {
-        if (inventory == null) return;
-        if (peer.memberId == null) { sendScoped(id, peer, Map.of("type", "inventory_error", "reason", "login")); return; }
-        java.util.UUID itemId;
-        try {
-            if (!fields(input, Set.of("type", "itemId")) || !input.get("itemId").isString()) return;
-            itemId = java.util.UUID.fromString(input.get("itemId").stringValue());
-        } catch (IllegalArgumentException exception) { return; }
-        String roomId = room.roomId(peer.playerId);
-        var me = room.player(peer.playerId);
-        java.util.Optional<kr.seulgae.techlab.inventory.InventoryStore.Item> changed;
-        if (input.get("type").stringValue().equals("drop")) changed = inventory.drop(peer.memberId, itemId, roomId, me.x(), me.y());
-        else {
-            boolean near = inventory.ground(roomId).stream().anyMatch(item -> item.id().equals(itemId) && Math.hypot(item.x() - me.x(), item.y() - me.y()) <= PICK_RANGE);
-            changed = near ? inventory.pick(peer.memberId, itemId, roomId) : java.util.Optional.empty();
-        }
-        if (changed.isEmpty()) { sendScoped(id, peer, Map.of("type", "inventory_error", "reason", "unavailable")); return; }
-        sendScoped(id, peer, Map.of("type", "inventory_changed"));
-        var items = groundView(roomId);
-        peers.forEach((otherId, other) -> { if (roomId.equals(room.roomId(other.playerId))) sendScoped(otherId, other, Map.of("type", "ground", "items", items)); });
-    }
-
-    private void sendGround(String id, Peer peer) {
-        if (inventory == null) return;
-        try { sendScoped(id, peer, Map.of("type", "ground", "items", groundView(room.roomId(peer.playerId)))); }
-        catch (RuntimeException exception) { LOG.warn("Ground items unavailable: {}", exception.getMessage()); }
-    }
-
-    /** 바닥 아이템을 화면에 필요한 값만으로 줄인다. */
-    private java.util.List<Map<String, Object>> groundView(String roomId) {
-        return inventory.ground(roomId).stream().map(item -> {
-            Map<String, Object> view = new java.util.LinkedHashMap<>();
-            view.put("id", item.id().toString()); view.put("kind", item.kind()); view.put("name", item.name());
-            view.put("sizeCm", item.sizeCm()); view.put("x", item.x()); view.put("y", item.y());
-            return view;
-        }).toList();
     }
 
     /** 이동 입력 필드에는 선택적인 방 세대만 추가할 수 있다. */

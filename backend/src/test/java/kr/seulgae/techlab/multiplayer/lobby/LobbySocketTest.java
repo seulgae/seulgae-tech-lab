@@ -71,36 +71,26 @@ class LobbySocketTest {
 
     private int port() { return environment.getProperty("local.server.port", Integer.class); }
 
-    /** 동일 소켓으로 방을 이동하고 다른 방의 상태·채팅 및 이전 입력이 섞이지 않음을 검증한다. */
-    @Test void changesRoomsOnSameSocketAndIsolatesChatAndStaleInputs() throws Exception {
-        var a = connect(""); String id = a.type("welcome").get("selfId").stringValue();
+    /** 멀티플레이는 회의실에서만: 소켓은 회의실로 바로 입장하고, 서버 방 이동은 거절하며, 관제실 CCTV 목록에 회의실 참가자가 보인다. */
+    @Test void joinsMeetingRoomDirectlyAndRefusesServerRoomChanges() throws Exception {
+        var a = connect(""); var welcome = a.type("welcome");
+        String id = welcome.get("selfId").stringValue();
+        assertEquals("meeting-room", welcome.get("roomId").stringValue());
+        assertEquals("meeting-room", room.roomId(id));
+        assertEquals(400, room.player(id).x(), .001, "회의실 스폰");
+        assertEquals(480, room.player(id).y(), .001);
         a.type("chat_history");
-        var b = connect(""); b.type("welcome"); b.type("chat_history");
-        a.send("{\"type\":\"room_change\",\"doorId\":\"missing\",\"roomEpoch\":0}");
-        a.type("room_error");
-        long now = System.nanoTime();
-        room.input(id, 0, 1, 1, now);
-        for (int i = 0; i < 6; i++) room.step(.1, now);
-        a.send("{\"type\":\"room_change\",\"doorId\":\"lobby-to-outdoor\",\"roomEpoch\":0}");
-        var changed = a.type("room_changed");
-        assertEquals("outdoor", changed.get("roomId").stringValue());
-        assertEquals(id, changed.get("selfId").stringValue());
-        assertEquals(1, changed.get("players").size());
-        assertEquals(1, changed.get("roomEpoch").asLong());
-        assertTrue(a.type("chat_history").get("messages").isEmpty());
-        b.await(f -> f.path("type").stringValue("").equals("left") && f.get("id").stringValue().equals(id));
-        double x = room.player(id).x();
-        a.send("{\"type\":\"move\",\"roomEpoch\":0,\"inputs\":[{\"x\":1,\"y\":0,\"ms\":50,\"seq\":999}]}");
-        a.send("{\"type\":\"chat\",\"roomEpoch\":1,\"message\":\"개발 연구실 대화\"}");
-        assertEquals("개발 연구실 대화", a.type("chat_message").get("message").stringValue());
-        assertEquals(x, room.player(id).x(), .001);
-        assertTrue(b.frames.stream().noneMatch(f -> f.path("type").stringValue("").equals("chat_message")));
-        assertEquals(1, room.snapshot("lobby").size());
-        assertEquals(1, room.snapshot("outdoor").size());
-        a.send("{\"type\":\"move\",\"roomEpoch\":1,\"inputs\":[{\"x\":1,\"y\":0,\"ms\":50,\"seq\":1}]}");
-        a.await(f -> f.path("type").stringValue("").equals("state") && f.get("roomEpoch").asLong() == 1
-            && f.get("players").get(0).get("ack").asLong() == 1);
-        assertEquals(x + 10, room.player(id).x(), .001);
+        var b = connect(""); String other = b.type("welcome").get("selfId").stringValue(); b.type("chat_history");
+        assertNotEquals(room.player(id).x(), room.player(other).x(), "두 번째 사람은 옆에 선다");
+        a.send("{\"type\":\"room_change\",\"doorId\":\"meeting-to-lobby\",\"roomEpoch\":0}");
+        assertTrue(a.type("room_error").get("reason").stringValue().contains("회의실"));
+        assertEquals("meeting-room", room.roomId(id), "서버 방 이동은 하지 않는다");
+        a.send("{\"type\":\"chat\",\"message\":\"회의 시작할게요\"}");
+        assertEquals("회의 시작할게요", b.type("chat_message").get("message").stringValue());
+        var feeds = JSON.readTree(http.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port() + "/api/lobby/feeds")).GET().build(),
+            HttpResponse.BodyHandlers.ofString()).body());
+        assertEquals(2, feeds.get("meeting-room").size(), "관제실 CCTV는 회의실 참가자를 REST로 본다");
+        assertTrue(feeds.get("lobby").isEmpty());
         assertFalse(a.closed.isDone());
     }
 
@@ -323,14 +313,17 @@ class LobbySocketTest {
         }
     }
 
-    /** 접속하면 지금 방 바닥 아이템 목록을 받고, 비회원이 줍기·버리기를 하면 로그인 안내를 받는다. */
-    @Test void sendsGroundItemsAndAsksGuestsToLogInForItems() throws Exception {
-        var a = connect("");
-        a.type("welcome");
-        assertTrue(a.type("ground").get("items").isEmpty());
-        a.send("{\"type\":\"pick\",\"itemId\":\"00000000-0000-4000-8000-0000000000aa\",\"roomEpoch\":0}");
-        assertEquals("login", a.type("inventory_error").get("reason").stringValue());
-        assertFalse(a.closed.isDone(), "잘못된 요청으로 연결을 끊지 않는다");
+    /** 바닥 아이템은 소켓이 아니라 REST로 읽고 쓴다(회의실 밖에는 소켓이 없다). 비회원은 줍기·버리기를 할 수 없다. */
+    @Test void groundItemsUseRestAndGuestsCannotPickOrDrop() throws Exception {
+        String base = "http://127.0.0.1:" + port() + "/api/inventory";
+        var ground = http.send(HttpRequest.newBuilder(URI.create(base + "/ground?room=outdoor")).GET().build(), HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, ground.statusCode());
+        assertTrue(JSON.readTree(ground.body()).isEmpty());
+        assertEquals(400, http.send(HttpRequest.newBuilder(URI.create(base + "/ground?room=moon")).GET().build(), HttpResponse.BodyHandlers.ofString()).statusCode());
+        var pick = http.send(HttpRequest.newBuilder(URI.create(base + "/pick")).header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString("{\"itemId\":\"00000000-0000-4000-8000-0000000000aa\",\"room\":\"outdoor\",\"x\":600,\"y\":470}")).build(),
+            HttpResponse.BodyHandlers.ofString());
+        assertEquals(401, pick.statusCode(), "비회원은 로그인 안내");
     }
 
     @Test void keepsResearchReadRoutesAndResponseContractAvailable() throws Exception {

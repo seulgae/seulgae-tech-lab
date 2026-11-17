@@ -85,7 +85,14 @@ public class LobbyRoom {
      * @throws IllegalArgumentException 이름이 유효하지 않은 경우
      * @throws IllegalStateException 로비가 가득 찬 경우
      */
-    public synchronized PlayerView join(String requestedName) {
+    public synchronized PlayerView join(String requestedName) { return join(requestedName, "lobby"); }
+
+    /**
+     * 지정한 방의 스폰 근처로 바로 입장한다. 멀티플레이는 회의실에서만 열리므로 소켓은 회의실로 입장시킨다.
+     * @param roomId 공유 맵의 방 식별자
+     */
+    public synchronized PlayerView join(String requestedName, String roomId) {
+        if (!world.roomIds().contains(roomId)) throw new IllegalArgumentException("Unknown room");
         if (members.size() >= MAX_PLAYERS) throw new IllegalStateException("Lobby full");
         String id = UUID.randomUUID().toString();
         String name = requestedName == null ? "연구원-" + id.substring(0, 4) : requestedName;
@@ -100,12 +107,12 @@ public class LobbyRoom {
         // 퇴장 후 빈 슬롯도 재사용해 스폰 위치가 가구로 밀려가지 않도록 한다.
         int slot = 0;
         while (slot < MAX_PLAYERS) {
-            var position = world.spawn(slot);
-            if (members.values().stream().noneMatch(other -> Math.hypot(other.x - position.x(), other.y - position.y()) < 24)) break;
+            var position = spawnIn(roomId, slot);
+            if (members.values().stream().noneMatch(other -> other.roomId.equals(roomId) && Math.hypot(other.x - position.x(), other.y - position.y()) < 24)) break;
             slot++;
         }
-        var spawn = world.spawn(Math.min(slot, MAX_PLAYERS - 1));
-        member.x = spawn.x(); member.y = spawn.y();
+        var spawn = spawnIn(roomId, Math.min(slot, MAX_PLAYERS - 1));
+        member.x = spawn.x(); member.y = spawn.y(); member.roomId = roomId;
         members.put(id, member);
         return member.view();
     }
@@ -241,6 +248,14 @@ public class LobbyRoom {
     }
 
     /** 출입구 검증 후 대기 명령·ACK·속도를 함께 초기화하며 소켓 ID는 유지한다. */
+    /** 로비는 공유 맵의 스폰 슬롯, 다른 방은 방 스폰에서 좌우로 40px씩 벌려 선다. */
+    private LobbyWorld.Position spawnIn(String roomId, int slot) {
+        if (roomId.equals("lobby")) return world.spawn(slot);
+        var spawn = world.roomSpawn(roomId);
+        int offset = slot == 0 ? 0 : (slot % 2 == 1 ? -1 : 1) * ((slot + 1) / 2) * 40;
+        return new LobbyWorld.Position(spawn.x() + offset, spawn.y());
+    }
+
     public synchronized PlayerView changeRoom(String id, String doorId, long now) {
         var m = members.get(id);
         if (m == null || m.movedAt != 0 && now - m.movedAt < 1_000_000_000L) throw new IllegalArgumentException("Room transition cooldown");

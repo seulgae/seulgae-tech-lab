@@ -12,27 +12,36 @@ function setup(t) {
   class Socket { static all = []; readyState = 1; bufferedAmount = 0; sent = []; closes = []; constructor() { Socket.all.push(this) } send(s) { this.sent.push(JSON.parse(s)) } close(code, reason) { this.closes.push([code, reason]) } receive(m) { this.onmessage({ data: JSON.stringify(m) }) } }
   Object.assign(globalThis, { window: Object.assign(new EventTarget(), { location: { protocol: 'https:', host: 'lab.example' } }), document: Object.assign(new EventTarget(), { hidden: false }), WebSocket: Socket, sessionStorage: { getItem() { return null }, setItem() {}, removeItem() {} } })
   const client = new MultiplayerClient({})
-  client.start()
+  client.start(); client.changeRoom('lobby-to-meeting') // 멀티플레이는 회의실에서만: 회의실 문을 열 때 연결한다
   const socket = Socket.all[0]
-  socket.receive({ type: 'welcome', selfId: own.id, players: [own], maxPlayers: 5, protocolVersion: 4, roomId: 'lobby', roomEpoch: 0 })
+  socket.receive({ type: 'welcome', selfId: own.id, players: [own], maxPlayers: 5, protocolVersion: 4, roomId: 'meeting-room', roomEpoch: 0 })
   t.after(() => { client.destroy(); Object.assign(globalThis, original) })
   return { client, socket }
 }
 
-test('방 이동 응답이 수 초 늦어도 스스로 끊지 않고, 제한 시간을 넘으면 재연결로 복구한다', t => {
-  const { client, socket } = setup(t)
-  assert.ok(ROOM_RESPONSE_TIMEOUT_MS >= 10000, '1초 왕복·수 초 정체를 견딜 여유')
-  assert.equal(client.changeRoom('lobby-to-development'), true)
-  // 서버 상태는 계속 오므로 10초 무응답 감지(4001)와 구분된다.
-  for (let elapsed = 0; elapsed < 6000; elapsed += 500) { t.mock.timers.tick(500); socket.receive({ type: 'state', tick: elapsed / 500 + 1, players: [own], roomId: 'lobby', roomEpoch: 0 }) }
-  assert.deepEqual(socket.closes, [], '기존 5초 제한이면 여기서 4005로 끊겼다')
-  socket.receive({ type: 'room_changed', selfId: own.id, players: [{ ...own, y: 460 }], roomId: 'development-lab', roomEpoch: 1 })
-  assert.equal(client.currentRoom(), 'development-lab')
-
-  t.mock.timers.tick(1100)
-  assert.equal(client.changeRoom('development-to-lobby'), true)
-  for (let elapsed = 0; elapsed <= ROOM_RESPONSE_TIMEOUT_MS; elapsed += 500) { t.mock.timers.tick(500); socket.receive({ type: 'state', tick: 100 + elapsed / 500, players: [{ ...own, y: 460 }], roomId: 'development-lab', roomEpoch: 1 }) }
-  assert.deepEqual(socket.closes.at(-1), [4005, 'Room response timeout'])
+test('회의실 연결이 수 초 늦어도 문 앞에서 기다리고, 제한 시간을 넘으면 연결을 접고 그 자리에 남는다', t => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'setInterval', 'Date'] })
+  const original = { window: globalThis.window, document: globalThis.document, WebSocket: globalThis.WebSocket, sessionStorage: globalThis.sessionStorage }
+  class Socket { static all = []; readyState = 0; bufferedAmount = 0; sent = []; closes = []; constructor() { Socket.all.push(this) } send(s) { this.sent.push(JSON.parse(s)) } close(code, reason) { this.closes.push([code, reason]) } receive(m) { this.onmessage({ data: JSON.stringify(m) }) } }
+  Object.assign(globalThis, { window: Object.assign(new EventTarget(), { location: { protocol: 'https:', host: 'lab.example' } }), document: Object.assign(new EventTarget(), { hidden: false }), WebSocket: Socket, sessionStorage: { getItem() { return null }, setItem() {}, removeItem() {} } })
+  const rooms = []
+  const client = new MultiplayerClient({ room: (roomId, pending) => rooms.push([roomId, pending]) })
+  t.after(() => { client.destroy(); Object.assign(globalThis, original) })
+  client.start()
+  assert.equal(Socket.all.length, 0, '로비에서는 연결하지 않는다')
+  assert.ok(ROOM_RESPONSE_TIMEOUT_MS >= 10000, '연결 수립 3~5초를 견딜 여유')
+  assert.equal(client.changeRoom('lobby-to-meeting'), true)
+  assert.equal(Socket.all.length, 1)
+  t.mock.timers.tick(6000)
+  assert.equal(client.isTravelling(), true, '연결을 기다리는 동안 문 앞에 머문다')
+  assert.equal(client.currentRoom(), 'lobby')
+  t.mock.timers.tick(ROOM_RESPONSE_TIMEOUT_MS)
+  assert.equal(client.isTravelling(), false)
+  assert.equal(client.currentRoom(), 'lobby', '회의실에 들어가지 못하면 로비에 남는다')
+  assert.deepEqual(Socket.all[0].closes.at(-1), [1000, 'Left meeting room'])
+  assert.deepEqual(rooms.at(-1), ['lobby', false])
+  t.mock.timers.tick(20000)
+  assert.equal(Socket.all.length, 1, '포기한 뒤에는 다시 연결하지 않는다')
 })
 
 test('업로드가 잠시 막혀 수 KB가 쌓여도 입력을 계속 보내고, 한도를 넘을 때만 끊는다', t => {
