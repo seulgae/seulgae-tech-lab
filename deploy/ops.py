@@ -129,12 +129,13 @@ def select_release(fetch=request_json):
     raise OpsError('No successful main CI release with a published image manifest. Nothing deployed.')
 
 
-def sync_checkout(candidate, git=command):
+def sync_checkout(candidate, git=None):
     """Detach the server checkout at the release commit so compose.yml and ops.py match the images.
 
     CI deployments only run ./deploy.sh; without this the checkout keeps old Compose settings
     (new environment variables and secrets never reach the containers). Returns True if HEAD moved.
     """
+    git = git or command  # resolved at call time so tests that patch ops.command also cover git
     root = str(ROOT)
     git(['git', '-C', root, 'fetch', '--quiet', 'origin', 'main'])
     git(['git', '-C', root, 'merge-base', '--is-ancestor', candidate['sha'], 'origin/main'])
