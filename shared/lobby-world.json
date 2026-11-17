@@ -49,58 +49,25 @@
       }
     },
     {
-      "x": 620,
-      "bottom": 430,
-      "texture": "chair",
-      "body": {
-        "y": 418,
-        "x": 620,
-        "height": 24,
-        "width": 28
-      }
-    },
-    {
-      "x": 340,
-      "bottom": 280,
-      "texture": "chair",
-      "body": {
-        "y": 268,
-        "x": 340,
-        "height": 24,
-        "width": 28
-      }
-    },
-    {
-      "x": 112,
+      "x": 168,
       "bottom": 222,
       "texture": "rack",
       "body": {
         "y": 178,
-        "x": 112,
+        "x": 168,
         "height": 88,
         "width": 48
       }
     },
     {
-      "x": 688,
+      "x": 632,
       "bottom": 208,
       "texture": "rack",
       "body": {
         "y": 164,
-        "x": 688,
+        "x": 632,
         "height": 88,
         "width": 48
-      }
-    },
-    {
-      "x": 152,
-      "bottom": 386,
-      "texture": "equipment",
-      "body": {
-        "y": 358,
-        "x": 152,
-        "height": 56,
-        "width": 96
       }
     },
     {
@@ -166,8 +133,14 @@
         {
           "id": "lobby-to-development",
           "target": "development-lab",
-          "x": 400,
-          "y": 540
+          "x": 70,
+          "y": 250
+        },
+        {
+          "id": "lobby-to-control",
+          "target": "control-room",
+          "x": 730,
+          "y": 250
         },
         {
           "id": "lobby-to-server",
@@ -180,6 +153,13 @@
           "target": "meeting-room",
           "x": 730,
           "y": 520
+        },
+        {
+          "id": "lobby-to-outdoor",
+          "target": "outdoor",
+          "x": 400,
+          "y": 540,
+          "label": "나가기"
         }
       ],
       "spawn": {
@@ -277,17 +257,6 @@
             "y": 392,
             "width": 96,
             "height": 56
-          }
-        },
-        {
-          "texture": "plant",
-          "x": 730,
-          "bottom": 160,
-          "body": {
-            "x": 730,
-            "y": 150,
-            "width": 24,
-            "height": 20
           }
         }
       ]
@@ -498,6 +467,252 @@
             "y": 160,
             "width": 24,
             "height": 20
+          }
+        }
+      ]
+    },
+    "control-room": {
+      "name": "관제실",
+      "interactions": [
+        {
+          "id": "control-cctv",
+          "kind": "cctv",
+          "label": "관제 모니터 보기",
+          "x": 400,
+          "y": 286,
+          "width": 240,
+          "height": 56,
+          "range": 56
+        }
+      ],
+      "spawn": {
+        "x": 400,
+        "y": 460
+      },
+      "doors": [
+        {
+          "id": "control-to-lobby",
+          "target": "lobby",
+          "x": 400,
+          "y": 540
+        }
+      ],
+      "objects": [
+        {
+          "x": 400,
+          "bottom": 168,
+          "texture": "monitor-wall",
+          "body": {
+            "y": 132,
+            "x": 400,
+            "height": 72,
+            "width": 560
+          }
+        },
+        {
+          "x": 400,
+          "bottom": 314,
+          "texture": "control-console",
+          "body": {
+            "y": 286,
+            "x": 400,
+            "height": 56,
+            "width": 240
+          }
+        },
+        {
+          "x": 340,
+          "bottom": 370,
+          "texture": "chair",
+          "body": {
+            "y": 358,
+            "x": 340,
+            "height": 24,
+            "width": 28
+          }
+        },
+        {
+          "x": 460,
+          "bottom": 370,
+          "texture": "chair",
+          "body": {
+            "y": 358,
+            "x": 460,
+            "height": 24,
+            "width": 28
+          }
+        },
+        {
+          "x": 96,
+          "bottom": 300,
+          "texture": "rack",
+          "body": {
+            "y": 256,
+            "x": 96,
+            "height": 88,
+            "width": 48
+          }
+        },
+        {
+          "x": 704,
+          "bottom": 300,
+          "texture": "rack",
+          "body": {
+            "y": 256,
+            "x": 704,
+            "height": 88,
+            "width": 48
+          }
+        }
+      ]
+    },
+    "outdoor": {
+      "name": "바깥 초원",
+      "interactions": [
+        {
+          "id": "outdoor-fishing",
+          "kind": "fishing",
+          "label": "낚시하기",
+          "x": 612,
+          "y": 470,
+          "width": 40,
+          "height": 36,
+          "range": 32
+        }
+      ],
+      "spawn": {
+        "x": 400,
+        "y": 460
+      },
+      "doors": [
+        {
+          "id": "outdoor-to-lobby",
+          "target": "lobby",
+          "x": 400,
+          "y": 540,
+          "label": "연구소"
+        }
+      ],
+      "objects": [
+        {
+          "x": 200,
+          "bottom": 320,
+          "texture": "lake",
+          "body": {
+            "y": 250,
+            "x": 200,
+            "height": 140,
+            "width": 260
+          }
+        },
+        {
+          "x": 670,
+          "bottom": 328,
+          "texture": "river",
+          "body": {
+            "y": 196,
+            "x": 670,
+            "height": 264,
+            "width": 60
+          }
+        },
+        {
+          "x": 670,
+          "bottom": 576,
+          "texture": "river",
+          "body": {
+            "y": 479,
+            "x": 670,
+            "height": 194,
+            "width": 60
+          }
+        },
+        {
+          "x": 110,
+          "bottom": 460,
+          "texture": "oak-tree",
+          "body": {
+            "y": 452,
+            "x": 110,
+            "height": 16,
+            "width": 24
+          }
+        },
+        {
+          "x": 300,
+          "bottom": 128,
+          "texture": "oak-tree",
+          "body": {
+            "y": 120,
+            "x": 300,
+            "height": 16,
+            "width": 24
+          }
+        },
+        {
+          "x": 520,
+          "bottom": 150,
+          "texture": "oak-tree",
+          "body": {
+            "y": 142,
+            "x": 520,
+            "height": 16,
+            "width": 24
+          }
+        },
+        {
+          "x": 742,
+          "bottom": 190,
+          "texture": "oak-tree",
+          "body": {
+            "y": 182,
+            "x": 742,
+            "height": 16,
+            "width": 24
+          }
+        },
+        {
+          "x": 744,
+          "bottom": 470,
+          "texture": "oak-tree",
+          "body": {
+            "y": 462,
+            "x": 744,
+            "height": 16,
+            "width": 24
+          }
+        },
+        {
+          "x": 500,
+          "bottom": 520,
+          "texture": "oak-tree",
+          "body": {
+            "y": 512,
+            "x": 500,
+            "height": 16,
+            "width": 24
+          }
+        },
+        {
+          "x": 372,
+          "bottom": 330,
+          "texture": "field-rock",
+          "body": {
+            "y": 323,
+            "x": 372,
+            "height": 14,
+            "width": 28
+          }
+        },
+        {
+          "x": 560,
+          "bottom": 318,
+          "texture": "field-rock",
+          "body": {
+            "y": 311,
+            "x": 560,
+            "height": 14,
+            "width": 28
           }
         }
       ]

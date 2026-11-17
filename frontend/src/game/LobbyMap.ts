@@ -20,12 +20,15 @@ export default function createLobbyMap(scene: Phaser.Scene, roomId: RoomId = 'lo
   const tiles = map.addTilesetImage(`floor-${roomId}`, `floor-${roomId}`, 16, 16)!
   map.createLayer(0, tiles, 0, 0)!.setScale(2).setDepth(-100)
 
-  scene.add.tileSprite(400, 32, 400, 32, `wall-${roomId}`).setScale(2).setDepth(60)
-  scene.add.rectangle(12, 320, 24, 560, hex(theme.wall.side)).setDepth(0)
-  scene.add.rectangle(788, 320, 24, 560, hex(theme.wall.side)).setDepth(0)
-  scene.add.rectangle(400, 588, 800, 24, hex(theme.wall.bottom)).setDepth(0)
-  // 벽과 바닥 경계의 그림자로 공간감을 준다.
-  scene.add.rectangle(400, 68, 752, 8, 0x000000, 0.18).setDepth(-50)
+  // 바깥은 벽 대신 하늘·숲 경계를 RoomFx(outdoorFx)가 그린다. 충돌용 벽은 같다.
+  if (roomId !== 'outdoor') {
+    scene.add.tileSprite(400, 32, 400, 32, `wall-${roomId}`).setScale(2).setDepth(60)
+    scene.add.rectangle(12, 320, 24, 560, hex(theme.wall.side)).setDepth(0)
+    scene.add.rectangle(788, 320, 24, 560, hex(theme.wall.side)).setDepth(0)
+    scene.add.rectangle(400, 588, 800, 24, hex(theme.wall.bottom)).setDepth(0)
+    // 벽과 바닥 경계의 그림자로 공간감을 준다.
+    scene.add.rectangle(400, 68, 752, 8, 0x000000, 0.18).setDepth(-50)
+  }
 
   const obstacles = scene.physics.add.staticGroup()
   for (const area of [...WALLS, ...objects.map(object => object.body)]) {
@@ -36,6 +39,8 @@ export default function createLobbyMap(scene: Phaser.Scene, roomId: RoomId = 'lo
   const plants = new Map<string, Phaser.GameObjects.Image>()
   for (const object of objects) {
     const key = theme.textures[object.texture] ?? object.texture
+    // 호수·강처럼 전용 텍스처가 없는 충돌 영역은 방 연출이 직접 그린다.
+    if (!scene.textures.exists(key)) continue
     // 가구 아래 접지 그림자
     scene.add.ellipse(object.x, object.bottom - 2, object.body.width * 0.9, 10, 0x000000, 0.18).setDepth(object.bottom - 1)
     const image = scene.add.image(object.x, object.bottom, key).setOrigin(0.5, 1).setScale(2).setDepth(object.bottom)

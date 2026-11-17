@@ -50,6 +50,8 @@ public class LobbySocketHandler extends TextWebSocketHandler {
     static final int SEND_BUFFER_LIMIT_BYTES = 131072;
     /** 방 이동 때 승인·기록·입장 알림이 한꺼번에 쌓여도 넘치지 않는 제어 메시지 대기열 */
     static final int CONTROL_QUEUE_CAPACITY = 64;
+    /** 관제실 CCTV 방별 목록 전송 간격(틱). 20Hz 상태 중 4틱마다, 약 5Hz */
+    static final int FEED_EVERY_TICKS = 4;
     /** 핸드셰이크가 연결 속성에 남기는 방문자 주소 키 */
     public static final String CLIENT_ADDRESS = "lab.clientAddress";
     /** 같은 주소의 새 연결이 기존 연결을 대신할 때 보내는 종료 코드. 클라이언트는 이 코드에서 재연결하지 않는다. */
@@ -287,7 +289,15 @@ public class LobbySocketHandler extends TextWebSocketHandler {
         lastTick = now;
         if (peers.isEmpty()) return;
         tick++;
-        peers.forEach((id, peer) -> sendScoped(id, peer, Map.of("type", "state", "tick", tick, "time", now / 1_000_000d, "players", room.snapshot(room.roomId(peer.playerId)), "totalOnline", room.snapshot().size())));
+        // 관제실 참가자에게만 방별 참가자 목록(feeds)을 4틱(약 5Hz)마다 덧붙인다.
+        Map<String, java.util.List<LobbyRoom.PlayerView>> feeds = tick % FEED_EVERY_TICKS == 0 ? room.snapshotsByRoom() : null;
+        peers.forEach((id, peer) -> {
+            String roomId = room.roomId(peer.playerId);
+            var state = new java.util.LinkedHashMap<String, Object>(Map.of("type", "state", "tick", tick, "time", now / 1_000_000d,
+                "players", room.snapshot(roomId), "totalOnline", room.snapshot().size()));
+            if (feeds != null && room.monitorsAllRooms(roomId)) state.put("feeds", feeds);
+            sendScoped(id, peer, state);
+        });
         peers.forEach((id, peer) -> {
             boolean slowSend = peer.socket instanceof ConcurrentWebSocketSessionDecorator decorated && decorated.getTimeSinceSendStarted() > SEND_TIME_LIMIT_MS;
             if (slowSend || now - peer.lastSeen > 15_000_000_000L) disconnect(id, CloseStatus.SESSION_NOT_RELIABLE);

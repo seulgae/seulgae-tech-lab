@@ -21,6 +21,8 @@ export function createRoomAssets(scene: Phaser.Scene) {
   devFurniture(scene)
   meetingFurniture(scene)
   serverFurniture(scene)
+  controlFurniture(scene)
+  outdoorScenery(scene)
   effects(scene)
 }
 
@@ -49,6 +51,26 @@ function floor(scene: Phaser.Scene, roomId: RoomId) {
         else {
           p(line, x, 0, 16, 16); p(fill, x + 1, 1, 14, 14)
           for (let i = 0; i < 16; i += 4) { p(f.accentDetail, x + i, 7, 2, 2); p(f.accentDetail, x + 7, i, 2, 2) }
+        }
+      } else if (roomId === 'control-room') {
+        // 정전기 방지 고무 타일: 원형 돌기와 앰버 안전선
+        if (frame < 2) {
+          p(line, x + 15, 0, 1, 16); p(line, x, 15, 16, 1)
+          for (let yy = 3; yy < 15; yy += 5) for (let xx = 3; xx < 15; xx += 5) p(frame ? '#252e36' : '#222a31', x + xx, yy, 2, 2)
+        } else {
+          p(line, x, 0, 16, 16); p(fill, x, 3, 16, 10)
+          for (let i = 0; i < 16; i += 6) p(f.accentDetail, x + i, 6, 3, 4)
+        }
+      } else if (roomId === 'outdoor') {
+        if (frame < 2) {
+          // 풀잎과 작은 꽃
+          p(line, x + 2, 3, 1, 2); p(line, x + 9, 1, 1, 3); p(line, x + 13, 9, 1, 2); p(line, x + 5, 11, 1, 3)
+          p('#8fca70', x + 7, 6, 1, 2); p('#8fca70', x + 11, 13, 1, 2)
+          if (frame === 1) { p('#fff6c9', x + 4, 7, 2, 2); p('#f2d04a', x + 4, 7, 1, 1); p('#f6a5c0', x + 12, 3, 2, 2) }
+        } else {
+          // 흙길: 자갈과 바퀴 자국
+          p(line, x, 0, 16, 1); p(line, x + 3, 5, 3, 1); p(line, x + 10, 10, 4, 1)
+          p(f.accentDetail, x + 6, 2, 2, 2); p(f.accentDetail, x + 12, 6, 1, 1); p(f.accentDetail, x + 2, 12, 2, 1)
         }
       } else if (roomId === 'server-room') {
         // 이중 바닥 패널: 테두리와 모서리 볼트
@@ -83,6 +105,10 @@ function wall(scene: Phaser.Scene, roomId: RoomId) {
     } else if (roomId === 'development-lab') {
       p(w.upperLight, 0, 10, 16, 1); p(w.detail, 3, 14, 1, 1); p(w.detail, 11, 7, 1, 1)
       p('#7ff5d2', 0, 22, 16, 1)
+    } else if (roomId === 'control-room') {
+      // 흡음 패널과 초록 상태 표시줄
+      p(w.upperLight, 0, 6, 16, 1); p(w.upperLight, 0, 14, 16, 1); p(w.lowerDark, 7, 0, 1, 21)
+      p(w.detail, 0, 22, 16, 1); p(w.trim, 2, 26, 3, 2)
     } else if (roomId === 'server-room') {
       // 하단 경고 줄무늬
       for (let i = 0; i < 16; i += 4) { p(w.trim, i, 24, 2, 6) }
@@ -105,7 +131,7 @@ function door(scene: Phaser.Scene, roomId: RoomId) {
   texture(scene, `door-panel-${roomId}`, 18, 34, p => {
     p(d.panel, 0, 0, 18, 34); p(d.panelLight, 1, 1, 16, 2); p(d.panelLight, 1, 1, 2, 32)
     p(ink, 17, 0, 1, 34)
-    if (roomId === 'development-lab' || roomId === 'server-room') { p('#a9d8ff', 4, 5, 10, 12); p('#d9f0ff', 5, 6, 3, 10) }
+    if (roomId === 'development-lab' || roomId === 'server-room' || roomId === 'control-room') { p('#a9d8ff', 4, 5, 10, 12); p('#d9f0ff', 5, 6, 3, 10) }
     else { p(d.panelLight, 4, 6, 10, 9); p(d.panel, 5, 7, 8, 7); p(d.panelLight, 4, 19, 10, 10); p(d.panel, 5, 20, 8, 8) }
     p(d.handle, 14, 17, 2, 4)
   })
@@ -281,6 +307,69 @@ function serverFurniture(scene: Phaser.Scene) {
   texture(scene, 'server-sign', 40, 10, p => {
     p('#0d1116', 0, 0, 40, 10); p('#e2b33c', 1, 1, 38, 1); p('#e2b33c', 1, 8, 38, 1)
   })
+}
+
+/**
+ * 관제실 화면 영역(텍스처 좌표). 모니터 월(280×64)을 2배로 그리므로 월드 좌표는
+ * x = 120 + tx·2, y = 40 + ty·2 (공유 맵의 모니터 월: 중심 400, 바닥 168)이다. RoomFx가 이 위에 실시간 화면을 그린다.
+ */
+export const MONITOR_SCREENS = [0, 1, 2, 3, 4, 5].map(index => ({ x: 4 + (index % 3) * 93, y: 5 + Math.floor(index / 3) * 30, width: 86, height: 26 }))
+
+function controlFurniture(scene: Phaser.Scene) {
+  texture(scene, 'monitor-wall', 280, 64, p => {
+    p('#05070a', 0, 0, 280, 64); p('#1b232b', 1, 1, 278, 62); p('#2a343e', 1, 1, 278, 1)
+    for (const s of MONITOR_SCREENS) {
+      p('#05070a', s.x - 1, s.y - 1, s.width + 2, s.height + 2)
+      p('#0b1a12', s.x, s.y, s.width, s.height)
+      p('#ff4d4d', s.x + s.width - 4, s.y + 2, 2, 2)
+    }
+    // 아래 받침과 케이블 덕트
+    p('#11171d', 0, 60, 280, 4); p('#ffb547', 6, 61, 12, 1); p('#4ade80', 262, 61, 12, 1)
+  })
+  texture(scene, 'control-console', 120, 44, p => {
+    p('#05070a', 2, 40, 116, 4); p(ink, 0, 10, 120, 30)
+    p('#2a343e', 2, 12, 116, 6); p('#1b232b', 2, 18, 116, 20)
+    // 작은 모니터 세 대와 키보드, 버튼
+    for (const x of [14, 50, 86]) { p('#05070a', x, 0, 20, 13); p('#13261b', x + 1, 1, 18, 10); p('#4ade80', x + 3, 4, 8, 1); p('#ffb547', x + 3, 7, 12, 1); p('#2a343e', x + 8, 13, 4, 2) }
+    for (const x of [10, 46, 82]) { p('#3b4752', x, 20, 26, 6); for (let i = 0; i < 6; i++) p('#56636f', x + 2 + i * 4, 21, 3, 2) }
+    for (let i = 0; i < 8; i++) p(i % 3 ? '#4ade80' : '#ffb547', 12 + i * 13, 30, 3, 3)
+    p('#ffb547', 2, 12, 116, 1)
+  })
+  texture(scene, 'operator-chair', 20, 28, p => {
+    p('#05070a', 4, 25, 12, 3); p('#2a343e', 9, 18, 2, 7)
+    p(ink, 2, 2, 16, 18); p('#3b4752', 3, 3, 14, 16); p('#ffb547', 3, 3, 14, 1); p('#56636f', 5, 6, 10, 9)
+  })
+  texture(scene, 'control-rack', 32, 64, p => {
+    p('#05070a', 2, 60, 29, 3); p(ink, 1, 0, 30, 60); p('#1b232b', 3, 2, 26, 56)
+    for (let row = 0; row < 7; row++) {
+      p('#2a343e', 5, 5 + row * 8, 22, 6)
+      p(row % 2 ? '#4ade80' : '#ffb547', 7, 7 + row * 8, 2, 2); p('#4ade80', 11, 7 + row * 8, 2, 2)
+    }
+  })
+}
+
+/** 바깥 초원의 나무(그루터기 중심이 충돌 영역)와 바위 */
+function outdoorScenery(scene: Phaser.Scene) {
+  texture(scene, 'oak-tree', 48, 64, p => {
+    // 수관: 짙은 테두리 → 중간 → 밝은 잎
+    p('#1f4a22', 6, 4, 36, 40); p('#1f4a22', 2, 12, 44, 24); p('#1f4a22', 12, 0, 24, 48)
+    p('#2f6b30', 8, 6, 32, 36); p('#2f6b30', 4, 14, 40, 20)
+    p('#3f8a3c', 10, 8, 22, 18); p('#3f8a3c', 26, 20, 14, 12)
+    p('#5aa84f', 14, 10, 10, 6); p('#5aa84f', 30, 22, 6, 4); p('#5aa84f', 8, 18, 6, 4)
+    // 줄기와 뿌리
+    p('#3b2418', 20, 42, 8, 18); p('#5a3a2a', 22, 42, 3, 18); p('#3b2418', 16, 58, 16, 4)
+  })
+  texture(scene, 'field-rock', 18, 12, p => {
+    p('#4b5560', 1, 3, 16, 9); p('#4b5560', 3, 1, 12, 11)
+    p('#6c7784', 3, 2, 10, 6); p('#8f9aa6', 5, 3, 4, 2); p('#3a424b', 2, 10, 14, 2)
+  })
+  // 낚시 찌·물고기·느낌표 아이콘(미니게임)과 반딧불이
+  texture(scene, 'bobber', 6, 8, p => { p('#f2f2f2', 1, 0, 4, 4); p('#e23d3d', 1, 4, 4, 3); p('#3b2418', 2, 7, 2, 1) })
+  texture(scene, 'fish', 14, 8, p => {
+    p('#ffffff', 2, 2, 9, 4); p('#ffffff', 4, 1, 5, 6); p('#ffffff', 11, 1, 3, 2); p('#ffffff', 11, 5, 3, 2); p('#ffffff', 11, 3, 2, 2)
+    p('#1b1b1b', 4, 3, 1, 1)
+  })
+  texture(scene, 'exclaim', 6, 12, p => { p('#ffd23f', 2, 0, 3, 8); p('#ffd23f', 2, 9, 3, 3); p('#3b2418', 1, 0, 1, 8) })
 }
 
 function effects(scene: Phaser.Scene) {

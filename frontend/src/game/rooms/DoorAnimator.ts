@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import { ROOMS } from '../maps/rooms'
+import { ROOMS, doorLabel } from '../maps/rooms'
 import type { RoomId } from '../maps/rooms'
 import { ROOM_THEMES } from './roomThemes'
 import { crispText } from '../render/renderScale'
@@ -39,7 +39,7 @@ export default class DoorAnimator {
         .setAlpha(0).setBlendMode(Phaser.BlendModes.ADD).setDepth(depth + 3)
       const left = scene.add.image(door.x - 36, door.y, `door-panel-${roomId}`).setOrigin(0, 1).setScale(2).setDepth(depth + 1)
       const right = scene.add.image(door.x + 36, door.y, `door-panel-${roomId}`).setOrigin(1, 1).setScale(2).setFlipX(true).setDepth(depth + 1)
-      crispText(scene, door.x, door.y + 16, ROOMS[target].name, {
+      crispText(scene, door.x, door.y + 16, doorLabel(door), {
         fontSize: '12px', fontStyle: 'bold', color: '#fff7e6', backgroundColor: '#000000aa', padding: { x: 6, y: 2 },
       }).setOrigin(0.5).setDepth(depth + 4)
       this.doors.set(door.id, { left, right, light, glow })

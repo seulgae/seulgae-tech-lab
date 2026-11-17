@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.function.LongSupplier;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -263,6 +264,19 @@ public class LobbyRoom {
         var ids = new LinkedHashSet<String>();
         for (var m : members.values()) if (m.roomId.equals(roomId) && world.near(roomId, kind, m.x, m.y)) ids.add(m.id);
         return ids;
+    }
+
+    /** 관제실 CCTV 상호작용(kind=cctv)이 있는 방이면 모든 방의 참가자를 볼 수 있다. */
+    public boolean monitorsAllRooms(String roomId) {
+        return world.interactions(roomId).stream().anyMatch(interaction -> "cctv".equals(interaction.kind()));
+    }
+
+    /** @return 맵 정의 순서의 방별 접속자 상태(빈 방 포함). 관제실 CCTV 화면에 쓴다. */
+    public synchronized Map<String, List<PlayerView>> snapshotsByRoom() {
+        var rooms = new LinkedHashMap<String, List<PlayerView>>();
+        for (var roomId : world.roomIds()) rooms.put(roomId, new ArrayList<>());
+        for (var m : members.values()) rooms.computeIfAbsent(m.roomId, ignored -> new ArrayList<>()).add(m.view());
+        return rooms;
     }
 
     /** @return 공유 맵의 모든 방을 포함한 방별 접속자 수, 맵 정의 순서 */

@@ -40,7 +40,8 @@ class SeatTest {
     }
 
     @Test void everyRoomExposesItsChairsAsSeats() {
-        assertEquals(List.of("lobby-chair-0", "lobby-chair-1"), world.seats("lobby").stream().map(LobbyWorld.Seat::id).toList());
+        assertTrue(world.seats("lobby").isEmpty(), "로비 의자는 모두 치웠다");
+        assertEquals(List.of("control-room-chair-0", "control-room-chair-1"), world.seats("control-room").stream().map(LobbyWorld.Seat::id).toList());
         assertEquals(3, world.seats("meeting-room").size());
         assertEquals(2, world.seats("development-lab").size());
         assertTrue(world.seats("server-room").isEmpty());
@@ -49,24 +50,29 @@ class SeatTest {
     @Test void sitsOnlyNearAFreeChairAndStandsWhenMoving() {
         var a = room.join("앉는사람");
         var b = room.join("다른사람");
-        // 로비 의자 0: (620, 418) 28x24. 의자 아래쪽에 서면 가깝다.
-        assertFalse(room.sit(a.id(), "lobby-chair-0"), "멀리서는 앉을 수 없다");
-        walk(a.id(), 620, 460);
+        // 관제실 의자 0: (340, 358) 28x24. 로비 오른쪽 위 문으로 들어가 의자 아래쪽에 서면 가깝다.
+        for (var id : List.of(a.id(), b.id())) {
+            walk(id, 730, 260);
+            room.changeRoom(id, "lobby-to-control", clock.get());
+            sequence = 0;
+        }
+        assertFalse(room.sit(a.id(), "control-room-chair-0"), "멀리서는 앉을 수 없다");
+        walk(a.id(), 340, 395);
         stop(a.id());
-        assertTrue(room.sit(a.id(), "lobby-chair-0"));
-        assertEquals("lobby-chair-0", room.player(a.id()).seat());
+        assertTrue(room.sit(a.id(), "control-room-chair-0"));
+        assertEquals("control-room-chair-0", room.player(a.id()).seat());
         assertFalse(room.sit(a.id(), "meeting-room-chair-0"), "다른 방 의자는 안 된다");
 
-        walk(b.id(), 600, 470);
+        walk(b.id(), 350, 395);
         stop(b.id());
-        assertEquals("lobby-chair-0", room.player(a.id()).seat(), "다른 사람이 걸어도 앉은 사람은 그대로다");
-        assertFalse(room.sit(b.id(), "lobby-chair-0"), "이미 앉은 자리는 안 된다");
+        assertEquals("control-room-chair-0", room.player(a.id()).seat(), "다른 사람이 걸어도 앉은 사람은 그대로다");
+        assertFalse(room.sit(b.id(), "control-room-chair-0"), "이미 앉은 자리는 안 된다");
 
         long now = clock.addAndGet(50_000_000L);
         assertTrue(room.input(a.id(), 0, 1, ++sequence, now));
         room.step(.05, now);
         assertNull(room.player(a.id()).seat(), "움직이면 일어난다");
-        assertTrue(room.sit(b.id(), "lobby-chair-0"));
+        assertTrue(room.sit(b.id(), "control-room-chair-0"));
         assertTrue(room.sit(b.id(), null));
         assertNull(room.player(b.id()).seat());
     }

@@ -3,7 +3,7 @@ import { isNearObject } from '../interaction.ts'
 export type RoomId = keyof typeof layout.rooms
 /** 공유 맵에 정의한 상호작용과, 가구에서 만든 의자(seat)·식물(plant) 상호작용 */
 export type InteractionKind = 'research' | 'build-info' | 'server-status' | 'table-talk' | 'agenda' | 'seat' | 'plant'
-  | 'coffee' | 'cake' | 'bookshelf'
+  | 'coffee' | 'cake' | 'bookshelf' | 'cctv' | 'fishing'
 export type RoomInteraction = { id: string; kind: InteractionKind; label: string; x: number; y: number; width: number; height: number; range: number }
 /** 의자: 서버 LobbyWorld.Seat와 같은 id(방-chair-순번)와 충돌 영역, 그림 기준선(bottom) */
 export type Seat = RoomInteraction & { kind: 'seat'; bottom: number }
@@ -13,6 +13,14 @@ const PLANT_RANGE = 40
 export const isRoomId = (id: unknown): id is RoomId => typeof id === 'string' && Object.hasOwn(ROOMS, id)
 export function roomObjects(id: RoomId) { return id === 'lobby' ? layout.objects : layout.rooms[id].objects }
 export function roomObstacles(id: RoomId) { return [...layout.walls, ...roomObjects(id).map(object => object.body)] }
+/** 문 이름표: 공유 맵에 label이 있으면(예: 나가기) 그것, 없으면 목적지 방 이름 */
+export function doorLabel(door: { target: string; label?: string }) {
+  return door.label ?? ROOMS[door.target as RoomId].name
+}
+/** 문 앞 안내 문구: 이름표가 따로 있으면 그대로, 아니면 "방 이름 입장" */
+export function doorHint(door: { target: string; label?: string }) {
+  return door.label ? `E · ${door.label}` : `E · ${ROOMS[door.target as RoomId].name} 입장`
+}
 export function roomInteractions(id: RoomId) { return (ROOMS[id].interactions ?? []) as RoomInteraction[] }
 
 /** 방의 의자. 서버와 같은 순서(가구 목록에서 chair만)로 id를 붙인다. */
