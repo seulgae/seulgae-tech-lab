@@ -1,0 +1,13 @@
+.research-panel.guestbook-panel { width: min(520px, calc(100vw - 32px)); }
+.guestbook-help { margin: 6px 0 0; font-size: 12px; color: #b9c6bd; }
+.guestbook-message { margin: 10px 0; padding: 6px 10px; border: 1px dashed #d8bd87; font-size: 13px; color: #f1e2bf; }
+.guestbook-form { display: grid; gap: 8px; margin: 12px 0; }
+.guestbook-form label { display: grid; gap: 4px; font-size: 13px; color: #d8bd87; }
+.guestbook-form label small { justify-self: end; margin-top: -18px; font: 11px monospace; color: #9aa89d; }
+.guestbook-form input, .guestbook-form textarea { box-sizing: border-box; width: 100%; padding: 6px 8px; border: 1px solid #4d6b62; background: #102224; color: #f1f6f4; font: inherit; resize: vertical; }
+.guestbook-empty { font-size: 13px; color: #aab9a3; }
+.guestbook-list { display: grid; gap: 8px; margin: 8px 0 0; padding: 0; list-style: none; }
+.guestbook-list li { padding: 8px 10px; border-left: 3px solid #d8bd87; background: rgba(255, 255, 255, .04); }
+.guestbook-list strong { font-size: 14px; color: #ffe7a8; }
+.guestbook-list p { margin: 4px 0; font-size: 13px; color: #e4e5cd; line-height: 1.5; overflow-wrap: anywhere; }
+.guestbook-list small { font-size: 11px; color: #9aa89d; }

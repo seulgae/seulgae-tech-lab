@@ -14,7 +14,7 @@ test('데스크 앞에서는 커피·케이크, 책장 앞에서는 책장, 키�
   assert.equal(nearestInteraction('lobby', 355, 240)?.kind, 'cake')
   assert.equal(nearestInteraction('lobby', 112, 245)?.kind, 'bookshelf')
   assert.equal(nearestInteraction('lobby', 688, 230)?.id, 'lobby-bookshelf-1')
-  assert.equal(nearestInteraction('lobby', 620, 400)?.kind, 'research')
+  assert.equal(nearestInteraction('lobby', 620, 400)?.kind, 'guestbook')
   assert.equal(nearestInteraction('lobby', 66, 150)?.kind, 'plant', '책장 위쪽 화분 옆에서는 화분이 대상이다')
 })
 

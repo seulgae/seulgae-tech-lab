@@ -17,6 +17,10 @@ import kr.seulgae.techlab.common.write.Ownership;
 import kr.seulgae.techlab.common.write.WriteRateLimiter;
 import kr.seulgae.techlab.lab.status.LabStatusController;
 import kr.seulgae.techlab.inventory.InMemoryInventoryStore;
+import kr.seulgae.techlab.lobby.guestbook.GuestbookController;
+import kr.seulgae.techlab.lobby.guestbook.GuestbookService;
+import kr.seulgae.techlab.lobby.guestbook.GuestbookStore;
+import kr.seulgae.techlab.lobby.guestbook.InMemoryGuestbookStore;
 import kr.seulgae.techlab.inventory.InventoryController;
 import kr.seulgae.techlab.inventory.InventoryService;
 import kr.seulgae.techlab.inventory.InventoryStore;
@@ -61,7 +65,7 @@ import org.springframework.context.annotation.Import;
     ResearchController.class, ResearchService.class, ApiExceptionHandler.class, LabStatusController.class,
     ResearchIdeaController.class, ResearchIdeaService.class, MeetingAgendaController.class, MeetingAgendaService.class, WriteRateLimiter.class,
     AuthSettings.class, AuthService.class, AuthController.class, KakaoClient.class, WorkItemController.class, WorkItemService.class,
-    InventoryController.class, InventoryService.class})
+    InventoryController.class, InventoryService.class, GuestbookController.class, GuestbookService.class})
 public class LocalLobbyTestApplication {
     public static final UUID RECORD_ID = UUID.fromString("00000000-0000-4000-8000-000000000001");
     private static final OffsetDateTime CREATED_AT = OffsetDateTime.parse("2026-11-15T12:00:00+09:00");
@@ -76,6 +80,10 @@ public class LocalLobbyTestApplication {
     /** 인벤토리(DB 없는 로컬 실행) */
     @Bean
     InventoryStore fixtureInventoryStore() { return new InMemoryInventoryStore(); }
+
+    /** 로비 방명록(DB 없는 로컬 실행) */
+    @Bean
+    GuestbookStore fixtureGuestbookStore() { return new InMemoryGuestbookStore(); }
 
     @Bean
     ResearchRepository fixtureResearchRepository() {

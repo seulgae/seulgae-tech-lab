@@ -119,9 +119,9 @@
       "name": "중앙 로비",
       "interactions": [
         {
-          "id": "lobby-research",
-          "kind": "research",
-          "label": "연구 기록",
+          "id": "lobby-guestbook",
+          "kind": "guestbook",
+          "label": "방명록",
           "x": 620,
           "y": 330,
           "width": 112,
@@ -171,24 +171,24 @@
       "name": "개발 연구실",
       "interactions": [
         {
-          "id": "development-build-left",
-          "kind": "build-info",
-          "label": "빌드 정보",
-          "x": 230,
-          "y": 214,
-          "width": 112,
+          "id": "development-supercomputer",
+          "kind": "research",
+          "label": "연구 기록",
+          "x": 400,
+          "y": 232,
+          "width": 240,
           "height": 72,
           "range": 56
         },
         {
-          "id": "development-build-right",
+          "id": "development-build",
           "kind": "build-info",
           "label": "빌드 정보",
-          "x": 570,
-          "y": 214,
-          "width": 112,
-          "height": 72,
-          "range": 56
+          "x": 400,
+          "y": 392,
+          "width": 96,
+          "height": 56,
+          "range": 28
         }
       ],
       "spawn": {
@@ -229,33 +229,22 @@
       ],
       "objects": [
         {
-          "texture": "computer",
-          "x": 230,
-          "bottom": 250,
+          "texture": "supercomputer",
+          "x": 400,
+          "bottom": 268,
           "body": {
-            "x": 230,
-            "y": 214,
-            "width": 112,
-            "height": 72
-          }
-        },
-        {
-          "texture": "computer",
-          "x": 570,
-          "bottom": 250,
-          "body": {
-            "x": 570,
-            "y": 214,
-            "width": 112,
+            "x": 400,
+            "y": 232,
+            "width": 240,
             "height": 72
           }
         },
         {
           "texture": "chair",
-          "x": 230,
+          "x": 320,
           "bottom": 315,
           "body": {
-            "x": 230,
+            "x": 320,
             "y": 303,
             "width": 28,
             "height": 24
@@ -263,10 +252,10 @@
         },
         {
           "texture": "chair",
-          "x": 570,
+          "x": 480,
           "bottom": 315,
           "body": {
-            "x": 570,
+            "x": 480,
             "y": 303,
             "width": 28,
             "height": 24
