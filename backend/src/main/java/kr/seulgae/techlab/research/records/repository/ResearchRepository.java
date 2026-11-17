@@ -40,11 +40,11 @@ public class ResearchRepository {
      */
     public List<ResearchSummary> list(int limit, int offset) {
         return jdbc.sql("""
-            SELECT id, title, summary, created_at FROM lab.research_records
+            SELECT id, title, summary, created_at, done FROM lab.research_records
             ORDER BY created_at DESC, id DESC LIMIT :limit OFFSET :offset
             """).param("limit", limit).param("offset", offset)
             .query((rs, row) -> new ResearchSummary(rs.getObject("id", UUID.class), rs.getString("title"),
-                rs.getString("summary"), rs.getObject("created_at", OffsetDateTime.class))).list();
+                rs.getString("summary"), rs.getObject("created_at", OffsetDateTime.class), rs.getBoolean("done"))).list();
     }
 
     /**
@@ -110,6 +110,11 @@ public class ResearchRepository {
             UPDATE lab.research_records SET title = :title, summary = :content, content = :content, updated_at = CURRENT_TIMESTAMP
             WHERE id = :id RETURNING id, title, summary, content, created_at
             """).param("id", id).param("title", title).param("content", content).query((rs, row) -> map(rs)).single();
+    }
+
+    /** 완료 표시를 바꾼다. 내용·수정 시각은 건드리지 않는다. @return 바꾼 행 수(없는 기록이면 0) */
+    public int setDone(UUID id, boolean done) {
+        return jdbc.sql("UPDATE lab.research_records SET done = :done WHERE id = :id").param("id", id).param("done", done).update();
     }
 
     /** @return 삭제한 행 수 */

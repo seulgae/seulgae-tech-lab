@@ -47,6 +47,10 @@ async function request<T>(path: string, init: RequestInit & { token?: string } =
   return response.json() as Promise<T>
 }
 
+/** 아이디어 일지 완료 표시를 바꾼다. 로그인·수정 키 없이 누구나 할 수 있다. */
+export const setIdeaDone = (id: string, done: boolean) =>
+  request<{ id: string; done: boolean }>(`/api/research-records/${encodeURIComponent(id)}/done`, { method: 'PUT', body: JSON.stringify({ done }) })
+
 export const fetchAgendas = (signal?: AbortSignal, limit = 20, offset = 0) => request<AgendaPage>(`/api/meeting-agendas?limit=${limit}&offset=${offset}`, { signal })
 
 export async function createAgenda(title: string, content: string) {

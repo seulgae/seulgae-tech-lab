@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { fetchResearchPage, fetchResearchRecord } from '../api/researchApi'
 import type { ResearchPage, ResearchRecord } from '../model/researchTypes'
 import EntryForm from '../../boards/EntryForm'
-import { BoardError, IDEA_CONTENT_MAX, IDEA_TITLE_MAX, createIdea, deleteIdea, ideaTitle, nextIdeaNumber, updateIdea } from '../../boards/boardsApi'
+import { BoardError, IDEA_CONTENT_MAX, IDEA_TITLE_MAX, createIdea, deleteIdea, ideaTitle, nextIdeaNumber, setIdeaDone, updateIdea } from '../../boards/boardsApi'
 import { LOGIN_URL, authStore, canWrite, isMine, useAuth } from '../../auth/authStore'
 import './ResearchPanel.css'
 
@@ -86,6 +86,18 @@ export default function ResearchPanel({ onClose }: ResearchPanelProps) {
     catch (cause) { setActionError(cause instanceof BoardError ? cause.message : '삭제하지 못했어요.') }
   }
 
+  /** 체크하면 바로 줄을 긋고(낙관적 갱신), 서버가 거부하면 되돌린다. */
+  const toggleDone = async (id: string, done: boolean) => {
+    const apply = (value: boolean) => setPage(current => ({ ...current, items: current.items.map(item => item.id === id ? { ...item, done: value } : item) }))
+    setActionError(null)
+    apply(done)
+    try { await setIdeaDone(id, done) }
+    catch (cause) {
+      apply(!done)
+      setActionError(cause instanceof BoardError && cause.status === 429 ? cause.message : '완료 표시를 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.')
+    }
+  }
+
   const mine = (id: string) => isMine(auth, 'record', id)
   return (
     <dialog
@@ -150,9 +162,12 @@ export default function ResearchPanel({ onClose }: ResearchPanelProps) {
           {error && <p role="alert">연구 기록을 불러오지 못했습니다. <button type="button" onClick={retryLoad}>다시 시도</button></p>}
           {!loading && !error && page.items.length === 0 && <p>아직 등록된 연구 기록이 없습니다.</p>}
           {!loading && !error && page.items.map((record) => (
-            <article className="research-entry" key={record.id}>
+            <article className={`research-entry${record.done ? ' research-done' : ''}`} key={record.id}>
               <span className="research-status">{new Date(record.createdAt).toLocaleString('ko-KR')}</span>
-              <h3><button type="button" className="research-title" onClick={() => openRecord(record.id)}>{record.title}</button>
+              <h3><input type="checkbox" className="research-check" checked={record.done === true}
+                  aria-label={`${record.title} 완료 표시`} title="완료 표시(누구나 바꿀 수 있어요)"
+                  onChange={event => void toggleDone(record.id, event.target.checked)} />
+                <button type="button" className="research-title" onClick={() => openRecord(record.id)}>{record.title}</button>
                 {mine(record.id) && <span className="board-mine">내 일지</span>}</h3>
             </article>
           ))}
