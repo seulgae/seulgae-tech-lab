@@ -37,6 +37,8 @@ const PANEL_SOUNDS: Partial<Record<string, EffectKey>> = {
  * @version 1.2, 방별 테마·문 열림 연출·방 이벤트 연결
  * @see "None"
  */
+/** 서버가 앉음을 확인해 줄 때까지 기다리는 시간(ms). 운영 왕복(약 1초)과 대기 중인 걸음 처리를 넉넉히 덮는다. */
+const SEAT_CONFIRM_MS = 3000
 /** 상호작용·출입구 안내 문구가 보이는 시간(ms). 그 뒤에는 테두리 강조만 남는다. */
 const HINT_VISIBLE_MS = 2000
 
@@ -288,10 +290,10 @@ export default class LabLobbyScene extends Phaser.Scene {
     if (this.activeRoom === 'meeting-room') { this.seatTalk = true; this.setTableTalk(true, true) }
   }
 
-  /** 서버가 1.5초 안에 앉음을 확인하지 않으면(멀거나 빈자리 아님) 일어난다. 일어나면 자동 테이블 대화도 끈다. */
+  /** 서버가 3초(SEAT_CONFIRM_MS) 안에 앉음을 확인하지 않으면(멀거나 빈자리 아님) 일어난다. 일어나면 자동 테이블 대화도 끈다. */
   private syncSeat() {
     const seat = this.player?.seat
-    if (seat && this.time.now - this.sitRequestedAt > 1500 && this.client.selfSeat() !== seat.id) this.player!.sit(undefined)
+    if (seat && this.time.now - this.sitRequestedAt > SEAT_CONFIRM_MS && this.client.selfSeat() !== seat.id) this.player!.sit(undefined)
     if (this.seatTalk && !this.player?.seat) { this.seatTalk = false; this.setTableTalk(false, true) }
   }
 }

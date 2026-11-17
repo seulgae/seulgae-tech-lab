@@ -85,8 +85,8 @@ class RoomInteractionTest {
         enterMeetingRoom(far.id());
         assertEquals("not_at_table", assertThrows(LobbyChat.Rejected.class, () -> chat.post(near.id(), "안녕", clock.get(), true)).getMessage());
 
-        walk(near.id(), 350, 460);
-        walk(near.id(), 350, 340);
+        // 세로 테이블 아래 끝(y 400) 바로 앞
+        walk(near.id(), 400, 420);
         assertTrue(room.near(near.id(), LobbyChat.TABLE_KIND));
         clock.addAndGet(2_000_000_000L);
         var message = chat.post(near.id(), "테이블에서만", clock.get(), true);

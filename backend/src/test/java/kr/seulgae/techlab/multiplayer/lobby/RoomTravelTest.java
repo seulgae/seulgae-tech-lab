@@ -51,7 +51,7 @@ class RoomTravelTest {
                 assertEquals(epoch + 1, room.epoch(p.id()));
                 assertEquals(-1, room.player(p.id()).ack());
                 assertFalse(room.player(p.id()).moving());
-                assertEquals(460, room.player(p.id()).y());
+                assertEquals(world.roomSpawn(targets[i]).y(), room.player(p.id()).y());
                 assertThrows(IllegalArgumentException.class, () -> room.changeRoom(p.id(), "lobby-to-development", clock.get()));
                 walk(p.id(), 400, 530);
                 clock.addAndGet(1_100_000_000L);

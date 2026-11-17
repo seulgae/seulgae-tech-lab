@@ -47,6 +47,10 @@ public class LobbyRoom {
         String id, nickname, facing = "down";
         String roomId = "lobby";
         String seat;
+        /** 앉기 요청 시점까지 받은 이동 번호. 이 번호 이하의 이동(앉기 전에 보낸 걸음)은 자리에서 일으키지 않는다. */
+        long seatAfter = -1;
+        /** 앉기 전에 보낸 걸음이 아직 처리 중이면, 그 걸음을 마친 뒤 앉을 의자 */
+        String seatRequest;
         long roomEpoch, movedAt;
         double x, y;
         int inputX, inputY;
@@ -172,8 +176,8 @@ public class LobbyRoom {
         member.budgetAt = now;
         while (!member.pending.isEmpty() && member.pending.peekFirst().ms() <= member.timeBudget + 0.001) {
             var command = member.pending.removeFirst();
-            // 실제로 움직이는 명령이 처리되면 자리에서 일어난다.
-            if (command.x() != 0 || command.y() != 0) member.seat = null;
+            // 앉은 뒤에 보낸 이동 명령이 처리되면 자리에서 일어난다(앉기 전에 보낸 걸음은 제외).
+            if ((command.x() != 0 || command.y() != 0) && command.seq() > member.seatAfter) { member.seat = null; member.seatRequest = null; }
             member.timeBudget = Math.max(0, member.timeBudget - command.ms());
             member.pendingMs = Math.max(0, member.pendingMs - command.ms());
             double length = Math.hypot(command.x(), command.y());
@@ -185,6 +189,17 @@ public class LobbyRoom {
             if (command.y() != 0) member.facing = command.y() < 0 ? "up" : "down";
             else if (command.x() != 0) member.facing = command.x() < 0 ? "left" : "right";
         }
+        applySeatRequest(member);
+    }
+
+    /** 앉기 전에 보낸 걸음을 모두 처리했으면 그 위치에서 앉기를 확정한다(멀거나 자리가 찼으면 취소). */
+    private void applySeatRequest(Member m) {
+        if (m.seatRequest == null || m.pending.stream().anyMatch(command -> command.seq() <= m.seatAfter)) return;
+        String seatId = m.seatRequest;
+        m.seatRequest = null;
+        if (!world.nearSeat(m.roomId, seatId, m.x, m.y)) return;
+        for (var other : members.values()) if (other != m && other.roomId.equals(m.roomId) && seatId.equals(other.seat)) return;
+        m.seat = seatId; m.moving = false;
     }
 
     /**
@@ -231,7 +246,7 @@ public class LobbyRoom {
         if (m == null || m.movedAt != 0 && now - m.movedAt < 1_000_000_000L) throw new IllegalArgumentException("Room transition cooldown");
         String target = world.destination(m.roomId, doorId, m.x, m.y);
         var spawn = world.roomSpawn(target);
-        m.roomId = target; m.roomEpoch++; m.movedAt = now; m.seat = null;
+        m.roomId = target; m.roomEpoch++; m.movedAt = now; m.seat = null; m.seatRequest = null;
         m.x = spawn.x(); m.y = spawn.y(); m.facing = "down"; m.moving = false;
         m.inputX = 0; m.inputY = 0; m.sequence = -1; m.receivedSequence = -1;
         m.pending.clear(); m.pendingMs = 0; m.timeBudget = 250; m.budgetAt = now;
@@ -240,13 +255,16 @@ public class LobbyRoom {
 
     /**
      * 의자에 앉거나(seatId) 일어난다(null). 서버 좌표가 의자 근처이고 다른 사람이 앉아 있지 않을 때만 앉는다.
-     * 위치는 바꾸지 않으며, 다음 이동 명령이 처리되면 자동으로 일어난다.
+     * 위치는 바꾸지 않으며, 앉은 뒤에 보낸 이동 명령이 처리되면 자동으로 일어난다.
      * @return 상태를 바꿨으면 true
      */
     public synchronized boolean sit(String id, String seatId) {
         var m = members.get(id);
         if (m == null) return false;
-        if (seatId == null) { boolean changed = m.seat != null; m.seat = null; return changed; }
+        if (seatId == null) { boolean changed = m.seat != null || m.seatRequest != null; m.seat = null; m.seatRequest = null; return changed; }
+        m.seatAfter = m.receivedSequence;
+        // 운영 지연(약 1초)으로 앉기 직전 걸음이 아직 서버에 남아 있으면, 그 걸음을 마친 위치에서 앉는다.
+        if (m.commandMode && m.pending.stream().anyMatch(command -> command.seq() <= m.seatAfter)) { m.seatRequest = seatId; return true; }
         if (!world.nearSeat(m.roomId, seatId, m.x, m.y)) return false;
         for (var other : members.values()) if (other != m && other.roomId.equals(m.roomId) && seatId.equals(other.seat)) return false;
         m.seat = seatId; m.moving = false;

@@ -236,7 +236,7 @@ test('모든 방에 스폰과 겹치지 않는 상호작용이 있고 위치별�
   assert.equal(nearestInteraction('lobby', 620, 400)?.kind, 'research')
   assert.equal(nearestInteraction('server-room', 220, 290)?.kind, 'server-status')
   assert.equal(nearestInteraction('development-lab', 620, 290)?.id, 'development-build-right')
-  assert.equal(nearestInteraction('meeting-room', 350, 340)?.kind, 'table-talk')
+  assert.equal(nearestInteraction('meeting-room', 400, 420)?.kind, 'table-talk')
   assert.equal(nearestInteraction('meeting-room', 400, 460), undefined)
   assert.equal(nearestInteraction('control-room', 400, 330)?.kind, 'cctv')
   assert.equal(nearestInteraction('outdoor', 612, 500)?.kind, 'fishing')
@@ -268,7 +268,7 @@ test('회의 테이블 E는 테이블 대화를 켜고 끄며 범위를 벗어�
   const { scene, uiEvents, key } = createScene('meeting-room')
   const states = []
   uiEvents.on(LAB_EVENTS.tableTalk, value => states.push(value))
-  scene.player.x = 350; scene.player.y = 340
+  scene.player.x = 400; scene.player.y = 420
   scene.update()
   assert.equal(scene.interactionHint.text, 'E · 테이블 대화 참여')
   key._justDown = true; scene.update()
@@ -322,12 +322,12 @@ test('방 이벤트가 E를 가로채면 패널을 열지 않고 안내 문구�
 
 test('테이블 대화 상태는 방 연출(회의 모드)에도 전달된다', () => {
   const { scene, key, state } = createScene('meeting-room')
-  scene.player.x = 350; scene.player.y = 340
+  scene.player.x = 400; scene.player.y = 420
   key._justDown = true; scene.update()
   assert.deepEqual(state.fx.calls.filter(call => call[0] === 'tableTalk'), [['tableTalk', true, false]], 'E로 켠 회의 모드는 배너로 알린다')
 })
 
-test('의자 E는 앉기를 요청하고 같은 의자 E는 일어나며, 서버가 확인하지 않으면 1.5초 뒤 일어난다', () => {
+test('의자 E는 앉기를 요청하고 같은 의자 E는 일어나며, 서버가 확인하지 않으면 3초 뒤 일어난다', () => {
   const { scene, key, state } = createScene('control-room')
   // 관제실 의자 0(340,358)은 콘솔 아래에 있다. 의자 뒤(아래)에서 다가간다. 로비에는 의자가 없다.
   scene.player.x = 340; scene.player.y = 395
@@ -344,11 +344,13 @@ test('의자 E는 앉기를 요청하고 같은 의자 E는 일어나며, 서버
 
   key._justDown = true; scene.update()
   state.serverSeat = null
-  scene.time.now = 1600; scene.update()
+  scene.time.now = 2900; scene.update()
+  assert.ok(scene.player.seat, '운영 지연(약 1초)을 고려해 3초까지는 서버 확인을 기다린다')
+  scene.time.now = 3100; scene.update()
   assert.equal(scene.player.seat, undefined, '서버가 거부하면 일어난다')
   key._justDown = true; scene.update()
   state.serverSeat = 'control-room-chair-0'
-  scene.time.now = 4000; scene.update()
+  scene.time.now = 7000; scene.update()
   assert.equal(scene.player.seat.id, 'control-room-chair-0', '서버가 확인하면 계속 앉아 있다')
 })
 
@@ -356,11 +358,11 @@ test('회의실 의자에 앉으면 테이블 대화가 켜지고 일어나면 �
   const { scene, uiEvents, key, state } = createScene('meeting-room')
   const talk = []
   uiEvents.on(LAB_EVENTS.tableTalk, value => talk.push(value))
-  scene.player.x = 400; scene.player.y = 385
+  scene.player.x = 322; scene.player.y = 375
   scene.update()
   assert.equal(scene.interactionHint.text, 'E', '의자 뒤에서는 테이블보다 의자가 가깝다')
   key._justDown = true; scene.update()
-  assert.deepEqual(state.sits, ['meeting-room-chair-1'])
+  assert.deepEqual(state.sits, ['meeting-room-chair-4'])
   assert.deepEqual(talk, [true])
   scene.update()
   assert.deepEqual(talk, [true], '의자에 앉아 있는 동안 유지한다')
@@ -382,7 +384,7 @@ test('식물과 회의 안건은 방 연출·안건 패널로 전달된다', () 
   const meeting = createScene('meeting-room')
   const opened = []
   meeting.uiEvents.on(LAB_EVENTS.openPanel, value => opened.push(value))
-  meeting.scene.player.x = 400; meeting.scene.player.y = 196
+  meeting.scene.player.x = 330; meeting.scene.player.y = 140
   meeting.scene.update()
   assert.equal(meeting.scene.interactionHint.text, 'E · 회의 안건')
   meeting.key._justDown = true; meeting.scene.update()
@@ -447,7 +449,7 @@ test('모든 안내 문구는 다가간 뒤 2초만 보이고, 문구가 바뀌�
 
 test('테이블 대화 안내는 2초 뒤 사라지고, E로 참여·나가기가 바뀌면 다시 2초 보인다', () => {
   const { scene, key } = createScene('meeting-room')
-  scene.player.x = 350; scene.player.y = 340
+  scene.player.x = 400; scene.player.y = 420
   scene.update()
   assert.equal(scene.interactionHint.text, 'E · 테이블 대화 참여')
   scene.time.now = 2000; scene.update()

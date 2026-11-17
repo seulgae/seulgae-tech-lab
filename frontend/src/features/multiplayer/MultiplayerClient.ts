@@ -1,5 +1,5 @@
 import type { RoomId } from '../../game/maps/rooms'
-import { INITIAL_CONNECTION, REPLACED_CLOSE_CODE, REPLACED_MESSAGE, closeCause, lobbySocketUrl, parseServerMessage, normalizeChat, validChatText } from './model/protocol.ts'
+import { INITIAL_CONNECTION, NICKNAME_CLOSE_CODE, REPLACED_CLOSE_CODE, validNickname, REPLACED_MESSAGE, closeCause, lobbySocketUrl, parseServerMessage, normalizeChat, validChatText } from './model/protocol.ts'
 
 /**
  * 운영 경로(Tailscale Funnel)는 요청 왕복이 약 1초, 연결 수립이 3~5초까지 걸린다.
@@ -55,6 +55,7 @@ export default class MultiplayerClient {
   private input: MoveInput = { x: 0, y: 0 }
   private players = new Map<string, PlayerState>()
   private lastFeeds: RoomFeeds | null = null
+  private appliedNickname: string | null = null
   private info = { ...INITIAL_CONNECTION }
   private readonly listeners = new Set<Callbacks>()
   private readonly stopInput = () => this.setInput({ x: 0, y: 0 })
@@ -64,6 +65,21 @@ export default class MultiplayerClient {
 
   /** Scene은 구독만 교체하고 React 게임 컴포넌트가 소켓 수명을 소유한다. */
   /** 관제실에서 마지막으로 받은 방별 참가자 목록. 관제실 밖이면 null이다. */
+  /**
+   * 회원 닉네임을 적용한다. 같은 소켓으로는 이름을 바꿀 수 없으므로, 이미 다른 이름으로 접속했다면 바로 다시 접속한다.
+   * 모바일처럼 로그인 확인이 게임 시작(2.5초)보다 늦게 끝나면 임시 이름 "연구원-xxxx"로 남던 문제를 막는다.
+   * @returns 다시 접속을 시작했으면 true
+   */
+  applyNickname(nickname: string) {
+    // 같은 닉네임은 한 번만 시도한다(서버가 중복이라 "이름-xxxx"로 바꿔 줘도 다시 접속을 반복하지 않는다).
+    if (this.disposed || !validNickname(nickname) || nickname === this.info.nickname || nickname === this.appliedNickname) return false
+    this.appliedNickname = nickname
+    try { sessionStorage.setItem('lab.nickname', nickname) } catch { }
+    if (!this.socket || this.socket.readyState > 1) return false
+    this.socket.close(NICKNAME_CLOSE_CODE, 'Nickname updated')
+    return true
+  }
+
   /** 내 연구원 id(채팅 알림음에서 내 메시지를 거른다) */
   selfPlayerId() { return this.selfId }
 
@@ -171,6 +187,13 @@ export default class MultiplayerClient {
   /** 의자에 앉거나(seatId) 일어난다(null). 서버가 거리·빈자리를 확인하고 다음 상태의 seat로 결과를 알린다. */
   sit(seatId: string | null) {
     if (!this.scoped || this.travelling || this.socket?.readyState !== 1 || !this.selfId) return false
+    // 앉기 전에 걸은 걸음이 앉기 요청보다 늦게 도착하면 서버가 "움직였다"며 일으켜 세운다. 남은 걸음을 먼저 보낸다.
+    while (this.commandMode && this.commands.length) {
+      const before = this.commands.length
+      this.lastInputSent = 0
+      this.sendInput()
+      if (this.commands.length === before) break
+    }
     this.socket.send(JSON.stringify({ type: 'seat', seatId, roomEpoch: this.roomEpoch }))
     return true
   }
@@ -324,6 +347,8 @@ export default class MultiplayerClient {
       }
       // 같은 주소의 다른 창이 연결을 가져갔다. 다시 연결하면 서로 끊어 내므로 여기서 멈춘다.
       if (event.code === REPLACED_CLOSE_CODE) { this.updateStatus({ phase: 'replaced', online: 0, message: REPLACED_MESSAGE }); return }
+      // 회원 닉네임 적용은 기다리지 않고 바로 다시 접속한다.
+      if (event.code === NICKNAME_CLOSE_CODE) { this.attempts = 0; this.updateStatus({ phase: 'connecting', online: 0, message: '회원 닉네임으로 다시 접속하는 중…' }); this.connect(); return }
       this.updateStatus({ phase: 'reconnecting', online: 0, message: event.code === 1013 ? '로비 정원이 가득 찼어요. 잠시 후 다시 연결합니다.' : '연결이 끊겼어요. 다시 연결 중… 혼자 둘러볼 수 있어요.' })
       this.retry()
     }
