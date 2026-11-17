@@ -222,6 +222,16 @@ V4와 같은 3단계다. 확장 PR의 릴리스는 `db_schema` **4..5**, 기능 
 
 새 테이블만 만드는 변경이라 기존 테이블·데이터는 바뀌지 않는다.
 
+### V7 마이그레이션 (HP·피로도, 2026-11-17)
+
+같은 3단계다. 확장 PR의 릴리스는 `db_schema` **6..7**, 기능 PR은 **7..7**이다.
+
+1. 확장 PR 머지(`lab.inventories`에 `hp`·`hp_max`·`fatigue`·`fatigue_max` 열과 공통코드 `COIN_REASON` CAKE·COFFEE 추가)
+2. 서버에서 `python3 deploy/migrate-prod.py`(백업 후 V6 → V7)
+3. 기능 PR(Draft) Ready로 바꾼 뒤 머지
+
+상수 기본값(50) 열 추가라 기존 행을 다시 쓰지 않는다. V6 앱은 새 열을 무시하고, 인벤토리 행을 만들 때도 기본값이 들어간다.
+
 ## 운영 상태와 진단
 
 상태 파일은 `/opt/homeserver/config/seulgae-tech-lab/ops`에 기록한다. 새 상태 파일은 기본 0600이다. 변경 작업은 비차단 flock으로 중복 실행을 거부한다.
