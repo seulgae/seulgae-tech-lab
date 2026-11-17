@@ -1,12 +1,14 @@
 import Phaser from 'phaser'
 import { ROOMS, roomObjects } from '../maps/rooms'
 import type { RoomId, RoomInteraction } from '../maps/rooms'
+import type { TreatKind } from './roomEventLogic'
 import type MultiplayerClient from '../../features/multiplayer/MultiplayerClient'
 import DoorAnimator from './DoorAnimator'
 import { MONO_FONT, UI_FONT, crispText } from '../render/renderScale'
 import { ROOM_THEMES } from './roomThemes'
 import {
-  BOARD_MESSAGES, CiPipeline, LOBBY_ANNOUNCEMENTS, RACK_LABELS, ServerAlert, detectArrivals, nextDelay, rotate,
+  BOARD_MESSAGES, CiPipeline, LOBBY_ANNOUNCEMENTS, RACK_LABELS, ServerAlert, TREAT_STORAGE_KEY, countTreat, detectArrivals, localDay,
+  nextDelay, rotate, treatMessage,
 } from './roomEventLogic'
 import { SKY_PALETTES, clockAngles, clockLabel, skyPhase } from './timeOfDay'
 import { AGENDAS_CHANGED, fetchAgendas } from '../../features/boards/boardsApi'
@@ -18,11 +20,16 @@ export type RoomFx = {
   intercept(target: RoomInteraction): boolean
   /** 이벤트 중 안내 문구를 바꿀 때만 값을 돌려준다. */
   hint(target: RoomInteraction): string | undefined
-  setTableTalk(active: boolean): void
+  /** quiet면 배너 없이 조명·표시등만 바꾼다(회의실 의자에 앉아 자동으로 켤 때). */
+  setTableTalk(active: boolean, quiet?: boolean): void
   destroy(): void
 }
 
-type Options = { from?: RoomId; client: MultiplayerClient; plants?: Map<string, Phaser.GameObjects.Image> }
+type Options = {
+  from?: RoomId; client: MultiplayerClient; plants?: Map<string, Phaser.GameObjects.Image>
+  /** 먹고 마시기·책 꺼내기 연출이 따라갈 내 캐릭터 위치 */
+  player?: () => { x: number; y: number } | undefined
+}
 const hex = (color: string) => Phaser.Display.Color.HexStringToColor(color).color
 const BANNER_DEPTH = 1100
 const DIM_DEPTH = 900
@@ -45,7 +52,7 @@ export function createRoomFx(scene: Phaser.Scene, roomId: RoomId, options: Optio
     // 식물은 모든 방에서 E로 흔들 수 있다. 나머지는 방 이벤트가 먼저 처리할 기회를 갖는다.
     intercept: target => target.kind === 'plant' ? (shakePlant(target.id), true) : room.intercept?.(target) ?? false,
     hint: target => room.hint?.(target),
-    setTableTalk: active => room.setTableTalk?.(active),
+    setTableTalk: (active, quiet) => room.setTableTalk?.(active, quiet),
     destroy: () => { room.destroy?.(); banner.destroy() },
   }
 }
@@ -137,7 +144,16 @@ function lobbyFx(ctx: Context): RoomHandlers {
     }
     known = new Set(players.map(player => player.id))
   } })
-  return { destroy: () => { ctx.stop(); unsubscribe() } }
+  const treats = treatTable(ctx)
+  return {
+    intercept: target => {
+      if (target.kind === 'coffee' || target.kind === 'cake') { treats.enjoy(target.kind); return true }
+      // 책장은 책이 날아오는 연출만 하고, 책 읽기 창은 Scene이 연다.
+      if (target.kind === 'bookshelf') treats.pullBook(target)
+      return false
+    },
+    destroy: () => { ctx.stop(); unsubscribe() },
+  }
 }
 
 const CODE_LINES = ['const lab = build()', 'await deploy(main)', 'if (ok) ship()', 'test("door")', 'git push origin', 'npm run build', 'fn main() {}', 'SELECT * FROM idea', 'return 42']
@@ -268,13 +284,13 @@ function meetingFx(ctx: Context): RoomHandlers {
   const dim = scene.add.rectangle(400, 300, 800, 600, 0x0b0805, 0).setDepth(DIM_DEPTH)
   const spot = ctx.glow(400, 290, '#ffe2b0', 12, 7, 0, DIM_DEPTH + 1)
   return {
-    setTableTalk: active => {
+    setTableTalk: (active, quiet) => {
       scene.tweens.killTweensOf([dim, spot, pendant])
       scene.tweens.add({ targets: dim, fillAlpha: active ? 0.32 : 0, duration: 420 })
       scene.tweens.add({ targets: spot, alpha: active ? 0.38 : 0, duration: 420 })
       scene.tweens.add({ targets: pendant, alpha: active ? 0.05 : 0.2, duration: 420 })
       sign.setText(active ? '● 회의 중' : '회의 대기').setColor(active ? '#f87171' : '#c4b8a2')
-      ctx.banner.show(active ? '회의 모드 · 테이블 주변 사람에게만 대화가 전달돼요' : '회의 모드를 마쳤어요', ROOM_THEMES['meeting-room'].page.accent)
+      if (!quiet) ctx.banner.show(active ? '회의 모드 · 테이블 주변 사람에게만 대화가 전달돼요' : '회의 모드를 마쳤어요', ROOM_THEMES['meeting-room'].page.accent)
     },
     destroy: () => { ctx.stop(); stopBoard() },
   }
@@ -358,4 +374,68 @@ function agendaBoard(ctx: Context) {
   })
   window.addEventListener(AGENDAS_CHANGED, load)
   return () => { controller?.abort(); window.removeEventListener(AGENDAS_CHANGED, load) }
+}
+
+const BOOK_COLORS = [0x8c2f39, 0x2f5d8c, 0x4f8c61, 0xc9a24b, 0x6b4f8c]
+const PROP_DEPTH = 223 // 안내 데스크(기준선 222) 바로 위
+const EMOTE_DEPTH = 1000
+
+/**
+ * 로비 생활 소품: 데스크 위 케이크와 커피 머신, 책장에서 꺼내는 책.
+ * 먹고 마신 횟수는 이 브라우저에만(localStorage) 하루 단위로 남기며 서버와 동기화하지 않는다.
+ */
+function treatTable(ctx: Context) {
+  const { scene } = ctx
+  const props = {
+    cake: scene.add.image(355, 172, 'cake-stand').setOrigin(0.5, 1).setScale(2).setDepth(PROP_DEPTH),
+    coffee: scene.add.image(445, 172, 'coffee-machine').setOrigin(0.5, 1).setScale(2).setDepth(PROP_DEPTH),
+  }
+  // 커피 머신 위로 늘 김이 조금씩 오른다.
+  scene.add.particles(445, 134, 'dot', {
+    speedY: { min: -16, max: -8 }, speedX: { min: -3, max: 3 }, lifespan: 1300, frequency: 520,
+    scale: { start: 1, end: 2 }, alpha: { start: 0.35, end: 0 },
+  }).setDepth(PROP_DEPTH + 1)
+  const burst = scene.add.particles(0, 0, 'dot', {
+    emitting: false, lifespan: 900, speed: { min: 20, max: 70 }, angle: { min: 200, max: 340 }, gravityY: 60,
+    scale: { start: 1.5, end: 0 }, alpha: { start: 0.9, end: 0 },
+  }).setDepth(EMOTE_DEPTH)
+  const storage = (): Storage | undefined => { try { return globalThis.localStorage } catch { return undefined } }
+  const where = (fallback: { x: number; y: number }) => ctx.options.player?.() ?? fallback
+  let busyUntil = 0
+
+  const enjoy = (kind: TreatKind) => {
+    if (scene.time.now < busyUntil) return
+    busyUntil = scene.time.now + 900
+    const prop = props[kind]
+    const me = where({ x: prop.x, y: prop.y + 60 })
+    scene.tweens.add({ targets: prop, scaleY: 1.8, duration: 90, yoyo: true })
+    const emote = scene.add.image(me.x, me.y - 46, `emote-${kind}`).setScale(2).setDepth(EMOTE_DEPTH)
+    scene.tweens.add({ targets: emote, y: me.y - 62, duration: 1100, ease: 'Sine.easeOut' })
+    scene.tweens.add({ targets: emote, alpha: 0, delay: 800, duration: 300, onComplete: () => emote.destroy() })
+    if (kind === 'coffee') burst.setParticleTint(0xf4efe6).explode(10, me.x, me.y - 50)
+    else burst.setParticleTint(0xf6e7c8).explode(12, me.x, me.y - 30)
+    let count = 1
+    try {
+      const store = storage()
+      const log = countTreat(store?.getItem(TREAT_STORAGE_KEY) ?? null, kind, localDay(new Date()))
+      store?.setItem(TREAT_STORAGE_KEY, JSON.stringify(log))
+      count = log[kind]
+    } catch { /* 저장이 막혀도 연출은 계속한다 */ }
+    ctx.banner.show(treatMessage(kind, count), kind === 'coffee' ? '#c9a24b' : '#e05a6c', 1800)
+  }
+
+  /** 책장에서 책 한 권이 내 캐릭터 쪽으로 포물선을 그리며 날아온다. */
+  const pullBook = (shelf: RoomInteraction) => {
+    const me = where({ x: shelf.x, y: shelf.y + 60 })
+    const book = scene.add.image(shelf.x, shelf.y - 10, 'book').setScale(2).setDepth(EMOTE_DEPTH)
+      .setTint(BOOK_COLORS[Math.floor(Math.random() * BOOK_COLORS.length)]!)
+    const from = { x: book.x, y: book.y }
+    scene.tweens.addCounter({ from: 0, to: 1, duration: 420, ease: 'Sine.easeInOut',
+      onUpdate: tween => {
+        const t = tween.getValue() ?? 0
+        book.setPosition(from.x + (me.x - from.x) * t, from.y + (me.y - 40 - from.y) * t - Math.sin(t * Math.PI) * 30).setAngle(t * 360)
+      },
+      onComplete: () => scene.tweens.add({ targets: book, alpha: 0, scale: 3, duration: 200, onComplete: () => book.destroy() }) })
+  }
+  return { enjoy, pullBook }
 }

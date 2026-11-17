@@ -1,0 +1,28 @@
+.book-subtitle { margin: 6px 0 0; font-size: 13px; color: #b9c6bd; }
+
+.book-spines { display: flex; flex-wrap: wrap; gap: 6px; margin: 18px 0 14px; }
+.research-panel .book-spine {
+  padding: 6px 10px;
+  border: 1px solid #4d6b62;
+  border-left-width: 5px;
+  background: #1a2f31;
+  color: #d9e2dc;
+  font-size: 13px;
+}
+.research-panel .book-spine[aria-pressed="true"] { background: #344e46; color: #f1f6f4; border-color: #d8bd87; }
+
+.book-page {
+  min-height: 150px;
+  padding: 16px 18px;
+  border: 1px solid #4d6b62;
+  border-top-width: 4px;
+  background: #f4efe6;
+  color: #2b2621;
+  line-height: 1.65;
+}
+.book-page h3 { margin: 0 0 10px; font-size: 17px; color: #3b2418; }
+.book-page p { margin: 0 0 8px; font-size: 14px; }
+
+.book-turn { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; color: #d8bd87; font-size: 13px; }
+
+@media (max-width: 420px) { .book-page { padding: 12px; } .book-page p { font-size: 13px; } }

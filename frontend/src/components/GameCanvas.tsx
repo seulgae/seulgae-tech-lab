@@ -10,6 +10,7 @@ import LabInfoPanel from '../features/lab/components/LabInfoPanel'
 import { LAB_EVENTS } from '../features/lab/labEvents'
 import type { RoomPanelKind } from '../features/lab/model/labTypes'
 import AgendaPanel from '../features/boards/AgendaPanel'
+import BookPanel from '../features/books/BookPanel'
 import MultiplayerStatus from '../features/multiplayer/components/MultiplayerStatus'
 import { INITIAL_CONNECTION, MULTIPLAYER_EVENTS } from '../features/multiplayer/model/protocol'
 import type { ConnectionInfo, ChatMessage, ChatError } from '../features/multiplayer/model/protocol'
@@ -154,7 +155,8 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
         onMove={moveMobile} onInteract={interactMobile} />
       {researchOpen && <ResearchPanel onClose={closeResearch} />}
       {labPanel === 'agenda' && <AgendaPanel onClose={closeLabPanel} />}
-      {labPanel && labPanel !== 'agenda' && <LabInfoPanel kind={labPanel} onClose={closeLabPanel} />}
+      {labPanel === 'bookshelf' && <BookPanel onClose={closeLabPanel} />}
+      {labPanel && labPanel !== 'agenda' && labPanel !== 'bookshelf' && <LabInfoPanel kind={labPanel} onClose={closeLabPanel} />}
     </>
   )
 }
