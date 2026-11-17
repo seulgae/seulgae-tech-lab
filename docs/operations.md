@@ -202,6 +202,16 @@ V3까지는 "머지 = 새 스키마가 필요한 코드 배포"라서, 마이그
 - 3번을 2번보다 먼저 머지하면 자동 배포가 스키마 범위 검사에서 멈춘다(DB·앱 변경 없음). 2번 실행 후 `./deploy.sh`를 다시 하면 된다.
 - V4는 상수 기본값 열 추가라 기존 행을 다시 쓰지 않는다. V3 앱은 이 열을 무시한다.
 
+### V5 마이그레이션 (공통코드·사무실 업무 게시판, 2026-11-17)
+
+V4와 같은 3단계다. 확장 PR의 릴리스는 `db_schema` **4..5**, 기능 PR은 **5..5**다.
+
+1. 확장 PR 머지(새 테이블 `lab.common_codes`, `lab.work_items`, `lab.inventories`, `lab.coin_events`, `lab.items`와 공통코드 초기 데이터만 추가)
+2. 서버에서 `python3 deploy/migrate-prod.py`(백업 후 V4 → V5)
+3. 기능 PR(Draft) Ready로 바꾼 뒤 머지
+
+새 테이블만 만드는 변경이라 기존 테이블·데이터는 바뀌지 않는다. 앱 계정 권한은 기본 권한(`ALTER DEFAULT PRIVILEGES`)으로 새 테이블에도 적용된다.
+
 ## 운영 상태와 진단
 
 상태 파일은 `/opt/homeserver/config/seulgae-tech-lab/ops`에 기록한다. 새 상태 파일은 기본 0600이다. 변경 작업은 비차단 flock으로 중복 실행을 거부한다.
