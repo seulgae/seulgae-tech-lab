@@ -41,3 +41,46 @@ CREATE TABLE lab.work_items (
 CREATE INDEX work_items_category_created_idx ON lab.work_items (category, created_at DESC, id DESC);
 CREATE INDEX work_items_parent_idx ON lab.work_items (parent_id, created_at);
 CREATE INDEX work_items_ticket_status_idx ON lab.work_items (status, created_at DESC) WHERE parent_id IS NULL;
+
+-- 인벤토리(일지 #7): 회원마다 동전과 아이템. 아이템 종류·동전 변동 사유도 공통코드로 관리한다.
+INSERT INTO lab.common_codes (code_group, code, name, sort_order) VALUES
+    ('ITEM_KIND', 'FISH', '물고기', 1),
+    ('COIN_REASON', 'WORK_POST', '사무실 게시물 등록', 1),
+    ('COIN_REASON', 'ARCADE_PLAY', '오락실 게임', 2);
+
+-- 회원 동전 잔액. 음수가 될 수 없다.
+CREATE TABLE lab.inventories (
+    member_id uuid PRIMARY KEY REFERENCES lab.members (id) ON DELETE CASCADE,
+    coins integer NOT NULL DEFAULT 0 CHECK (coins >= 0),
+    updated_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 동전 변동 기록(감사·하루 보상 한도 계산용)
+CREATE TABLE lab.coin_events (
+    id uuid PRIMARY KEY,
+    member_id uuid NOT NULL REFERENCES lab.members (id) ON DELETE CASCADE,
+    amount integer NOT NULL CHECK (amount <> 0),
+    reason_group varchar(30) NOT NULL DEFAULT 'COIN_REASON' CHECK (reason_group = 'COIN_REASON'),
+    reason varchar(20) NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (reason_group, reason) REFERENCES lab.common_codes (code_group, code)
+);
+CREATE INDEX coin_events_member_created_idx ON lab.coin_events (member_id, reason, created_at DESC);
+
+-- 아이템. 주인이 있으면 인벤토리에, 주인이 없으면 방 바닥(room_id, x, y)에 놓여 있다(버리기·줍기).
+CREATE TABLE lab.items (
+    id uuid PRIMARY KEY,
+    owner_id uuid REFERENCES lab.members (id) ON DELETE CASCADE,
+    kind_group varchar(30) NOT NULL DEFAULT 'ITEM_KIND' CHECK (kind_group = 'ITEM_KIND'),
+    kind varchar(20) NOT NULL,
+    name varchar(30) NOT NULL CHECK (char_length(btrim(name)) BETWEEN 1 AND 30),
+    size_cm smallint CHECK (size_cm BETWEEN 1 AND 999),
+    room_id varchar(40),
+    x real,
+    y real,
+    created_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (kind_group, kind) REFERENCES lab.common_codes (code_group, code),
+    CHECK ((owner_id IS NULL) = (room_id IS NOT NULL AND x IS NOT NULL AND y IS NOT NULL))
+);
+CREATE INDEX items_owner_idx ON lab.items (owner_id, created_at DESC) WHERE owner_id IS NOT NULL;
+CREATE INDEX items_ground_idx ON lab.items (room_id) WHERE owner_id IS NULL;
