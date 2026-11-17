@@ -318,12 +318,12 @@ test('의자 E는 앉기를 요청하고 같은 의자 E는 일어나며, 서버
   // 로비 의자 0(620,418)은 키오스크 아래에 있다. 의자 뒤(아래)에서 다가간다.
   scene.player.x = 620; scene.player.y = 450
   scene.update()
-  assert.equal(scene.interactionHint.text, 'E', '의자 안내는 E만 짧게 보여 준다')
+  assert.equal(scene.interactionHint.visible, false, '의자는 이름표를 가리지 않도록 안내 문구를 숨긴다')
   key._justDown = true; scene.update()
   assert.deepEqual(state.sits, ['lobby-chair-0'])
   assert.equal(scene.player.seat.id, 'lobby-chair-0')
   scene.update()
-  assert.equal(scene.interactionHint.text, 'E', '앉은 뒤에도 같은 짧은 안내')
+  assert.equal(scene.interactionHint.visible, false, '앉은 뒤에도 숨긴다')
   key._justDown = true; scene.update()
   assert.deepEqual(state.sits, ['lobby-chair-0', null])
   assert.equal(scene.player.seat, undefined)
@@ -344,7 +344,7 @@ test('회의실 의자에 앉으면 테이블 대화가 켜지고 일어나면 �
   uiEvents.on(LAB_EVENTS.tableTalk, value => talk.push(value))
   scene.player.x = 400; scene.player.y = 385
   scene.update()
-  assert.equal(scene.interactionHint.text, 'E', '의자 뒤에서는 테이블보다 의자가 가깝다')
+  assert.equal(scene.interactionHint.visible, false, '의자 뒤에서는 테이블보다 의자가 가깝다(테이블 안내가 뜨지 않는다)')
   key._justDown = true; scene.update()
   assert.deepEqual(state.sits, ['meeting-room-chair-1'])
   assert.deepEqual(talk, [true])
