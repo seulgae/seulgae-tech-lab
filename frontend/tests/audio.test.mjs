@@ -65,7 +65,7 @@ test('사운드 설정: 기본값(전체 80·음악 30·효과 60·환경 40), �
 })
 
 test('합성 음원: 모든 방 음악·환경음·효과음이 유한하고 범위 안이며, 같은 씨앗이면 같은 소리', () => {
-  for (const id of Object.keys(ROOMS)) assert.ok(SONGS[id], `${id} 음악`)
+  for (const id of Object.keys(ROOMS)) assert.ok(SONGS[roomSoundscape(id, 'noon').bgm], `${id} 음악`)
   for (const [id, spec] of Object.entries(SONGS)) {
     const song = renderSong(spec)
     const seconds = song.length / SAMPLE_RATE
@@ -89,7 +89,8 @@ test('방별 사운드: 방마다 음악, 서버실 팬·개발실 타자·관�
   assert.equal(roomSoundscape('control-room', 'noon').ambience, 'electronics')
   assert.equal(roomSoundscape('outdoor', 'noon').ambience, 'meadow-day')
   assert.equal(roomSoundscape('outdoor', 'evening').ambience, 'meadow-night')
-  for (const id of Object.keys(ROOMS)) assert.equal(roomSoundscape(id, 'noon').bgm, id)
+  for (const id of Object.keys(ROOMS)) assert.ok(SONGS[roomSoundscape(id, 'noon').bgm], id)
+  assert.equal(roomSoundscape('office-3', 'noon').ambience, 'keyboard')
 })
 
 test('발걸음: 실제로 움직인 거리만큼, 막히면·멈추면 소리 없음, 순간이동 무시, 바닥 재질', () => {

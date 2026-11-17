@@ -17,6 +17,9 @@ export function roomSoundscape(roomId: RoomId, phase: SkyPhase): Soundscape {
     case 'meeting-room': return { bgm: roomId, ambience: 'clock', ambienceGain: 0.6 }
     case 'control-room': return { bgm: roomId, ambience: 'electronics', ambienceGain: 0.9 }
     case 'outdoor': return { bgm: roomId, ambience: NIGHT.includes(phase) ? 'meadow-night' : 'meadow-day', ambienceGain: 1 }
+    // 개인 사무실은 개발 연구실 음악을 이어 듣는다. 지저분한 사무실만 타자 소리가 난다.
+    case 'office-1': case 'office-2': case 'office-4': return { bgm: 'development-lab', ambience: 'room-tone', ambienceGain: 0.35 }
+    case 'office-3': return { bgm: 'development-lab', ambience: 'keyboard', ambienceGain: 0.9 }
     default: return { bgm: 'lobby', ambience: 'room-tone', ambienceGain: 0.45 }
   }
 }
