@@ -15,6 +15,8 @@ const LAKE = { x: 70, y: 180, width: 260, height: 140 }
 const RIVER = { x: 640, width: 60, top: 64, bridgeTop: 328, bridgeBottom: 382, bottom: 576 }
 const DOCK = { x: 594, y: 450, width: 48, height: 40 }
 const OVERLAY_DEPTH = 880
+/** 다리·데크는 걸어 다니는 바닥이라 물(-44~-42) 바로 위, 모든 캐릭터(깊이 = 발 y)보다 아래에 그린다. */
+export const WALKABLE_DECK_DEPTH = -41
 const POPUP_DEPTH = 1001
 
 /** 시간대별 화면 전체 빛(색·세기)과 물 색 */
@@ -86,12 +88,12 @@ function drawGround(ctx: Context) {
     g.fillStyle(0x8a6f45, 1).fillRect(RIVER.x - 5, top, RIVER.width + 10, bottom - top)
   }
   // 다리(강을 가로지르는 나무 판)
-  const bridge = scene.add.graphics().setDepth(RIVER.bridgeBottom - 2)
+  const bridge = scene.add.graphics().setDepth(WALKABLE_DECK_DEPTH)
   bridge.fillStyle(0x5a3a2a, 1).fillRect(626, RIVER.bridgeTop - 4, 88, RIVER.bridgeBottom - RIVER.bridgeTop + 8)
   for (let x = 628; x < 712; x += 8) bridge.fillStyle(x % 16 ? 0x8f6446 : 0x7a5238, 1).fillRect(x, RIVER.bridgeTop - 2, 7, RIVER.bridgeBottom - RIVER.bridgeTop + 4)
   bridge.fillStyle(0x3b2418, 1).fillRect(626, RIVER.bridgeTop - 8, 88, 4).fillRect(626, RIVER.bridgeBottom + 2, 88, 4)
   // 낚시 데크
-  const dock = scene.add.graphics().setDepth(DOCK.y + DOCK.height - 4)
+  const dock = scene.add.graphics().setDepth(WALKABLE_DECK_DEPTH)
   dock.fillStyle(0x3b2418, 1).fillRect(DOCK.x - 2, DOCK.y - 2, DOCK.width + 4, DOCK.height + 4)
   for (let y = DOCK.y; y < DOCK.y + DOCK.height; y += 8) dock.fillStyle(y % 16 ? 0x9a6c48 : 0x8a5f3e, 1).fillRect(DOCK.x, y, DOCK.width, 7)
   dock.fillStyle(0x2a1a12, 1).fillRect(DOCK.x + DOCK.width - 4, DOCK.y - 6, 4, 10).fillRect(DOCK.x + DOCK.width - 4, DOCK.y + DOCK.height - 4, 4, 10)
