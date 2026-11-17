@@ -163,11 +163,12 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
         onPointerDown={() => containerRef.current?.focus({ preventScroll: true })}
         aria-label="슬개기술연구소 게임 화면. WASD 또는 방향키 이동, E 출입구·연구 장비 사용" />
       <MultiplayerStatus connection={connection} />
-      <ChatPanel roomName={ROOMS[connection.roomId ?? "lobby"].name} messages={messages} connected={connection.phase === 'online' && chatAvailable}
+      {/* 채팅은 멀티플레이가 열리는 회의실에서만 보인다. */}
+      {connection.roomId === 'meeting-room' && <ChatPanel roomName={ROOMS[connection.roomId ?? "lobby"].name} messages={messages} connected={connection.phase === 'online' && chatAvailable}
         tableTalk={tableTalk}
         error={chatError} onSend={message => clientRef.current?.sendChat(message, tableTalk ? 'table' : 'room') ?? false}
         onInputFocus={focused => { setChatFocused(focused); eventRef.current?.emit('chat:focus') }}
-        onExit={() => containerRef.current?.focus({ preventScroll: true })} onEdit={() => setChatError(null)} />
+        onExit={() => containerRef.current?.focus({ preventScroll: true })} onEdit={() => setChatError(null)} />}
       <MobileControls disabled={researchOpen || labPanel !== null || chatFocused || connection.travelling === true} resetToken={controlsReset}
         onMove={moveMobile} onInteract={interactMobile} />
       {researchOpen && <ResearchPanel onClose={closeResearch} />}

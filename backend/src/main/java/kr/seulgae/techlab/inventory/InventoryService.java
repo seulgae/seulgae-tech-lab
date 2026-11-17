@@ -125,4 +125,20 @@ public class InventoryService {
     }
 
     public List<InventoryStore.Item> ground(String roomId) { return store.ground(roomId); }
+
+    /** 바닥 아이템을 화면에 필요한 값만으로 */
+    public record GroundItem(String id, String kind, String name, Integer sizeCm, double x, double y) {}
+    /** 줍기 거리(px). 클라이언트가 알려 준 내 위치에서 이 거리 안의 아이템만 주울 수 있다. */
+    public static final double PICK_RANGE = 48;
+
+    public List<GroundItem> groundView(String roomId) {
+        return store.ground(roomId).stream().map(item -> new GroundItem(item.id().toString(), item.kind(), item.name(), item.sizeCm(), item.x(), item.y())).toList();
+    }
+
+    /** 내 위치(x, y) 근처의 바닥 아이템을 줍는다. 멀거나 이미 누가 주웠으면 빈 값 */
+    @Transactional
+    public Optional<InventoryStore.Item> pickNear(UUID member, UUID itemId, String roomId, double x, double y) {
+        boolean near = store.ground(roomId).stream().anyMatch(item -> item.id().equals(itemId) && Math.hypot(item.x() - x, item.y() - y) <= PICK_RANGE);
+        return near ? pick(member, itemId, roomId) : Optional.empty();
+    }
 }

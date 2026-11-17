@@ -172,7 +172,9 @@ export default class LabLobbyScene extends Phaser.Scene {
     this.fx = createRoomFx(this, this.activeRoom, {
       from: data.from, client: this.client, plants, player: () => this.player && { x: this.player.x, y: this.player.y },
     })
-    this.player = new Player(this, SPAWN.x, SPAWN.y)
+    // 처음엔 로비 가운데, 문으로 들어오면 그 방의 스폰(서버 없이 옮기므로 클라이언트가 정한다)
+    const spawn = data.from ? ROOMS[this.activeRoom].spawn : SPAWN
+    this.player = new Player(this, spawn.x, spawn.y)
     this.physics.add.collider(this.player, obstacles)
     this.multiplayer = new LobbyMultiplayer(this, this.player, this.client)
     this.roomSubscription = this.client.subscribe({ room: (roomId, pending) => {
@@ -257,6 +259,7 @@ export default class LabLobbyScene extends Phaser.Scene {
 
     const textFocused = hasTextInputFocus()
     this.syncKeyCapture(textFocused)
+    this.client.setPosition?.(this.player.x, this.player.y)
     // 낚시처럼 방 연출이 진행 중이면 캐릭터를 멈춘다.
     this.player.update(!this.panelOpen && !this.transition && !textFocused && !this.fx?.locksMovement(), this.touchInput)
     // 앉아 있거나 막혀서 좌표가 그대로면 발걸음이 나지 않는다. 음높이를 조금씩 바꿔 반복감을 줄인다.
@@ -403,16 +406,19 @@ export default class LabLobbyScene extends Phaser.Scene {
     return 'E · ' + target.label
   }
 
-  /** 같은 의자에서 E를 다시 누르면 일어난다. 서버 확인 전에 먼저 앉은 모습을 보여 준다. */
+  /**
+   * 같은 의자에서 E를 다시 누르면 일어난다. 회의실(연결 중)은 서버가 확인하고, 그 밖의 방은 혼자라 바로 앉는다.
+   */
   private toggleSeat(seat: Seat) {
     if (!this.player) return
+    const online = this.client.isOnline?.() ?? true
     if (this.player.seat?.id === seat.id) {
       this.player.sit(undefined)
       playSfx('chair-stand', { volume: 0.7 })
-      this.client.sit(null)
+      if (online) this.client.sit(null)
       return
     }
-    if (!this.client.sit(seat.id)) return
+    if (online && !this.client.sit(seat.id)) return
     this.player.sit(seat)
     playSfx('chair-sit', { volume: 0.7 })
     this.sitRequestedAt = this.time.now
@@ -423,7 +429,7 @@ export default class LabLobbyScene extends Phaser.Scene {
   /** 서버가 3초(SEAT_CONFIRM_MS) 안에 앉음을 확인하지 않으면(멀거나 빈자리 아님) 일어난다. 일어나면 자동 테이블 대화도 끈다. */
   private syncSeat() {
     const seat = this.player?.seat
-    if (seat && this.time.now - this.sitRequestedAt > SEAT_CONFIRM_MS && this.client.selfSeat() !== seat.id) this.player!.sit(undefined)
+    if (seat && (this.client.isOnline?.() ?? true) && this.time.now - this.sitRequestedAt > SEAT_CONFIRM_MS && this.client.selfSeat() !== seat.id) this.player!.sit(undefined)
     if (this.seatTalk && !this.player?.seat) { this.seatTalk = false; this.setTableTalk(false, true) }
   }
 }

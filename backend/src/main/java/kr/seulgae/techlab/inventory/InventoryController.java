@@ -1,9 +1,11 @@
 package kr.seulgae.techlab.inventory;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import kr.seulgae.techlab.auth.AuthService;
+import kr.seulgae.techlab.multiplayer.lobby.domain.LobbyWorld;
 import kr.seulgae.techlab.common.write.WriteRateLimiter;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -21,12 +23,61 @@ import org.springframework.web.server.ResponseStatusException;
 public class InventoryController {
     public record FishRequest(String species, Integer cm) {}
     public record SnackRequest(String kind) {}
+    /** 버리기·줍기: 아이템, 방, 지금 내 위치(회의실 밖은 서버가 위치를 모르므로 클라이언트가 알려 준다) */
+    public record ItemRequest(String itemId, String room, Double x, Double y) {}
 
     private final InventoryService service;
     private final WriteRateLimiter limiter;
     private final AuthService auth;
+    private final LobbyWorld world;
 
-    public InventoryController(InventoryService service, WriteRateLimiter limiter, AuthService auth) { this.service = service; this.limiter = limiter; this.auth = auth; }
+    public InventoryController(InventoryService service, WriteRateLimiter limiter, AuthService auth, LobbyWorld world) {
+        this.service = service; this.limiter = limiter; this.auth = auth; this.world = world;
+    }
+
+    private String room(String roomId) {
+        if (roomId == null || !world.roomIds().contains(roomId)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown room");
+        return roomId;
+    }
+
+    /** 요청을 검사한다. 위치는 방 크기(800×600) 안이어야 한다. */
+    private ItemRequest valid(ItemRequest body) {
+        if (body == null || body.itemId() == null || body.x() == null || body.y() == null
+            || !(body.x() >= 0 && body.x() <= 800 && body.y() >= 0 && body.y() <= 600)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid item request");
+        room(body.room());
+        return body;
+    }
+
+    private UUID itemId(ItemRequest body) {
+        try { return UUID.fromString(body.itemId()); }
+        catch (IllegalArgumentException exception) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid item"); }
+    }
+
+    /** 이 방 바닥의 아이템(누구나 볼 수 있다) */
+    @GetMapping("/ground")
+    public List<InventoryService.GroundItem> ground(@RequestParam String room) { return service.groundView(room(room)); }
+
+    /** 내 아이템을 지금 서 있는 곳 바닥에 내려놓는다. 바닥이 가득하거나 내 것이 아니면 409. @return 이 방 바닥 목록 */
+    @PostMapping("/drop")
+    public List<InventoryService.GroundItem> drop(@RequestBody(required = false) ItemRequest body, HttpServletRequest request) {
+        var member = member(request);
+        limiter.check(request);
+        var item = valid(body);
+        service.drop(member, itemId(item), item.room(), item.x(), item.y())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Cannot drop"));
+        return service.groundView(item.room());
+    }
+
+    /** 가까운(48px) 바닥 아이템을 줍는다. 멀거나 이미 주웠거나 가방이 가득하면 409. @return 이 방 바닥 목록 */
+    @PostMapping("/pick")
+    public List<InventoryService.GroundItem> pick(@RequestBody(required = false) ItemRequest body, HttpServletRequest request) {
+        var member = member(request);
+        limiter.check(request);
+        var item = valid(body);
+        service.pickNear(member, itemId(item), item.room(), item.x(), item.y())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Cannot pick"));
+        return service.groundView(item.room());
+    }
 
     private UUID member(HttpServletRequest request) {
         return auth.current(request).orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Login required")).id();

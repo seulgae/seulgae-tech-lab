@@ -15,10 +15,11 @@ export default function MultiplayerStatus({ connection }: { connection: Connecti
   return (
     <div className={`multiplayer-status ${connection.phase}`} role="status" aria-live="polite">
       <span className="connection-indicator" aria-hidden="true" />
-      <span>{connection.phase === 'online' ? `${ROOMS[connection.roomId ?? 'lobby'].name} · 현재 방 ${connection.roomOnline ?? connection.online}명 / 전체 ${connection.totalOnline ?? connection.online}명` : connection.message}</span>
+      <span>{connection.phase === 'online' ? `${ROOMS[connection.roomId ?? 'meeting-room'].name} · 함께 ${connection.roomOnline ?? connection.online}명`
+        : connection.phase === 'solo' ? `${ROOMS[connection.roomId ?? 'lobby'].name} · ${connection.message}` : connection.message}</span>
       {connection.roomError && <span>{connection.roomError}</span>}
-      {connection.travelling && <span>방 이동 승인 대기 중…</span>}
-      {connection.phase === 'online' && <span className="my-nickname">나: {connection.nickname}</span>}
+      {connection.travelling && connection.phase === 'connecting' && <span>회의실 입장 대기 중…</span>}
+      {connection.nickname && <span className="my-nickname">나: {connection.nickname}</span>}
     </div>
   )
 }

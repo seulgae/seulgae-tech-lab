@@ -1,5 +1,6 @@
+import { ROOMS } from '../../game/maps/rooms.ts'
 import type { RoomId } from '../../game/maps/rooms'
-import { INITIAL_CONNECTION, NICKNAME_CLOSE_CODE, REPLACED_CLOSE_CODE, validNickname, REPLACED_MESSAGE, closeCause, lobbySocketUrl, parseServerMessage, normalizeChat, validChatText } from './model/protocol.ts'
+import { SOLO_MESSAGE, parseFeeds, validGroundItem, INITIAL_CONNECTION, NICKNAME_CLOSE_CODE, REPLACED_CLOSE_CODE, validNickname, REPLACED_MESSAGE, closeCause, lobbySocketUrl, parseServerMessage, normalizeChat, validChatText } from './model/protocol.ts'
 
 /**
  * 운영 경로(Tailscale Funnel)는 요청 왕복이 약 1초, 연결 수립이 3~5초까지 걸린다.
@@ -8,6 +9,10 @@ import { INITIAL_CONNECTION, NICKNAME_CLOSE_CODE, REPLACED_CLOSE_CODE, validNick
 export const ROOM_RESPONSE_TIMEOUT_MS = 15000
 /** 업로드가 잠시 막혀도 바로 끊지 않도록 약 4초 분량의 입력(20Hz)을 허용한다. */
 export const INPUT_BACKPRESSURE_BYTES = 16384
+/** 멀티플레이는 회의실에서만 연다. 다른 방은 서버 없이 혼자 둘러보고, 방 이동도 바로 한다. */
+export const MEETING_ROOM: RoomId = 'meeting-room'
+/** 관제실 CCTV가 회의실 참가자 목록을 다시 읽는 간격 */
+export const FEED_POLL_MS = 2000
 import type { ConnectionInfo, MoveInput, MoveCommand, PlayerState, ChatMessage, ChatError, ChatScope, GroundItem, RoomFeeds, ServerMessage } from './model/protocol'
 
 type Callbacks = { room?: (roomId: RoomId, pending: boolean) => void; snapshot?: (players: PlayerState[], selfId: string | null, serverTime?: number) => void; status?: (info: ConnectionInfo) => void;
@@ -30,6 +35,13 @@ type Callbacks = { room?: (roomId: RoomId, pending: boolean) => void; snapshot?:
  */
 export default class MultiplayerClient {
   private roomId: RoomId = 'lobby'
+  /** 회의실에 있어 서버 연결을 유지해야 하는지 */
+  private online = false
+  /** 회의실 문을 열고 연결을 기다리는 중인지(연결되면 회의실로 들어간다) */
+  private joining = false
+  /** 장면이 알려 주는 내 위치(회의실 밖에서는 서버가 모른다). 버리기·줍기에 쓴다. */
+  private position = { x: 400, y: 400 }
+  private feedTimer: ReturnType<typeof setInterval> | undefined
   private roomEpoch = 0
   private scoped = false
   private travelling = false
@@ -81,7 +93,7 @@ export default class MultiplayerClient {
     if (this.disposed || !validNickname(nickname) || nickname === this.info.nickname || nickname === this.appliedNickname) return false
     this.appliedNickname = nickname
     try { sessionStorage.setItem('lab.nickname', nickname) } catch { }
-    if (!this.socket || this.socket.readyState > 1) return false
+    if (!this.socket || this.socket.readyState > 1) { this.updateStatus({ nickname }); return false }
     this.socket.close(NICKNAME_CLOSE_CODE, 'Nickname updated')
     return true
   }
@@ -113,7 +125,8 @@ export default class MultiplayerClient {
     this.started = true
     window.addEventListener('blur', this.stopInput)
     document.addEventListener('visibilitychange', this.onVisibility)
-    this.connect()
+    // 회의실 밖에서는 연결하지 않는다. 회의실 문을 열 때 연결한다.
+    this.enterLocal(this.roomId)
     this.inputTimer = setInterval(() => {
       if (this.socket?.readyState === 1 && Date.now() - this.lastMessage > 10000) this.socket.close(4001, 'Server state timeout')
       else this.sendInput()
@@ -207,15 +220,58 @@ export default class MultiplayerClient {
   /** @return 서버가 마지막으로 알려 준 내 의자, 없으면 null */
   /** 지금 방 바닥 아이템 */
   ground() { return this.groundItems }
-  /** 가방의 아이템을 지금 서 있는 곳에 버린다(서버가 위치를 정한다). */
+  /** 장면이 매 프레임 내 위치를 알려 준다(버리기·줍기 위치). */
+  setPosition(x: number, y: number) { this.position = { x, y } }
+  /** 가방의 아이템을 지금 서 있는 곳에 버린다. */
   dropItem(itemId: string) { return this.sendItem('drop', itemId) }
-  /** 가까운 바닥 아이템을 줍는다(서버가 거리를 확인한다). */
+  /** 가까운 바닥 아이템을 줍는다(서버가 48px 안인지 확인한다). */
   pickItem(itemId: string) { return this.sendItem('pick', itemId) }
   private sendItem(type: 'drop' | 'pick', itemId: string) {
-    if (!this.scoped || this.travelling || this.socket?.readyState !== 1 || !this.selfId) return false
-    this.socket.send(JSON.stringify({ type, itemId, roomEpoch: this.roomEpoch }))
+    if (this.travelling || this.disposed) return false
+    const room = this.roomId
+    void fetch(`/api/inventory/${type}`, { method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemId, room, x: Math.round(this.position.x), y: Math.round(this.position.y) }) })
+      .then(async response => {
+        if (!response.ok) { this.notify(callbacks => callbacks.inventoryError?.(response.status === 401 ? 'login' : 'unavailable')); return }
+        this.setGround(room, await response.json())
+        this.notify(callbacks => callbacks.inventoryChanged?.())
+      })
+      .catch(() => this.notify(callbacks => callbacks.inventoryError?.('unavailable')))
     return true
   }
+
+  /** 지금 방 바닥 아이템을 다시 읽는다. */
+  private loadGround() {
+    const room = this.roomId
+    if (typeof fetch !== 'function') return
+    void fetch(`/api/inventory/ground?room=${encodeURIComponent(room)}`, { headers: { Accept: 'application/json' } })
+      .then(response => response.ok ? response.json() : null).then(items => { if (items) this.setGround(room, items) }).catch(() => { })
+  }
+
+  private setGround(room: RoomId, items: unknown) {
+    if (room !== this.roomId || !Array.isArray(items) || items.length > 30 || !items.every(validGroundItem)) return
+    this.groundItems = items
+    this.notify(callbacks => callbacks.ground?.(this.groundItems))
+  }
+
+  /** 관제실에 있는 동안 회의실 참가자 목록(CCTV)을 주기적으로 읽는다. */
+  private syncFeeds() {
+    clearInterval(this.feedTimer); this.feedTimer = undefined; this.lastFeeds = null
+    if (this.roomId !== 'control-room' || typeof fetch !== 'function') return
+    const poll = () => void fetch('/api/lobby/feeds', { headers: { Accept: 'application/json' } })
+      .then(response => response.ok ? response.json() : null)
+      .then(value => {
+        const feeds = parseFeeds(value)
+        if (!feeds || this.roomId !== 'control-room') return
+        this.lastFeeds = feeds
+        this.notify(callbacks => callbacks.feeds?.(feeds))
+      }).catch(() => { this.lastFeeds = null })
+    poll()
+    this.feedTimer = setInterval(poll, FEED_POLL_MS)
+  }
+
+  /** 회의실 연결이 살아 있는지(의자·채팅은 서버가 확인한다) */
+  isOnline() { return this.online && !!this.selfId && this.socket?.readyState === 1 }
 
   selfSeat() { return (this.selfId && this.players.get(this.selfId)?.seat) || null }
 
@@ -223,16 +279,68 @@ export default class MultiplayerClient {
 
   currentRoom() { return this.roomId }
   isTravelling() { return this.travelling }
-  /** 소켓을 재생성하지 않고 현재 방 세대와 출입구만 요청한다. */
+  /**
+   * 문으로 방을 옮긴다. 회의실 밖은 서버 없이 바로 옮기고(문이 열린 다음 틱에 알린다),
+   * 회의실로 갈 때만 서버에 연결해 입장을 기다린다. 회의실을 나가면 연결을 끊는다.
+   */
   changeRoom(doorId: string) {
-    if (!this.scoped || this.travelling || this.socket?.readyState !== 1 || !this.selfId) return false
+    if (this.travelling || this.disposed) return false
+    const door = (ROOMS[this.roomId].doors as { id: string; target: string }[]).find(entry => entry.id === doorId)
+    if (!door) return false
+    const target = door.target as RoomId
     this.setInput({x:0,y:0})
     this.travelling = true
-    this.updateStatus({travelling:true, roomError:undefined, message:'방을 이동하고 있어요…'})
     this.notify(c => c.room?.(this.roomId, true))
-    this.socket.send(JSON.stringify({type:'room_change', doorId, roomEpoch:this.roomEpoch}))
-    this.travelTimer = setTimeout(() => { this.socket?.close(4005, 'Room response timeout') }, ROOM_RESPONSE_TIMEOUT_MS)
+    if (target === MEETING_ROOM) {
+      this.online = true; this.joining = true; this.attempts = 0
+      this.updateStatus({ travelling: true, roomError: undefined, phase: 'connecting', message: '회의실에 연결하는 중…' })
+      this.connect()
+      this.travelTimer = setTimeout(() => this.failJoin('회의실에 연결하지 못했어요. 잠시 후 다시 들어가 보세요.'), ROOM_RESPONSE_TIMEOUT_MS)
+      return true
+    }
+    if (this.roomId === MEETING_ROOM) this.goOffline()
+    setTimeout(() => {
+      if (this.disposed) return
+      this.travelling = false
+      this.enterLocal(target)
+    }, 0)
     return true
+  }
+
+  /** 서버 없이 방에 들어간다(회의실 밖). */
+  private enterLocal(target: RoomId) {
+    this.roomId = target; this.roomEpoch = 0
+    this.groundItems = []
+    this.notify(c => c.ground?.([]))
+    this.updateStatus({ roomId: target, travelling: false, roomError: undefined, phase: 'solo', online: 0, roomOnline: undefined, message: SOLO_MESSAGE })
+    this.notify(c => c.room?.(target, false))
+    this.loadGround()
+    this.syncFeeds()
+  }
+
+  /** 회의실 연결을 끝낸다(나가기). 재연결하지 않는다. */
+  private goOffline() {
+    this.online = false; this.joining = false
+    clearTimeout(this.retryTimer); clearTimeout(this.travelTimer)
+    const socket = this.socket
+    if (socket) {
+      socket.onmessage = null; socket.onclose = null; socket.onerror = null; socket.onopen = null
+      try { socket.close(1000, 'Left meeting room') } catch { }
+    }
+    this.socket = null; this.selfId = null; this.players.clear()
+    this.commands = []; this.commandMode = false; this.lastQueuedInput = null; this.chatEnabled = false
+    this.messages = []; this.seenMessages.clear()
+    this.notify(c => c.history?.([]))
+    this.notify(c => c.snapshot?.([], null))
+  }
+
+  /** 회의실 연결을 기다리다 실패하면 문 앞에 남는다. */
+  private failJoin(reason: string) {
+    if (!this.joining) return
+    this.goOffline()
+    this.travelling = false
+    this.updateStatus({ travelling: false, roomError: reason, phase: 'solo', online: 0, message: SOLO_MESSAGE })
+    this.notify(c => c.room?.(this.roomId, false))
   }
 
   private remember(message: ChatMessage) {
@@ -244,8 +352,8 @@ export default class MultiplayerClient {
   }
 
   private connect() {
-    if (this.disposed) return
-    this.updateStatus({ phase: this.attempts ? 'reconnecting' : 'connecting', message: this.attempts ? '연결이 끊겼어요. 다시 연결 중… 혼자 둘러볼 수 있어요.' : '로비 연결 중…' })
+    if (this.disposed || !this.online) return
+    this.updateStatus({ phase: this.attempts ? 'reconnecting' : 'connecting', message: this.attempts ? '회의실 연결이 끊겼어요. 다시 연결 중…' : '회의실에 연결하는 중…' })
     let nickname = this.info.nickname
     // 브라우저 저장소가 차단되어도 익명 접속과 현재 게임은 계속한다.
     try { nickname = sessionStorage.getItem('lab.nickname') ?? nickname } catch { }
@@ -292,8 +400,8 @@ export default class MultiplayerClient {
           return
         }
         if (message.type === 'welcome') {
-          this.scoped = message.roomId !== undefined; this.roomId = message.roomId ?? 'lobby'; this.roomEpoch = message.roomEpoch ?? 0
-          this.travelling = false; clearTimeout(this.travelTimer)
+          this.scoped = message.roomId !== undefined; this.roomId = message.roomId ?? MEETING_ROOM; this.roomEpoch = message.roomEpoch ?? 0
+          this.travelling = false; this.joining = false; clearTimeout(this.travelTimer); this.syncFeeds()
           this.updateStatus({roomId:this.roomId, travelling:false, roomError:undefined})
           this.notify(c => c.room?.(this.roomId, false))
           this.serverTime = message.time
@@ -308,8 +416,9 @@ export default class MultiplayerClient {
           }
           this.players = new Map(message.players.map(player => [player.id, player]))
           const own = this.players.get(this.selfId)!
-          this.updateStatus({ phase: 'online', nickname: own.nickname, online: this.players.size, message: '로비에 연결됐어요.' })
+          this.updateStatus({ phase: 'online', nickname: own.nickname, online: this.players.size, roomOnline: this.players.size, message: '회의실에 연결됐어요.' })
           try { sessionStorage.setItem('lab.nickname', own.nickname) } catch { }
+          this.loadGround()
           this.sendInput()
         } else if (!this.selfId) return
         else if (message.type === 'chat_history') {
@@ -364,8 +473,7 @@ export default class MultiplayerClient {
           lastBatch: this.lastMovementBatch, pendingCommands: this.commands.length }))
       }
       socket.onmessage = null; socket.onclose = null; socket.onerror = null; socket.onopen = null
-      clearTimeout(this.travelTimer); this.travelling = false
-      this.notify(c => c.room?.(this.roomId, false))
+      if (!this.joining) { clearTimeout(this.travelTimer); this.travelling = false; this.notify(c => c.room?.(this.roomId, false)) }
       this.socket = null; this.selfId = null; this.players.clear()
       this.commands = []; this.commandMode = false; this.lastQueuedInput = null
       this.notify(callbacks => callbacks.snapshot?.([], null))
@@ -374,16 +482,21 @@ export default class MultiplayerClient {
         this.info.nickname = ''
       }
       // 같은 주소의 다른 창이 연결을 가져갔다. 다시 연결하면 서로 끊어 내므로 여기서 멈춘다.
-      if (event.code === REPLACED_CLOSE_CODE) { this.updateStatus({ phase: 'replaced', online: 0, message: REPLACED_MESSAGE }); return }
+      if (event.code === REPLACED_CLOSE_CODE) {
+        if (this.joining) { this.failJoin(REPLACED_MESSAGE); return }
+        this.online = false
+        this.updateStatus({ phase: 'replaced', online: 0, message: REPLACED_MESSAGE }); return
+      }
       // 회원 닉네임 적용은 기다리지 않고 바로 다시 접속한다.
       if (event.code === NICKNAME_CLOSE_CODE) { this.attempts = 0; this.updateStatus({ phase: 'connecting', online: 0, message: '회원 닉네임으로 다시 접속하는 중…' }); this.connect(); return }
-      this.updateStatus({ phase: 'reconnecting', online: 0, message: event.code === 1013 ? '로비 정원이 가득 찼어요. 잠시 후 다시 연결합니다.' : '연결이 끊겼어요. 다시 연결 중… 혼자 둘러볼 수 있어요.' })
+      if (event.code === 1013 && this.joining) { this.failJoin('회의실 정원(5명)이 가득 찼어요. 잠시 후 다시 들어가 보세요.'); return }
+      this.updateStatus({ phase: 'reconnecting', online: 0, message: event.code === 1013 ? '회의실 정원이 가득 찼어요. 잠시 후 다시 연결합니다.' : '회의실 연결이 끊겼어요. 다시 연결 중…' })
       this.retry()
     }
   }
 
   private retry() {
-    if (this.disposed) return
+    if (this.disposed || !this.online) return
     clearTimeout(this.retryTimer)
     const delay = Math.min(8000, 500 * 2 ** Math.min(this.attempts++, 4))
     this.retryTimer = setTimeout(() => this.connect(), delay)
@@ -399,7 +512,7 @@ export default class MultiplayerClient {
   /** 재시도·입력 타이머와 브라우저 이벤트를 먼저 해제한 뒤 소켓을 닫는다. */
   destroy() {
     this.disposed = true
-    clearTimeout(this.travelTimer); clearTimeout(this.retryTimer); clearInterval(this.inputTimer)
+    clearTimeout(this.travelTimer); clearTimeout(this.retryTimer); clearInterval(this.inputTimer); clearInterval(this.feedTimer)
     window.removeEventListener('blur', this.stopInput)
     document.removeEventListener('visibilitychange', this.onVisibility)
     if (this.socket) {

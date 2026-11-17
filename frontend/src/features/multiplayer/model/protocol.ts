@@ -9,7 +9,7 @@ export type RoomFeeds = Partial<Record<RoomId, PlayerState[]>>
 /** 방 바닥에 놓인 아이템(누구나 주울 수 있다) */
 export type GroundItem = { id: string; kind: string; name: string; sizeCm: number | null; x: number; y: number }
 export type PlayerState = { id: string; nickname: string; x: number; y: number; facing: Facing; moving: boolean; ack: number; seat?: string | null }
-export type ConnectionInfo = { roomId?: RoomId; roomOnline?: number; totalOnline?: number; travelling?: boolean; roomError?: string; phase: 'connecting' | 'online' | 'reconnecting' | 'replaced'; nickname: string; online: number; maxPlayers: number; message: string }
+export type ConnectionInfo = { roomId?: RoomId; roomOnline?: number; totalOnline?: number; travelling?: boolean; roomError?: string; phase: 'solo' | 'connecting' | 'online' | 'reconnecting' | 'replaced'; nickname: string; online: number; maxPlayers: number; message: string }
 export type ChatMessage = { type: 'chat_message'; messageId: string; playerId: string; nickname: string; message: string; sentAt: string; scope?: ChatScope }
 /** room은 같은 방 전체, table은 서버가 확인한 회의 테이블 주변 참가자에게만 전달한다. */
 export type ChatScope = 'room' | 'table'
@@ -31,7 +31,9 @@ export type ServerMessage = RoomMeta & (
 )
 
 export const MULTIPLAYER_EVENTS = { dispose: 'multiplayer:dispose' } as const
-export const INITIAL_CONNECTION: ConnectionInfo = { phase: 'connecting', nickname: '', online: 0, maxPlayers: 5, message: '로비 연결 중…' }
+/** 회의실 밖에서는 서버에 연결하지 않고 혼자 둘러본다. */
+export const SOLO_MESSAGE = '혼자 둘러보는 중 · 회의실에 들어가면 함께해요'
+export const INITIAL_CONNECTION: ConnectionInfo = { phase: 'solo', nickname: '', online: 0, maxPlayers: 5, message: SOLO_MESSAGE }
 const validId = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(value)
 export const validNickname = (value: unknown): value is string => typeof value === 'string' && /^[\p{L}\p{N}_-]{1,16}$/u.test(value)
 export const normalizeChat = (value: string) => value.replace(/\r\n?/g, '\n').trim()
@@ -99,12 +101,15 @@ export const REPLACED_CLOSE_CODE = 4409
 export const REPLACED_MESSAGE = '다른 창에서 접속해 이 창의 연결을 끊었어요. 새로고침하면 이 창으로 다시 접속해요.'
 
 /** 방 id는 공유 맵에 있는 것만, 전체 인원은 정원(5) 이하, 한 사람은 한 방에만 있어야 한다. */
-function validGroundItem(value: unknown): value is GroundItem {
+export function validGroundItem(value: unknown): value is GroundItem {
   const item = value as GroundItem
   return Boolean(item) && validId(item.id) && typeof item.kind === 'string' && item.kind.length <= 20 && typeof item.name === 'string'
     && item.name.length >= 1 && item.name.length <= 30 && (item.sizeCm === null || Number.isSafeInteger(item.sizeCm))
     && Number.isFinite(item.x) && Number.isFinite(item.y) && item.x >= 0 && item.x <= 800 && item.y >= 0 && item.y <= 600
 }
+
+/** 관제실 CCTV 목록(REST)을 검사한다. 잘못되면 null */
+export function parseFeeds(value: unknown): RoomFeeds | null { return validFeeds(value) ? value : null }
 
 function validFeeds(feeds: unknown): feeds is RoomFeeds {
   if (!feeds || typeof feeds !== 'object' || Array.isArray(feeds)) return false
