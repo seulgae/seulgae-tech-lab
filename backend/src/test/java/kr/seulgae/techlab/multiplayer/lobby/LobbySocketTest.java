@@ -81,9 +81,9 @@ class LobbySocketTest {
         long now = System.nanoTime();
         room.input(id, 0, 1, 1, now);
         for (int i = 0; i < 6; i++) room.step(.1, now);
-        a.send("{\"type\":\"room_change\",\"doorId\":\"lobby-to-development\",\"roomEpoch\":0}");
+        a.send("{\"type\":\"room_change\",\"doorId\":\"lobby-to-outdoor\",\"roomEpoch\":0}");
         var changed = a.type("room_changed");
-        assertEquals("development-lab", changed.get("roomId").stringValue());
+        assertEquals("outdoor", changed.get("roomId").stringValue());
         assertEquals(id, changed.get("selfId").stringValue());
         assertEquals(1, changed.get("players").size());
         assertEquals(1, changed.get("roomEpoch").asLong());
@@ -96,7 +96,7 @@ class LobbySocketTest {
         assertEquals(x, room.player(id).x(), .001);
         assertTrue(b.frames.stream().noneMatch(f -> f.path("type").stringValue("").equals("chat_message")));
         assertEquals(1, room.snapshot("lobby").size());
-        assertEquals(1, room.snapshot("development-lab").size());
+        assertEquals(1, room.snapshot("outdoor").size());
         a.send("{\"type\":\"move\",\"roomEpoch\":1,\"inputs\":[{\"x\":1,\"y\":0,\"ms\":50,\"seq\":1}]}");
         a.await(f -> f.path("type").stringValue("").equals("state") && f.get("roomEpoch").asLong() == 1
             && f.get("players").get(0).get("ack").asLong() == 1);

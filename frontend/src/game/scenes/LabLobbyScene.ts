@@ -16,7 +16,7 @@ import { MULTIPLAYER_EVENTS } from '../../features/multiplayer/model/protocol'
 import type MultiplayerClient from '../../features/multiplayer/MultiplayerClient'
 import { MOBILE_INPUT } from '../input/mobileInput'
 import type { DirectionInput } from '../input/mobileInput'
-import { ROOMS, nearestInteraction, roomObstacles } from '../maps/rooms'
+import { ROOMS, doorHint, nearestInteraction, roomObstacles } from '../maps/rooms'
 import type { RoomId, RoomInteraction, Seat } from '../maps/rooms'
 import { setRoomObstacles } from '../multiplayer/networkPosition'
 
@@ -173,7 +173,8 @@ export default class LabLobbyScene extends Phaser.Scene {
     if (!this.player) return
 
     const textFocused = hasTextInputFocus()
-    this.player.update(!this.panelOpen && !this.transition && !textFocused, this.touchInput)
+    // 낚시처럼 방 연출이 진행 중이면 캐릭터를 멈춘다.
+    this.player.update(!this.panelOpen && !this.transition && !textFocused && !this.fx?.locksMovement(), this.touchInput)
     this.multiplayer?.update(delta)
     const door = ROOMS[this.activeRoom].doors.find(d => Math.hypot(this.player!.x - d.x, this.player!.y - d.y) <= 56)
     // 출입구가 우선이며, E 한 번에 한 대상만 실행한다.
@@ -182,7 +183,7 @@ export default class LabLobbyScene extends Phaser.Scene {
     // 테이블 범위를 벗어나면 서버 거부를 기다리지 않고 근거리 대화를 끈다. 회의실 의자에 앉아 있는 동안은 유지한다.
     if (this.tableTalk && target?.kind !== 'table-talk' && !this.seatTalk) this.setTableTalk(false)
     const enabled = !this.panelOpen && !this.transition && !textFocused
-    if (door) this.interactionHint?.setPosition(door.x, door.y - 70).setText('E · ' + ROOMS[door.target as RoomId].name + ' 입장')
+    if (door) this.interactionHint?.setPosition(door.x, door.y - 70).setText(doorHint(door))
     else if (target) this.interactionHint?.setPosition(target.x, target.y - target.height / 2 - 30).setText(this.fx?.hint(target) ?? this.hintFor(target))
     // 대상이 바뀌거나(다가감) 문구가 바뀌면(테이블 대화 참여·나가기, 서버실 경보) 다시 2초 동안 보여 준다.
     const hintKey = door || target ? `${door?.id ?? target?.id}|${this.interactionHint?.text ?? ''}` : undefined

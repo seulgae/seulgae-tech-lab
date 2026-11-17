@@ -11,6 +11,7 @@ import { LAB_EVENTS } from '../features/lab/labEvents'
 import type { RoomPanelKind } from '../features/lab/model/labTypes'
 import AgendaPanel from '../features/boards/AgendaPanel'
 import BookPanel from '../features/books/BookPanel'
+import CctvPanel from '../features/cctv/CctvPanel'
 import MultiplayerStatus from '../features/multiplayer/components/MultiplayerStatus'
 import { INITIAL_CONNECTION, MULTIPLAYER_EVENTS } from '../features/multiplayer/model/protocol'
 import type { ConnectionInfo, ChatMessage, ChatError } from '../features/multiplayer/model/protocol'
@@ -60,6 +61,8 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
     setResearchOpen(false)
     containerRef.current?.focus({ preventScroll: true })
   }
+  /** CCTV 패널이 렌더 중 ref를 직접 읽지 않도록 함수로 넘긴다. */
+  const getClient = useCallback(() => clientRef.current, [])
   /** 서버 상태·빌드 정보 패널도 같은 방식으로 게임 입력을 복구한다. */
   const closeLabPanel = () => {
     eventRef.current?.emit(LAB_EVENTS.closePanel)
@@ -156,7 +159,8 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
       {researchOpen && <ResearchPanel onClose={closeResearch} />}
       {labPanel === 'agenda' && <AgendaPanel onClose={closeLabPanel} />}
       {labPanel === 'bookshelf' && <BookPanel onClose={closeLabPanel} />}
-      {labPanel && labPanel !== 'agenda' && labPanel !== 'bookshelf' && <LabInfoPanel kind={labPanel} onClose={closeLabPanel} />}
+      {labPanel === 'cctv' && <CctvPanel client={getClient} onClose={closeLabPanel} />}
+      {labPanel && labPanel !== 'agenda' && labPanel !== 'bookshelf' && labPanel !== 'cctv' && <LabInfoPanel kind={labPanel} onClose={closeLabPanel} />}
     </>
   )
 }

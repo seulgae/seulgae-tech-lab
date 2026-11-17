@@ -32,11 +32,12 @@ test('방 전환은 같은 소켓을 유지하고 이전 방 세대의 상태·�
  } finally {c.destroy();Object.assign(globalThis,original)}
 })
 
-test('네 방의 모든 스폰은 가구 밖이고 출입구는 로비 중심으로 연결된다',()=>{
+test('모든 방의 스폰은 가구 밖이고 출입구는 로비 중심으로 연결된다',()=>{
  for(const [id,room] of Object.entries(ROOMS)){
   const obstacles=roomObstacles(id)
   for(const a of obstacles){ const p=room.spawn; assert.ok(p.x+10<=a.x-a.width/2 || p.x-10>=a.x+a.width/2 || p.y<=a.y-a.height/2 || p.y-16>=a.y+a.height/2, `${id}: spawn collision`) }
-  assert.equal(room.doors.length,id==='lobby'?3:1)
+  assert.equal(room.doors.length,id==='lobby'?5:1)
+  for(const door of room.doors)assert.ok(id==='lobby'||door.target==='lobby', id)
   for(const door of room.doors)assert.ok(Object.hasOwn(ROOMS,door.target))
  }
  setRoomObstacles(roomObstacles('server-room'))

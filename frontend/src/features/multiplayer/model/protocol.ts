@@ -4,6 +4,8 @@ export type Facing = 'down' | 'up' | 'left' | 'right'
 export type MoveInput = { x: number; y: number }
 export type MoveCommand = MoveInput & { seq: number; ms: number }
 /** seat: 서버가 확인한 앉은 의자 id(예: meeting-room-chair-1), 서 있으면 null. 구형 서버는 보내지 않는다. */
+/** 관제실(cctv 상호작용이 있는 방)에 있을 때만 서버가 보내는 방별 참가자 목록 */
+export type RoomFeeds = Partial<Record<RoomId, PlayerState[]>>
 export type PlayerState = { id: string; nickname: string; x: number; y: number; facing: Facing; moving: boolean; ack: number; seat?: string | null }
 export type ConnectionInfo = { roomId?: RoomId; roomOnline?: number; totalOnline?: number; travelling?: boolean; roomError?: string; phase: 'connecting' | 'online' | 'reconnecting' | 'replaced'; nickname: string; online: number; maxPlayers: number; message: string }
 export type ChatMessage = { type: 'chat_message'; messageId: string; playerId: string; nickname: string; message: string; sentAt: string; scope?: ChatScope }
@@ -16,7 +18,7 @@ export type ServerMessage = RoomMeta & (
   | { type: 'chat_history'; messages: ChatMessage[] }
   | { type: 'chat_error'; reason: ChatError }
   | { type: 'welcome'; selfId: string; players: PlayerState[]; maxPlayers: number; protocolVersion?: number; time?: number }
-  | { type: 'state'; tick: number; players: PlayerState[]; time?: number }
+  | { type: 'state'; tick: number; players: PlayerState[]; time?: number; feeds?: RoomFeeds }
   | { type: 'joined'; player: PlayerState }
   | { type: 'left'; id: string }
   | { type: 'room_changed'; selfId: string; players: PlayerState[]; time?: number }
@@ -71,7 +73,10 @@ export function parseServerMessage(raw: string): ServerMessage {
   if (!Array.isArray(players) || players.length > 5 || !players.every(validPlayer) || new Set(players.map(p => p.id)).size !== players.length) throw new Error('Invalid players')
   if (message.type === 'room_changed' && isRoomId(message.roomId) && Number.isSafeInteger(message.roomEpoch) && validId(message.selfId) && players.some(p => p.id === message.selfId)) return message
   if (message.type === 'welcome' && validId(message.selfId) && players.some(p => p.id === message.selfId) && message.maxPlayers === 5) return message
-  if (message.type === 'state' && Number.isSafeInteger(message.tick) && message.tick >= 0) return message
+  if (message.type === 'state' && Number.isSafeInteger(message.tick) && message.tick >= 0) {
+    if (message.feeds !== undefined && !validFeeds(message.feeds)) throw new Error('Invalid feeds')
+    return message
+  }
   throw new Error('Invalid frame')
 }
 
@@ -82,6 +87,15 @@ export function parseServerMessage(raw: string): ServerMessage {
 /** 같은 주소(IP)에서 새 창이 접속해 이 연결을 대신했다는 서버 종료 코드. 이 코드에서는 다시 연결하지 않는다. */
 export const REPLACED_CLOSE_CODE = 4409
 export const REPLACED_MESSAGE = '다른 창에서 접속해 이 창의 연결을 끊었어요. 새로고침하면 이 창으로 다시 접속해요.'
+
+/** 방 id는 공유 맵에 있는 것만, 전체 인원은 정원(5) 이하, 한 사람은 한 방에만 있어야 한다. */
+function validFeeds(feeds: unknown): feeds is RoomFeeds {
+  if (!feeds || typeof feeds !== 'object' || Array.isArray(feeds)) return false
+  const entries = Object.entries(feeds)
+  const players = entries.flatMap(([, list]) => Array.isArray(list) ? list : [null])
+  return entries.every(([roomId, list]) => isRoomId(roomId) && Array.isArray(list)) && players.length <= 5
+    && players.every(validPlayer) && new Set(players.map(player => (player as PlayerState).id)).size === players.length
+}
 
 export function closeCause(code: number, reason = '') {
   const causes: Record<number, string> = {

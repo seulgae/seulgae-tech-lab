@@ -33,16 +33,17 @@ class RoomTravelTest {
         fail("출입구 접근 실패: " + room.player(id));
     }
 
-    /** 여섯 연결 방향을 여러 번 왕복해 방 세대·정지·스폰을 확인한다. */
-    @Test void repeatsAllSixDoorRoutesAndRejectsWrongDoorAndCooldown() {
+    /** 로비 다섯 문(옆문 넷, 아래 나가기)을 여러 번 왕복해 방 세대·정지·스폰을 확인한다. */
+    @Test void repeatsAllLobbyDoorRoutesAndRejectsWrongDoorAndCooldown() {
         var p = room.join(null);
-        String[] ids = {"development", "server", "meeting"};
-        String[] targets = {"development-lab", "server-room", "meeting-room"};
-        int[] xs = {400, 70, 730};
+        String[] ids = {"development", "control", "server", "meeting", "outdoor"};
+        String[] targets = {"development-lab", "control-room", "server-room", "meeting-room", "outdoor"};
+        int[] xs = {70, 730, 70, 730, 400};
+        int[] ys = {260, 260, 530, 530, 530};
         for (int cycle = 0; cycle < 3; cycle++) {
             for (int i = 0; i < ids.length; i++) {
                 assertThrows(IllegalArgumentException.class, () -> room.changeRoom(p.id(), "missing", clock.get()));
-                walk(p.id(), xs[i], 530);
+                walk(p.id(), xs[i], ys[i]);
                 long epoch = room.epoch(p.id());
                 room.changeRoom(p.id(), "lobby-to-" + ids[i], clock.get());
                 sequence = 0;
@@ -60,7 +61,7 @@ class RoomTravelTest {
                 clock.addAndGet(1_100_000_000L);
             }
         }
-        assertEquals(18, room.epoch(p.id()));
+        assertEquals(30, room.epoch(p.id()));
         assertEquals(1, room.snapshot().size());
     }
 
@@ -68,7 +69,7 @@ class RoomTravelTest {
     @Test void keepsRoomHistoryAndGlobalSpamBudgetAcrossTravel() {
         var p = room.join(null); var chat = new LobbyChat(room);
         chat.post(p.id(), "로비 기록", clock.get());
-        walk(p.id(), 400, 530);
+        walk(p.id(), 70, 260);
         room.changeRoom(p.id(), "lobby-to-development", clock.get());
         chat.post(p.id(), "개발 기록", clock.get());
         assertEquals("로비 기록", chat.history("lobby").get(0).message());

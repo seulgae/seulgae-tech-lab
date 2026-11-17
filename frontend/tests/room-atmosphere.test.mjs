@@ -9,7 +9,7 @@ import {
 
 const COLOR = /^#[0-9a-f]{6}$/
 
-test('네 방 모두 고유한 분위기 팔레트와 페이지 색, 안내 문구를 갖는다', () => {
+test('모든 방이 고유한 분위기 팔레트와 페이지 색, 안내 문구를 갖는다', () => {
   assert.deepEqual(Object.keys(ROOM_THEMES).sort(), Object.keys(ROOMS).sort())
   for (const [id, theme] of Object.entries(ROOM_THEMES)) {
     for (const group of [theme.floor, theme.wall, theme.door, theme.page]) for (const value of Object.values(group)) assert.match(value, COLOR, id)
@@ -17,7 +17,7 @@ test('네 방 모두 고유한 분위기 팔레트와 페이지 색, 안내 문�
     assert.ok(theme.notes.title && theme.notes.mission, id)
   }
   const accents = new Set(Object.values(ROOM_THEMES).map(theme => theme.page.accent))
-  assert.equal(accents.size, 4, '방마다 강조색이 달라야 한다')
+  assert.equal(accents.size, Object.keys(ROOMS).length, '방마다 강조색이 달라야 한다')
 })
 
 test('방별 바닥은 25×19로 화면을 덮고, 강조 타일이 각 방의 동선을 표시한다', () => {

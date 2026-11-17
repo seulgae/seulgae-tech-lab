@@ -28,7 +28,7 @@ export const ROOM_THEMES: Record<RoomId, RoomTheme> = {
     door: { frame: '#3b2418', frameLight: '#c9a24b', panel: '#6e4a33', panelLight: '#8f6446', handle: '#e7c66f', sign: '#c9a24b' },
     page: { background: '#1f1612', card: '#2c1f19', border: '#6b4b36', accent: '#e0b867', muted: '#c9b49a' },
     textures: { reception: 'lobby-desk', rack: 'bookshelf', equipment: 'lounge-sofa', chair: 'armchair', computer: 'kiosk', plant: 'tall-plant' },
-    notes: { title: '어서 오세요,\n연구원님.', body: '대리석 로비에서\n오늘의 탐험을 시작해요.', missionTitle: '안내 데스크와 키오스크', mission: '오른쪽 키오스크에서 E로 연구 기록을 열고, 아래 세 문으로 각 연구실에 들어가 보세요.' },
+    notes: { title: '어서 오세요,\n연구원님.', body: '대리석 로비에서\n오늘의 탐험을 시작해요.', missionTitle: '안내 데스크와 키오스크', mission: '키오스크에서 E로 연구 기록을 열고, 양옆 네 문으로 각 연구실에, 아래 문으로 바깥 초원에 나가 보세요.' },
   },
   'development-lab': {
     mood: '어두운 네이비 위에 네온 그린 모니터가 빛나는 해커 연구실',
@@ -60,6 +60,28 @@ export const ROOM_THEMES: Record<RoomId, RoomTheme> = {
     textures: { reception: 'meeting-table', chair: 'office-chair', equipment: 'whiteboard' },
     notes: { title: '함께 고민하면\n더 멀리 가요.', body: '따뜻한 원목 테이블에\n둘러앉아 이야기해요.', missionTitle: '테이블 대화', mission: '테이블 가까이에서 E를 누르면 테이블 대화가 켜지고 조명이 회의 모드로 바뀌어요.' },
   },
+  'control-room': {
+    mood: '어두운 관제실에 CCTV 모니터 월과 앰버 콘솔이 빛나는 상황실',
+    camera: '#070a0d', light: '#ffb547',
+    floor: { base: '#1a2026', baseLine: '#12171c', alt: '#1d242b', altLine: '#141a20', accent: '#22201a', accentLine: '#17150f', accentDetail: '#ffb547' },
+    wall: { upper: '#151b21', upperLight: '#1f2830', lower: '#0d1115', lowerDark: '#080b0e', trim: '#ffb547', detail: '#4ade80', side: '#11161b', bottom: '#0b0f13' },
+    door: { frame: '#080b0e', frameLight: '#ffb547', panel: '#26303a', panelLight: '#38454f', handle: '#ffb547', sign: '#4ade80' },
+    page: { background: '#080b0f', card: '#10161c', border: '#2a3540', accent: '#ffb547', muted: '#9aa8b5' },
+    // 모니터 월·콘솔은 공유 맵에 전용 텍스처 키(monitor-wall, control-console)로 들어 있다.
+    textures: { chair: 'operator-chair', rack: 'control-rack' },
+    notes: { title: '모든 방을\n한눈에.', body: '모니터 월에서 각 방의\n연구원을 실시간으로 봐요.', missionTitle: 'CCTV 관제', mission: '벽 모니터에 각 방의 연구원이 실시간으로 보여요. 콘솔에서 E를 누르면 이름과 위치를 크게 볼 수 있어요.' },
+  },
+  outdoor: {
+    mood: '연구소 밖, 시간 따라 하늘과 빛이 바뀌는 초원과 호수, 낚시터가 있는 강',
+    camera: '#1b2a1a', light: '#fff1c4',
+    floor: { base: '#6fae58', baseLine: '#5f9b4b', alt: '#78b860', altLine: '#64a24f', accent: '#b89a64', accentLine: '#a3875a', accentDetail: '#8a6f45' },
+    wall: { upper: '#78b8e8', upperLight: '#a8d4f2', lower: '#3f7a3a', lowerDark: '#2e5c2b', trim: '#4f8c45', detail: '#2e5c2b', side: '#3f7a3a', bottom: '#2e5c2b' },
+    door: { frame: '#3b2418', frameLight: '#c9a24b', panel: '#6e4a33', panelLight: '#8f6446', handle: '#e7c66f', sign: '#c9a24b' },
+    page: { background: '#13200f', card: '#1b2b17', border: '#3f5e36', accent: '#a7d98a', muted: '#bfd3b0' },
+    // 나무·바위는 전용 텍스처 키(oak-tree, field-rock)로, 호수·강(lake, river)은 충돌만 있고 OutdoorFx가 그린다.
+    textures: {},
+    notes: { title: '잠깐,\n바람 쐬러.', body: '시간에 따라 하늘과 빛이\n실제처럼 바뀌어요.', missionTitle: '강가 낚시', mission: '강가 나무 데크에서 E로 낚싯대를 던지고, 찌가 잠기면 E! 게이지 바늘이 초록 칸에 올 때 다시 E로 낚아 올려요.' },
+  },
 }
 
 const COLUMNS = 25
@@ -82,6 +104,17 @@ export function floorData(roomId: RoomId): number[][] {
       // 랙 앞 냉복도의 타공 통풍 타일
       if (row >= 9 && row <= 10 && column >= 3 && column <= 21) return 2
       return (row * 3 + column) % 7 === 0 ? 1 : 0
+    }
+    if (roomId === 'control-room') {
+      // 콘솔 앞뒤 앰버 안전선과 고무 바닥
+      if ((row === 7 || row === 11) && column >= 6 && column <= 18) return 2
+      return (row + column) % 3 === 0 ? 1 : 0
+    }
+    if (roomId === 'outdoor') {
+      // 연구소 문에서 위로 올라가 다리로 꺾이는 흙길, 나머지는 풀
+      if (column === 12 && row >= 10) return 2
+      if (row === 10 && column >= 12 && column <= 20) return 2
+      return (row * 7 + column * 3) % 5 === 0 ? 1 : 0
     }
     // 회의실: 테이블 주변 카펫과 엇갈린 원목 마루
     if (row >= 6 && row <= 12 && column >= 7 && column <= 17) return 2

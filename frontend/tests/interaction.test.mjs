@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 import { createRequire, stripTypeScriptTypes } from 'node:module'
 import test from 'node:test'
 import vm from 'node:vm'
-import { ROOMS, nearestInteraction, roomObstacles } from '../src/game/maps/rooms.ts'
+import { ROOMS, doorHint, nearestInteraction, roomObstacles } from '../src/game/maps/rooms.ts'
 import { LAB_EVENTS } from '../src/features/lab/labEvents.ts'
 import { ROOM_THEMES } from '../src/game/rooms/roomThemes.ts'
 import { crispText } from '../src/game/render/renderScale.ts'
@@ -47,6 +47,8 @@ function createScene(room = 'lobby') {
     intercept: target => { fx.calls.push(['intercept', target.kind]); return fx.intercepting },
     hint: () => fx.hintText,
     setTableTalk: (active, quiet) => fx.calls.push(['tableTalk', active, quiet]),
+    locking: false,
+    locksMovement: () => fx.locking,
     destroy: () => fx.calls.push(['destroy']),
   }
   state.fx = fx
@@ -84,7 +86,7 @@ function createScene(room = 'lobby') {
     .replace('export default class LabLobbyScene', 'class LabLobbyScene')
   const LobbyScene = vm.runInNewContext(source + '\nLabLobbyScene', {
     Phaser: { Scene, Input: { Keyboard: { JustDown } }, Scenes: { Events: { SHUTDOWN: 'shutdown' } } },
-    ROOMS, roomObstacles, nearestInteraction, setRoomObstacles() {}, Player, createLobbyMap: () => ({}), RESEARCH_EVENTS, LAB_EVENTS,
+    ROOMS, doorHint, roomObstacles, nearestInteraction, setRoomObstacles() {}, Player, createLobbyMap: () => ({}), RESEARCH_EVENTS, LAB_EVENTS,
     createRoomAssets() {}, ROOM_THEMES, createRoomFx: () => fx, crispText,
     applyRenderZoom: () => { state.zoomApplied = (state.zoomApplied ?? 0) + 1 },
     hasTextInputFocus: () => state.textFocused,
@@ -218,7 +220,7 @@ test('터치 E는 범위 밖에서 예약되지 않고 패널 동안 재실행�
 })
 
 test('모든 방에 스폰과 겹치지 않는 상호작용이 있고 위치별로 하나만 고른다', () => {
-  const kinds = new Set(['research', 'build-info', 'server-status', 'table-talk', 'agenda'])
+  const kinds = new Set(['research', 'build-info', 'server-status', 'table-talk', 'agenda', 'cctv', 'fishing'])
   for (const [id, room] of Object.entries(ROOMS)) {
     assert.ok(room.interactions.length > 0, id)
     for (const interaction of room.interactions) {
@@ -231,6 +233,8 @@ test('모든 방에 스폰과 겹치지 않는 상호작용이 있고 위치별�
   assert.equal(nearestInteraction('development-lab', 620, 290)?.id, 'development-build-right')
   assert.equal(nearestInteraction('meeting-room', 350, 340)?.kind, 'table-talk')
   assert.equal(nearestInteraction('meeting-room', 400, 460), undefined)
+  assert.equal(nearestInteraction('control-room', 400, 330)?.kind, 'cctv')
+  assert.equal(nearestInteraction('outdoor', 612, 500)?.kind, 'fishing')
 })
 
 test('서버실 랙과 개발 연구실 컴퓨터는 해당 패널만 열고 입력을 잠근다', () => {
@@ -280,12 +284,17 @@ test('회의 테이블 E는 테이블 대화를 켜고 끄며 범위를 벗어�
 
 test('출입구 E는 문을 열고 이동을 요청하며, 장면 종료 시 방 연출을 정리한다', () => {
   const { scene, key, state } = createScene('lobby')
+  // 아래 가운데 문은 바깥 초원으로 나가며, 공유 맵의 이름표("나가기")로 안내한다.
   scene.player.x = 400; scene.player.y = 530
   scene.update()
-  assert.equal(scene.interactionHint.text, 'E · 개발 연구실 입장')
+  assert.equal(scene.interactionHint.text, 'E · 나가기')
   key._justDown = true; scene.update()
-  assert.equal(state.changed, 'lobby-to-development')
-  assert.deepEqual(state.fx.calls.at(-1), ['open', 'lobby-to-development'])
+  assert.equal(state.changed, 'lobby-to-outdoor')
+  assert.deepEqual(state.fx.calls.at(-1), ['open', 'lobby-to-outdoor'])
+  // 왼쪽 위 옆문은 개발 연구실
+  scene.player.x = 90; scene.player.y = 280
+  scene.update()
+  assert.equal(scene.interactionHint.text, 'E · 개발 연구실 입장')
   scene.events.emit('shutdown')
   assert.deepEqual(state.fx.calls.at(-1), ['destroy'])
 })
@@ -314,18 +323,18 @@ test('테이블 대화 상태는 방 연출(회의 모드)에도 전달된다', 
 })
 
 test('의자 E는 앉기를 요청하고 같은 의자 E는 일어나며, 서버가 확인하지 않으면 1.5초 뒤 일어난다', () => {
-  const { scene, key, state } = createScene('lobby')
-  // 로비 의자 0(620,418)은 키오스크 아래에 있다. 의자 뒤(아래)에서 다가간다.
-  scene.player.x = 620; scene.player.y = 450
+  const { scene, key, state } = createScene('control-room')
+  // 관제실 의자 0(340,358)은 콘솔 아래에 있다. 의자 뒤(아래)에서 다가간다. 로비에는 의자가 없다.
+  scene.player.x = 340; scene.player.y = 395
   scene.update()
   assert.equal(scene.interactionHint.text, 'E', '의자 안내는 E만 짧게 보여 준다')
   key._justDown = true; scene.update()
-  assert.deepEqual(state.sits, ['lobby-chair-0'])
-  assert.equal(scene.player.seat.id, 'lobby-chair-0')
+  assert.deepEqual(state.sits, ['control-room-chair-0'])
+  assert.equal(scene.player.seat.id, 'control-room-chair-0')
   scene.update()
   assert.equal(scene.interactionHint.text, 'E', '앉은 뒤에도 같은 짧은 안내')
   key._justDown = true; scene.update()
-  assert.deepEqual(state.sits, ['lobby-chair-0', null])
+  assert.deepEqual(state.sits, ['control-room-chair-0', null])
   assert.equal(scene.player.seat, undefined)
 
   key._justDown = true; scene.update()
@@ -333,9 +342,9 @@ test('의자 E는 앉기를 요청하고 같은 의자 E는 일어나며, 서버
   scene.time.now = 1600; scene.update()
   assert.equal(scene.player.seat, undefined, '서버가 거부하면 일어난다')
   key._justDown = true; scene.update()
-  state.serverSeat = 'lobby-chair-0'
+  state.serverSeat = 'control-room-chair-0'
   scene.time.now = 4000; scene.update()
-  assert.equal(scene.player.seat.id, 'lobby-chair-0', '서버가 확인하면 계속 앉아 있다')
+  assert.equal(scene.player.seat.id, 'control-room-chair-0', '서버가 확인하면 계속 앉아 있다')
 })
 
 test('회의실 의자에 앉으면 테이블 대화가 켜지고 일어나면 꺼진다', () => {
@@ -396,7 +405,7 @@ test('책장 E는 책이 날아오는 연출 뒤 책 읽기 창을 연다', () =
   const { scene, uiEvents, key, state, runDelayed } = createScene('lobby')
   const opened = []
   uiEvents.on(LAB_EVENTS.openPanel, value => opened.push(value))
-  scene.player.x = 112; scene.player.y = 245
+  scene.player.x = 168; scene.player.y = 245
   scene.update()
   assert.equal(scene.interactionHint.text, 'E · 책 꺼내 보기')
   key._justDown = true; scene.update()
@@ -409,15 +418,16 @@ test('책장 E는 책이 날아오는 연출 뒤 책 읽기 창을 연다', () =
 
 test('모든 안내 문구는 다가간 뒤 2초만 보이고, 문구가 바뀌면 다시 보인다', () => {
   const { scene } = createScene('lobby')
-  scene.player.x = 620; scene.player.y = 450
+  scene.player.x = 620; scene.player.y = 400
   scene.update()
+  assert.equal(scene.interactionHint.text, 'E · 연구 기록')
   assert.equal(scene.interactionHint.visible, true)
   scene.time.now = 1999; scene.update()
   assert.equal(scene.interactionHint.visible, true)
   scene.time.now = 2000; scene.update()
   assert.equal(scene.interactionHint.visible, false, '2초 뒤 사라진다')
-  scene.player.y = 520; scene.update()
-  scene.player.y = 450; scene.update()
+  scene.player.y = 480; scene.update()
+  scene.player.y = 400; scene.update()
   assert.equal(scene.interactionHint.visible, true, '벗어났다 다시 다가가면 2초 동안 다시 보인다')
   scene.player.x = 445; scene.player.y = 240; scene.update()
   assert.equal(scene.interactionHint.text, 'E · 커피 마시기')
@@ -425,7 +435,7 @@ test('모든 안내 문구는 다가간 뒤 2초만 보이고, 문구가 바뀌�
   scene.time.now += 2000; scene.update()
   assert.equal(scene.interactionHint.visible, false, '커피·식물 등 다른 안내도 2초 뒤 사라진다')
   scene.player.x = 400; scene.player.y = 530; scene.update()
-  assert.equal(scene.interactionHint.text, 'E · 개발 연구실 입장')
+  assert.equal(scene.interactionHint.text, 'E · 나가기')
   scene.time.now += 2000; scene.update()
   assert.equal(scene.interactionHint.visible, false, '출입구 안내도 2초 뒤 사라진다')
 })

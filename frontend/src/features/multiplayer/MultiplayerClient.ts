@@ -8,11 +8,13 @@ import { INITIAL_CONNECTION, REPLACED_CLOSE_CODE, REPLACED_MESSAGE, closeCause, 
 export const ROOM_RESPONSE_TIMEOUT_MS = 15000
 /** 업로드가 잠시 막혀도 바로 끊지 않도록 약 4초 분량의 입력(20Hz)을 허용한다. */
 export const INPUT_BACKPRESSURE_BYTES = 16384
-import type { ConnectionInfo, MoveInput, MoveCommand, PlayerState, ChatMessage, ChatError, ChatScope, ServerMessage } from './model/protocol'
+import type { ConnectionInfo, MoveInput, MoveCommand, PlayerState, ChatMessage, ChatError, ChatScope, RoomFeeds, ServerMessage } from './model/protocol'
 
 type Callbacks = { room?: (roomId: RoomId, pending: boolean) => void; snapshot?: (players: PlayerState[], selfId: string | null, serverTime?: number) => void; status?: (info: ConnectionInfo) => void;
   chat?: (event: ChatMessage) => void; history?: (messages: ChatMessage[]) => void; chatError?: (reason: ChatError) => void; inputSent?: (sequence: number) => void;
-  predicted?: (command: MoveCommand) => void }
+  predicted?: (command: MoveCommand) => void
+  /** 관제실에서만 오는 방별 참가자 목록(약 5Hz) */
+  feeds?: (feeds: RoomFeeds) => void }
 
 /**
  * 소켓 상태와 입력 전송을 관리하고 끊김 시 제한된 지수 지연으로 재접속한다.
@@ -52,6 +54,7 @@ export default class MultiplayerClient {
   private selfId: string | null = null
   private input: MoveInput = { x: 0, y: 0 }
   private players = new Map<string, PlayerState>()
+  private lastFeeds: RoomFeeds | null = null
   private info = { ...INITIAL_CONNECTION }
   private readonly listeners = new Set<Callbacks>()
   private readonly stopInput = () => this.setInput({ x: 0, y: 0 })
@@ -60,6 +63,9 @@ export default class MultiplayerClient {
   constructor(callbacks: Callbacks = {}) { this.listeners.add(callbacks) }
 
   /** Scene은 구독만 교체하고 React 게임 컴포넌트가 소켓 수명을 소유한다. */
+  /** 관제실에서 마지막으로 받은 방별 참가자 목록. 관제실 밖이면 null이다. */
+  latestFeeds() { return this.roomId === 'control-room' ? this.lastFeeds : null }
+
   subscribe(callbacks: Callbacks) {
     this.listeners.add(callbacks)
     try {
@@ -230,7 +236,7 @@ export default class MultiplayerClient {
         if (message.type === 'room_changed') {
           if (!this.travelling || message.roomEpoch! <= this.roomEpoch || message.selfId !== this.selfId) return
           clearTimeout(this.travelTimer)
-          this.roomId = message.roomId!; this.roomEpoch = message.roomEpoch!; this.travelling = false
+          this.roomId = message.roomId!; this.roomEpoch = message.roomEpoch!; this.travelling = false; this.lastFeeds = null
           this.sequence = 0; this.lastTick = -1; this.commands = []; this.lastMovementBatch = []; this.lastQueuedInput = null
           this.input = {x:0,y:0}; this.lastSentInput = null; this.lastInputSent = -Infinity; this.serverTime = message.time
           this.messages = []; this.seenMessages.clear(); this.notify(c => c.history?.([]))
@@ -279,6 +285,8 @@ export default class MultiplayerClient {
           this.lastTick = message.tick
           this.serverTime = message.time
           this.players = new Map(message.players.map(player => [player.id, player]))
+          const feeds = message.feeds
+          if (feeds) { this.lastFeeds = feeds; this.notify(callbacks => callbacks.feeds?.(feeds)) }
         } else if (message.type === 'joined') this.players.set(message.player.id, message.player)
         else if (message.type === 'left') this.players.delete(message.id)
         this.notify(callbacks => callbacks.snapshot?.([...this.players.values()], this.selfId, this.serverTime))

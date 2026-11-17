@@ -2,16 +2,18 @@ import Phaser from 'phaser'
 import { ROOMS, roomObjects } from '../maps/rooms'
 import type { RoomId, RoomInteraction } from '../maps/rooms'
 import type { TreatKind } from './roomEventLogic'
-import type MultiplayerClient from '../../features/multiplayer/MultiplayerClient'
 import DoorAnimator from './DoorAnimator'
-import { MONO_FONT, UI_FONT, crispText } from '../render/renderScale'
+import { Banner, Context, DIM_DEPTH, hex } from './fxContext'
+import type { Options } from './fxContext'
 import { ROOM_THEMES } from './roomThemes'
 import {
   BOARD_MESSAGES, CiPipeline, LOBBY_ANNOUNCEMENTS, RACK_LABELS, ServerAlert, TREAT_STORAGE_KEY, countTreat, detectArrivals, localDay,
-  nextDelay, rotate, treatMessage,
+  rotate, treatMessage,
 } from './roomEventLogic'
 import { SKY_PALETTES, clockAngles, clockLabel, skyPhase } from './timeOfDay'
 import { AGENDAS_CHANGED, fetchAgendas } from '../../features/boards/boardsApi'
+import { controlRoomFx } from './controlRoomFx'
+import { outdoorFx } from './outdoorFx'
 
 /** Scene이 사용하는 방 연출 핸들. 문·장식·이벤트를 한 번에 정리한다. */
 export type RoomFx = {
@@ -22,17 +24,11 @@ export type RoomFx = {
   hint(target: RoomInteraction): string | undefined
   /** quiet면 배너 없이 조명·표시등만 바꾼다(회의실 의자에 앉아 자동으로 켤 때). */
   setTableTalk(active: boolean, quiet?: boolean): void
+  /** 낚시처럼 연출이 진행 중이라 캐릭터를 멈춰야 하면 true */
+  locksMovement(): boolean
   destroy(): void
 }
 
-type Options = {
-  from?: RoomId; client: MultiplayerClient; plants?: Map<string, Phaser.GameObjects.Image>
-  /** 먹고 마시기·책 꺼내기 연출이 따라갈 내 캐릭터 위치 */
-  player?: () => { x: number; y: number } | undefined
-}
-const hex = (color: string) => Phaser.Display.Color.HexStringToColor(color).color
-const BANNER_DEPTH = 1100
-const DIM_DEPTH = 900
 
 /**
  * 방 분위기 장식(조명·창문·스크린·파티클)과 방마다 다른 이벤트를 만든다.
@@ -43,70 +39,26 @@ export function createRoomFx(scene: Phaser.Scene, roomId: RoomId, options: Optio
   const arrival = options.from ? ROOMS[roomId].doors.find(door => door.target === options.from)?.id : undefined
   doors.arriveThrough(arrival)
   const banner = new Banner(scene, ROOM_THEMES[roomId].page.accent)
-  const builders = { lobby: lobbyFx, 'development-lab': developmentFx, 'server-room': serverFx, 'meeting-room': meetingFx } as const
+  const builders = {
+    lobby: lobbyFx, 'development-lab': developmentFx, 'server-room': serverFx, 'meeting-room': meetingFx,
+    'control-room': controlRoomFx, outdoor: outdoorFx,
+  } as const
   const room = builders[roomId](new Context(scene, banner, options))
   const shakePlant = plantShaker(scene, options.plants ?? new Map())
-  if (roomId !== 'lobby') banner.show(`${ROOMS[roomId].name}에 들어왔어요`)
+  if (roomId !== 'lobby' && roomId !== 'outdoor') banner.show(`${ROOMS[roomId].name}에 들어왔어요`)
   return {
     doors,
     // 식물은 모든 방에서 E로 흔들 수 있다. 나머지는 방 이벤트가 먼저 처리할 기회를 갖는다.
     intercept: target => target.kind === 'plant' ? (shakePlant(target.id), true) : room.intercept?.(target) ?? false,
     hint: target => room.hint?.(target),
     setTableTalk: (active, quiet) => room.setTableTalk?.(active, quiet),
+    locksMovement: () => room.locksMovement?.() ?? false,
     destroy: () => { room.destroy?.(); banner.destroy() },
   }
 }
 
-type RoomHandlers = Partial<Pick<RoomFx, 'intercept' | 'hint' | 'setTableTalk' | 'destroy'>>
+export type RoomHandlers = Partial<Pick<RoomFx, 'intercept' | 'hint' | 'setTableTalk' | 'locksMovement' | 'destroy'>>
 
-/** 방 연출 공통 도구: 반복 일정, 조명, 배너 */
-class Context {
-  readonly scene: Phaser.Scene
-  readonly banner: Banner
-  readonly options: Options
-  private stopped = false
-  constructor(scene: Phaser.Scene, banner: Banner, options: Options) { this.scene = scene; this.banner = banner; this.options = options }
-
-  /** min~max 간격으로 반복한다. Scene 종료 시 Phaser 시계가 함께 정리한다. */
-  every(min: number, max: number, run: () => void, first = nextDelay(min, max)) {
-    const tick = () => { if (this.stopped) return; run(); this.scene.time.delayedCall(nextDelay(min, max), tick) }
-    this.scene.time.delayedCall(first, tick)
-  }
-
-  glow(x: number, y: number, color: string | number, scaleX: number, scaleY = scaleX, alpha = 0.3, depth = 850) {
-    return this.scene.add.image(x, y, 'glow').setTint(typeof color === 'string' ? hex(color) : color)
-      .setScale(scaleX, scaleY).setAlpha(alpha).setBlendMode(Phaser.BlendModes.ADD).setDepth(depth)
-  }
-
-  /** 한글은 UI 글꼴, 코드·영문 표시는 고정폭 글꼴로 렌더 배율에 맞춰 그린다. */
-  text(x: number, y: number, value: string, size: number, color: string, depth = 70, mono = false) {
-    return crispText(this.scene, x, y, value, { fontFamily: mono ? MONO_FONT : UI_FONT, fontSize: `${size}px`, color, align: 'center' })
-      .setOrigin(0.5).setDepth(depth)
-  }
-
-  stop() { this.stopped = true }
-}
-
-/** 화면 위쪽에 잠시 내려왔다 사라지는 안내 띠. 한 번에 하나만 표시한다. */
-class Banner {
-  private readonly scene: Phaser.Scene
-  private readonly accent: number
-  private current?: Phaser.GameObjects.Container
-  constructor(scene: Phaser.Scene, accent: string) { this.scene = scene; this.accent = hex(accent) }
-
-  show(message: string, color?: string, holdMs = 2600) {
-    this.current?.destroy()
-    const text = crispText(this.scene, 0, 0, message, { fontSize: '15px', fontStyle: 'bold', color: '#ffffff', align: 'center' }).setOrigin(0.5)
-    const width = Math.min(740, text.width + 40)
-    const box = this.scene.add.rectangle(0, 0, width, 34, 0x0b0f14, 0.85).setStrokeStyle(2, color ? hex(color) : this.accent)
-    const container = this.scene.add.container(400, 70, [box, text]).setDepth(BANNER_DEPTH).setAlpha(0)
-    this.current = container
-    this.scene.tweens.add({ targets: container, y: 98, alpha: 1, duration: 260, ease: 'Back.easeOut' })
-    this.scene.tweens.add({ targets: container, alpha: 0, y: 88, delay: 260 + holdMs, duration: 320, onComplete: () => { if (this.current === container) this.current = undefined; container.destroy() } })
-  }
-
-  destroy() { this.current?.destroy(); this.current = undefined }
-}
 
 /** 로비: 창문과 샹들리에, 안내판, 안내 방송, 도착 환영 */
 function lobbyFx(ctx: Context): RoomHandlers {
