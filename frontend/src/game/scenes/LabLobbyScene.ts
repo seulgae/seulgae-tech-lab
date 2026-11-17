@@ -27,8 +27,8 @@ import { setRoomObstacles } from '../multiplayer/networkPosition'
  * @version 1.2, 방별 테마·문 열림 연출·방 이벤트 연결
  * @see "None"
  */
-/** 의자 안내 문구가 보이는 시간(ms). 그 뒤에는 테두리 강조만 남는다. */
-const SEAT_HINT_MS = 2000
+/** 상호작용·출입구 안내 문구가 보이는 시간(ms). 그 뒤에는 테두리 강조만 남는다. */
+const HINT_VISIBLE_MS = 2000
 
 export default class LabLobbyScene extends Phaser.Scene {
   private player?: Player
@@ -44,8 +44,8 @@ export default class LabLobbyScene extends Phaser.Scene {
   private seatTalk = false
   private sitRequestedAt = 0
   private interactionHighlight?: Phaser.GameObjects.Rectangle
-  /** 의자 안내는 이름표와 겹치므로 대상이 바뀐 순간부터 잠깐만 보여 준다. */
-  private hintTargetId?: string
+  /** 안내 문구는 이름표와 겹치므로 대상이나 문구가 바뀐 순간부터 잠깐만 보여 준다. */
+  private hintKey?: string
   private hintShownAt = 0
   private multiplayer?: LobbyMultiplayer
   private fx?: RoomFx
@@ -184,10 +184,11 @@ export default class LabLobbyScene extends Phaser.Scene {
     const enabled = !this.panelOpen && !this.transition && !textFocused
     if (door) this.interactionHint?.setPosition(door.x, door.y - 70).setText('E · ' + ROOMS[door.target as RoomId].name + ' 입장')
     else if (target) this.interactionHint?.setPosition(target.x, target.y - target.height / 2 - 30).setText(this.fx?.hint(target) ?? this.hintFor(target))
-    const hintId = door?.id ?? target?.id
-    if (hintId !== this.hintTargetId) { this.hintTargetId = hintId; this.hintShownAt = this.time.now }
-    const seatHintExpired = target?.kind === 'seat' && this.time.now - this.hintShownAt >= SEAT_HINT_MS
-    this.interactionHint?.setVisible(enabled && (!!door || !!target) && !seatHintExpired)
+    // 대상이 바뀌거나(다가감) 문구가 바뀌면(테이블 대화 참여·나가기, 서버실 경보) 다시 2초 동안 보여 준다.
+    const hintKey = door || target ? `${door?.id ?? target?.id}|${this.interactionHint?.text ?? ''}` : undefined
+    if (hintKey !== this.hintKey) { this.hintKey = hintKey; this.hintShownAt = this.time.now }
+    const hintExpired = this.time.now - this.hintShownAt >= HINT_VISIBLE_MS
+    this.interactionHint?.setVisible(enabled && (!!door || !!target) && !hintExpired)
     if (target) this.interactionHighlight?.setPosition(target.x, target.y + 2).setSize(target.width + 14, target.height + 8)
       .setDepth(target.y + target.height / 2 + 1)
     this.interactionHighlight?.setVisible(!!target && enabled)

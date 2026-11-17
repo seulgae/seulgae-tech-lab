@@ -407,7 +407,7 @@ test('책장 E는 책이 날아오는 연출 뒤 책 읽기 창을 연다', () =
   assert.deepEqual(opened, ['bookshelf'])
 })
 
-test('의자 안내 문구는 다가간 뒤 2초만 보이고, 다른 안내는 계속 보인다', () => {
+test('모든 안내 문구는 다가간 뒤 2초만 보이고, 문구가 바뀌면 다시 보인다', () => {
   const { scene } = createScene('lobby')
   scene.player.x = 620; scene.player.y = 450
   scene.update()
@@ -420,7 +420,27 @@ test('의자 안내 문구는 다가간 뒤 2초만 보이고, 다른 안내는 
   scene.player.y = 450; scene.update()
   assert.equal(scene.interactionHint.visible, true, '벗어났다 다시 다가가면 2초 동안 다시 보인다')
   scene.player.x = 445; scene.player.y = 240; scene.update()
-  scene.time.now = 9000; scene.update()
   assert.equal(scene.interactionHint.text, 'E · 커피 마시기')
-  assert.equal(scene.interactionHint.visible, true, '의자가 아닌 안내는 사라지지 않는다')
+  assert.equal(scene.interactionHint.visible, true, '다른 대상으로 옮기면 다시 보인다')
+  scene.time.now += 2000; scene.update()
+  assert.equal(scene.interactionHint.visible, false, '커피·식물 등 다른 안내도 2초 뒤 사라진다')
+  scene.player.x = 400; scene.player.y = 530; scene.update()
+  assert.equal(scene.interactionHint.text, 'E · 개발 연구실 입장')
+  scene.time.now += 2000; scene.update()
+  assert.equal(scene.interactionHint.visible, false, '출입구 안내도 2초 뒤 사라진다')
+})
+
+test('테이블 대화 안내는 2초 뒤 사라지고, E로 참여·나가기가 바뀌면 다시 2초 보인다', () => {
+  const { scene, key } = createScene('meeting-room')
+  scene.player.x = 350; scene.player.y = 340
+  scene.update()
+  assert.equal(scene.interactionHint.text, 'E · 테이블 대화 참여')
+  scene.time.now = 2000; scene.update()
+  assert.equal(scene.interactionHint.visible, false)
+  key._justDown = true; scene.update()
+  scene.update()
+  assert.equal(scene.interactionHint.text, 'E · 테이블 대화 나가기')
+  assert.equal(scene.interactionHint.visible, true, '문구가 바뀌면 다시 보인다')
+  scene.time.now = 4000; scene.update()
+  assert.equal(scene.interactionHint.visible, false)
 })
