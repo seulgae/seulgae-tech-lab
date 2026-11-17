@@ -123,6 +123,63 @@ class OperationsTests(unittest.TestCase):
                 self.assertIn('BACKEND_IMAGE=ghcr.io/', content)
                 self.assertNotIn('PASSWORD', content)
 
+    def fake_git(self, head, dirty='', ancestor=True):
+        calls = []
+
+        def git(args, capture=False):
+            calls.append(args[3:])
+            if args[3] == 'merge-base' and not ancestor:
+                raise ops.OpsError('Command failed (1): git -C')
+            if args[3] == 'rev-parse':
+                return head
+            if args[3] == 'status':
+                return dirty
+            return ''
+        return git, calls
+
+    def test_checkout_already_at_release_is_left_alone(self):
+        git, calls = self.fake_git('a' * 40)
+        self.assertFalse(ops.sync_checkout(release(), git))
+        self.assertEqual([call[0] for call in calls], ['fetch', 'merge-base', 'rev-parse'])
+
+    def test_stale_checkout_is_detached_at_the_release_commit(self):
+        git, calls = self.fake_git('b' * 40)
+        self.assertTrue(ops.sync_checkout(release(), git))
+        self.assertEqual(calls[-1], ['checkout', '--quiet', '--detach', 'a' * 40])
+
+    def test_checkout_with_local_changes_or_foreign_release_is_not_moved(self):
+        git, calls = self.fake_git('b' * 40, dirty=' M compose.yml')
+        with self.assertRaisesRegex(ops.OpsError, 'local changes'):
+            ops.sync_checkout(release(), git)
+        self.assertNotIn('checkout', [call[0] for call in calls])
+        git, calls = self.fake_git('b' * 40, ancestor=False)
+        with self.assertRaises(ops.OpsError):
+            ops.sync_checkout(release(), git)
+        self.assertNotIn('checkout', [call[0] for call in calls])
+
+    def test_deploy_reexecutes_release_ops_before_preflight_once_checkout_moves(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(ops, 'STATE', Path(directory)), \
+                patch.dict(os.environ, {}, clear=False), \
+                patch.object(ops, 'select_release', return_value=release()), \
+                patch.object(ops, 'sync_checkout', return_value=True), \
+                patch.object(ops, 'preflight') as preflight, \
+                patch.object(ops.os, 'execv', side_effect=SystemExit('exec')) as execv:
+            os.environ.pop(ops.SYNCED_ENV, None)
+            with self.assertRaises(SystemExit):
+                ops.main(['deploy'])
+            preflight.assert_not_called()
+            self.assertEqual(execv.call_args.args[1][-2:], [str(ops.ROOT / 'deploy' / 'ops.py'), 'deploy'])
+            self.assertEqual(os.environ[ops.SYNCED_ENV], 'a' * 40)
+
+    def test_reexecuted_deploy_does_not_sync_before_preflight_again(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(ops, 'STATE', Path(directory)), \
+                patch.dict(os.environ, {ops.SYNCED_ENV: 'a' * 40}), \
+                patch.object(ops, 'sync_checkout') as sync, \
+                patch.object(ops, 'preflight', side_effect=ops.OpsError('stop after preflight')):
+            with self.assertRaisesRegex(ops.OpsError, 'stop after preflight'):
+                ops.main(['deploy'])
+            sync.assert_not_called()
+
 
 if __name__ == '__main__':
     unittest.main()

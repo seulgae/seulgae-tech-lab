@@ -145,25 +145,31 @@ class BootstrapTests(unittest.TestCase):
         with patch.object(ops, 'preflight'), patch.object(ops, 'bootstrap', return_value=None), \
                 patch.object(ops, 'select_release', return_value=candidate), \
                 patch.object(ops, 'schema_version', return_value=1), patch.object(ops, 'command') as command, \
+                patch.object(ops, 'sync_checkout', return_value=False) as sync, \
                 patch.object(ops, 'verify_images') as verify, patch.object(ops, 'transact') as transact:
             ops.main(['deploy'])
             verify.assert_called_once_with(candidate)
             transact.assert_called_once_with(candidate, None, 'deploy')
             self.assertEqual(sum(c.args[0][:2] == ['docker', 'pull'] for c in command.call_args_list), 2)
-            self.assertTrue(any('merge-base' in c.args[0] for c in command.call_args_list))
+            # Checkout is synced (fetch + ancestry check) before preflight and again before activation.
+            self.assertEqual([c.args[0] for c in sync.call_args_list], [candidate, candidate])
         with patch.object(ops, 'preflight'), patch.object(ops, 'bootstrap', return_value=candidate), \
                 patch.object(ops, 'verify_running_images'), patch.object(ops, 'select_release', return_value=candidate), \
                 patch.object(ops, 'schema_version', return_value=1), patch.object(ops, 'command'), \
-                patch.object(ops, 'verify_images'), patch.object(ops, 'health') as health, patch.object(ops, 'transact') as transact:
+                patch.object(ops, 'sync_checkout', return_value=False), \
+                patch.object(ops, 'verify_images'), patch.object(ops, 'activate') as activate, \
+                patch.object(ops, 'transact') as transact:
             ops.main(['deploy'])
-            health.assert_called_once_with(candidate)
+            # Same images: Compose is re-applied so config-only changes still roll out, without a transaction.
+            activate.assert_called_once_with(candidate)
             transact.assert_not_called()
 
     def test_failed_image_revision_does_not_activate(self):
         with patch.object(ops, 'preflight'), patch.object(ops, 'bootstrap', return_value=None), \
                 patch.object(ops, 'select_release', return_value=release()), patch.object(ops, 'schema_version', return_value=1), \
-                patch.object(ops, 'command'), patch.object(ops, 'verify_images', side_effect=ops.OpsError('revision')), \
-                patch.object(ops, 'transact') as transact, self.assertRaises(ops.OpsError):
+                patch.object(ops, 'command'), patch.object(ops, 'sync_checkout', return_value=False), \
+                patch.object(ops, 'verify_images', side_effect=ops.OpsError('revision')), \
+                patch.object(ops, 'transact') as transact, self.assertRaisesRegex(ops.OpsError, 'revision'):
             ops.main(['deploy'])
         transact.assert_not_called()
 

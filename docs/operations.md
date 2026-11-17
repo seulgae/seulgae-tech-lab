@@ -130,6 +130,12 @@ DB 및 Kafka를 중지하거나 마이그레이션을 재실행하지 않는다.
 
 `deploy.sh`는 성공한 동일 저장소 main의 push/workflow_dispatch CI와 게시 manifest만 선택한다. 저장소·실행 ID·SHA 및 origin/main 조상 여부를 검사한다. GHCR digest만 허용하고 Pull한 이미지의 OCI revision 라벨과 SHA를 대조한다. SHA·태그·Compose 옵션의 직접 전달은 거부한다.
 
+서버 저장소는 `deploy.sh`가 릴리스 커밋으로 맞춘다(PR #32).
+- HEAD가 릴리스 SHA와 다르면 추적 파일 변경이 없는지 확인하고 `git checkout --detach <릴리스 SHA>`로 옮긴다. 그런 다음 그 커밋의 `ops.py`로 다시 실행한다.
+- 그래서 사전 점검과 `compose.yml`(환경변수·secret)이 배포 이미지와 항상 같은 커밋 기준이다. 서버에서 따로 `git pull`할 필요가 없다. 서버 저장소는 detached HEAD 상태가 정상이다.
+- 이미지가 이미 최신이어도 `compose up -d`를 다시 적용해, 설정만 바뀐 서비스는 재생성한다.
+- 추적 파일을 서버에서 직접 고쳐 두면 배포가 멈춘다. 고친 내용은 PR로 반영하고 서버 변경은 되돌린다.
+
 - 앱 0개 + 관리 상태 없음: 최초 배포. 가짜 legacy/previous 버전을 생성하지 않는다.
 - 앱 일부만 존재하거나 동일 이름의 다른 Compose 컨테이너 존재: 중단한다.
 - 기존 앱 2개 + 상태 파일 없음: 기존 legacy 부트스트랩을 유지한다.
