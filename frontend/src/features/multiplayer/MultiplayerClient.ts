@@ -64,6 +64,9 @@ export default class MultiplayerClient {
 
   /** Scene은 구독만 교체하고 React 게임 컴포넌트가 소켓 수명을 소유한다. */
   /** 관제실에서 마지막으로 받은 방별 참가자 목록. 관제실 밖이면 null이다. */
+  /** 내 연구원 id(채팅 알림음에서 내 메시지를 거른다) */
+  selfPlayerId() { return this.selfId }
+
   latestFeeds() { return this.roomId === 'control-room' ? this.lastFeeds : null }
 
   subscribe(callbacks: Callbacks) {

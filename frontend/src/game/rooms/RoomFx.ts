@@ -12,6 +12,7 @@ import {
 } from './roomEventLogic'
 import { SKY_PALETTES, clockAngles, clockLabel, skyPhase } from './timeOfDay'
 import { AGENDAS_CHANGED, fetchAgendas } from '../../features/boards/boardsApi'
+import { playSfx } from '../../audio/AudioManager'
 import { controlRoomFx } from './controlRoomFx'
 import { outdoorFx } from './outdoorFx'
 
@@ -83,6 +84,7 @@ function lobbyFx(ctx: Context): RoomHandlers {
   ctx.banner.show(ctx.options.from ? '중앙 로비로 돌아왔어요' : '슬개기술연구소 중앙 로비에 오신 것을 환영합니다')
   let announcement = 0
   ctx.every(35000, 55000, () => {
+    playSfx('announce', { volume: 0.6 })
     ctx.banner.show('♪ 안내 방송 · ' + rotate(LOBBY_ANNOUNCEMENTS, announcement++), '#e0b867', 3600)
     sparkle.explode(24, 400, 100)
   })
@@ -91,6 +93,7 @@ function lobbyFx(ctx: Context): RoomHandlers {
   let known: Set<string> | null = null
   const unsubscribe = ctx.options.client.subscribe({ snapshot: (players, selfId) => {
     for (const player of detectArrivals(known, players, selfId)) {
+      playSfx('notify', { volume: 0.4 })
       ctx.banner.show(`${player.nickname} 님이 로비에 도착했어요`, '#e0b867')
       sparkle.explode(18, player.x, player.y - 24)
     }
@@ -148,6 +151,7 @@ function developmentFx(ctx: Context): RoomHandlers {
       if (run.passed) {
         status.setText(`✔ BUILD #${run.number} PASSED`).setColor('#39e6b4')
         confetti.explode(60, 400, 70)
+        playSfx('success', { volume: 0.5 })
         ctx.banner.show(`빌드 #${run.number} 성공! 모든 테스트 통과`, '#39e6b4')
       } else {
         status.setText(`✖ BUILD #${run.number} FAILED`).setColor('#f87171')
@@ -155,6 +159,7 @@ function developmentFx(ctx: Context): RoomHandlers {
         scene.cameras.main.shake(180, 0.003)
         const flash = scene.add.rectangle(400, 300, 800, 600, 0xef4444, 0.18).setDepth(DIM_DEPTH)
         scene.tweens.add({ targets: flash, alpha: 0, duration: 700, onComplete: () => flash.destroy() })
+        playSfx('error', { volume: 0.5 })
         ctx.banner.show(`빌드 #${run.number} 실패 · 테스트 ${run.failedTests}개 확인 필요`, '#f87171')
       }
     } })
@@ -203,6 +208,7 @@ function serverFx(ctx: Context): RoomHandlers {
     siren = scene.tweens.add({ targets: [hot, ...alarms], alpha: 0.7, duration: 420, yoyo: true, repeat: -1 })
     temperature.setText('SERVER ROOM · 31°C ▲').setColor('#f87171')
     vents.setFrequency(400)
+    playSfx('alarm', { volume: 0.45 })
     ctx.banner.show(`⚠ 랙 ${RACK_LABELS[index]} 온도 상승! 랙 앞에서 E로 냉각하세요`, '#ef4444', 3200)
   }, 8000)
   scene.time.addEvent({ delay: 500, loop: true, callback: () => { if (alert.update(scene.time.now) === 'auto') calm('자동 냉각 완료 · 18°C 정상') } })
@@ -212,6 +218,7 @@ function serverFx(ctx: Context): RoomHandlers {
     intercept: target => {
       if (target.kind !== 'server-status' || alert.resolve() !== 'manual') return false
       burst.explode(50, target.x, target.y + 30)
+      playSfx('success', { volume: 0.6 })
       calm('❄ 냉각 완료! 온도가 정상으로 돌아왔어요')
       return true
     },
@@ -261,6 +268,7 @@ function plantShaker(scene: Phaser.Scene, plants: Map<string, Phaser.GameObjects
     scene.tweens.add({ targets: image, angle: { from: -7, to: 7 }, duration: 90, yoyo: true, repeat: 3, ease: 'Sine.easeInOut',
       onComplete: () => { image.setAngle(0); image.setData('shaking', false) } })
     leaves.explode(9, image.x, image.y - image.displayHeight * 0.75)
+    playSfx('leaves', { volume: 0.7 })
   }
   for (const [id, image] of plants) image.setInteractive({ useHandCursor: true }).on('pointerdown', () => shake(id))
   return shake
@@ -358,6 +366,7 @@ function treatTable(ctx: Context) {
   const enjoy = (kind: TreatKind) => {
     if (scene.time.now < busyUntil) return
     busyUntil = scene.time.now + 900
+    playSfx(kind === 'coffee' ? 'sip' : 'munch', { volume: 0.7 })
     const prop = props[kind]
     const me = where({ x: prop.x, y: prop.y + 60 })
     scene.tweens.add({ targets: prop, scaleY: 1.8, duration: 90, yoyo: true })
@@ -379,6 +388,7 @@ function treatTable(ctx: Context) {
   /** 책장에서 책 한 권이 내 캐릭터 쪽으로 포물선을 그리며 날아온다. */
   const pullBook = (shelf: RoomInteraction) => {
     const me = where({ x: shelf.x, y: shelf.y + 60 })
+    playSfx('page', { volume: 0.6 })
     const book = scene.add.image(shelf.x, shelf.y - 10, 'book').setScale(2).setDepth(EMOTE_DEPTH)
       .setTint(BOOK_COLORS[Math.floor(Math.random() * BOOK_COLORS.length)]!)
     const from = { x: book.x, y: book.y }

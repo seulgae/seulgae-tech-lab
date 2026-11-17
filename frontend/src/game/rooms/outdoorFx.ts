@@ -9,6 +9,7 @@ import {
   BITE_WINDOW_MS, FISH_LOG_KEY, REEL_TIMEOUT_MS, catchMessage, catchZone, inZone, needleAt, recordCatch, rollCatch, waitBeforeBite,
 } from './fishingLogic'
 import type { Catch } from './fishingLogic'
+import { playSfx } from '../../audio/AudioManager'
 
 /** 공유 맵과 같은 물 영역: 호수, 강(다리 자리 y 328~382 제외), 낚시 데크 */
 const LAKE = { x: 70, y: 180, width: 260, height: 140 }
@@ -276,6 +277,7 @@ function fishingGame(ctx: Context, currentPhase: () => SkyPhase) {
     }
     if (state === 'wait' && now >= deadline) {
       state = 'bite'
+      playSfx('plop', { volume: 0.8 })
       deadline = now + BITE_WINDOW_MS
       scene.tweens.killTweensOf(bobber)
       scene.tweens.add({ targets: bobber, y: bobber.y + 6, duration: 90, yoyo: true, repeat: 3 })
@@ -283,11 +285,12 @@ function fishingGame(ctx: Context, currentPhase: () => SkyPhase) {
       const p = me()
       exclaim.setPosition(p.x, p.y - 64).setVisible(true)
     } else if (state === 'bite' && now > deadline) {
+      playSfx('error', { volume: 0.4 })
       reset('찌만 흔들리고 도망갔어요. 입질이 오면 바로 E!', '#ffb547')
     } else if (state === 'reel') {
       const value = needleAt(now - reelStart, caught!.species.rarity)
       needle.x = -64 + value * 128
-      if (now - reelStart > REEL_TIMEOUT_MS) reset('물고기가 줄을 끊고 달아났어요…', '#ffb547')
+      if (now - reelStart > REEL_TIMEOUT_MS) { playSfx('error', { volume: 0.4 }); reset('물고기가 줄을 끊고 달아났어요…', '#ffb547') }
     }
   }
   scene.events.on(Phaser.Scenes.Events.UPDATE, update)
@@ -296,6 +299,7 @@ function fishingGame(ctx: Context, currentPhase: () => SkyPhase) {
     const now = scene.time.now
     if (state === 'idle') {
       state = 'cast'
+      playSfx('cast', { volume: 0.6 })
       const p = me()
       const target = { x: RIVER.x + 18 + Math.random() * 24, y: DOCK.y + 4 + Math.random() * 30 }
       bobber.setPosition(p.x, p.y - 30).setVisible(true)
@@ -303,13 +307,14 @@ function fishingGame(ctx: Context, currentPhase: () => SkyPhase) {
       scene.tweens.add({ targets: bobber, y: { from: p.y - 30, to: target.y }, duration: 420, ease: 'Back.easeIn', onComplete: () => {
         if (state !== 'cast') return
         splash.explode(6, bobber.x, bobber.y)
+        playSfx('plop', { volume: 0.4, rate: 1.3 })
         scene.tweens.add({ targets: bobber, y: bobber.y + 2, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' })
         state = 'wait'
         deadline = scene.time.now + waitBeforeBite()
       } })
       return true
     }
-    if (state === 'wait') { reset('아직 입질이 없었어요. 찌를 거뒀어요.'); return true }
+    if (state === 'wait') { playSfx('click', { volume: 0.5 }); reset('아직 입질이 없었어요. 찌를 거뒀어요.'); return true }
     if (state === 'bite') {
       state = 'reel'
       caught = rollCatch(currentPhase())
@@ -322,7 +327,7 @@ function fishingGame(ctx: Context, currentPhase: () => SkyPhase) {
       return true
     }
     if (state === 'reel') {
-      if (!inZone(needleAt(now - reelStart, caught!.species.rarity), zone)) { reset('아깝다! 바늘이 초록 칸에 있을 때 눌러야 해요.', '#ffb547'); return true }
+      if (!inZone(needleAt(now - reelStart, caught!.species.rarity), zone)) { playSfx('error', { volume: 0.5 }); reset('아깝다! 바늘이 초록 칸에 있을 때 눌러야 해요.', '#ffb547'); return true }
       land(caught!)
       return true
     }
@@ -344,6 +349,8 @@ function fishingGame(ctx: Context, currentPhase: () => SkyPhase) {
     const sprite = scene.add.image(bobber.x, bobber.y, 'fish').setScale(2 + Math.min(fish.cm / 40, 1.5)).setTint(FISH_TINT[fish.species.id] ?? 0xffffff).setDepth(POPUP_DEPTH)
     bobber.setVisible(false); line.clear()
     splash.explode(16, sprite.x, sprite.y)
+    playSfx('splash', { volume: 0.6 })
+    playSfx('success', { volume: 0.6 })
     scene.tweens.add({ targets: sprite, x: p.x, duration: 520, ease: 'Sine.easeOut' })
     scene.tweens.add({ targets: sprite, y: { from: sprite.y, to: p.y - 60 }, duration: 520, ease: 'Back.easeOut', onComplete: () => {
       scene.tweens.add({ targets: sprite, angle: { from: -12, to: 12 }, duration: 120, yoyo: true, repeat: 5 })

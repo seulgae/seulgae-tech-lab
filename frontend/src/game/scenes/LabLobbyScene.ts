@@ -19,6 +19,16 @@ import type { DirectionInput } from '../input/mobileInput'
 import { ROOMS, doorHint, nearestInteraction, roomObstacles } from '../maps/rooms'
 import type { RoomId, RoomInteraction, Seat } from '../maps/rooms'
 import { setRoomObstacles } from '../multiplayer/networkPosition'
+import { AudioManager, playSfx } from '../../audio/AudioManager'
+import type { GameLike } from '../../audio/AudioManager'
+import { FootstepTracker, footstepSound } from '../../audio/soundRules'
+import type { EffectKey } from '../../audio/synth'
+import { skyPhase } from '../rooms/timeOfDay'
+
+/** 패널을 열 때 함께 나는 장비 소리(컴퓨터 타이핑, 키오스크, 화이트보드 마커 등) */
+const PANEL_SOUNDS: Partial<Record<string, EffectKey>> = {
+  research: 'kiosk', 'build-info': 'typing', 'server-status': 'beep', agenda: 'marker', bookshelf: 'page', cctv: 'beep',
+}
 
 /**
  * 방의 표시·충돌·출입구와 방별 상호작용(연구 기록·빌드 정보·서버 상태·테이블 대화)을 연결하는 게임 장면이다.
@@ -49,6 +59,8 @@ export default class LabLobbyScene extends Phaser.Scene {
   private hintShownAt = 0
   private multiplayer?: LobbyMultiplayer
   private fx?: RoomFx
+  /** 실제로 움직인 거리만큼만 발걸음 소리를 낸다. */
+  private readonly footsteps = new FootstepTracker()
   /** 서버 승인을 기다리며 열어 둔 출입구 */
   private openingDoor?: string
   private readonly uiEvents: Phaser.Events.EventEmitter
@@ -74,6 +86,7 @@ export default class LabLobbyScene extends Phaser.Scene {
 
   private readonly resizeRender = () => applyRenderZoom(this)
   private readonly closePanel = () => {
+    if (this.panelOpen) playSfx('panel-close', { volume: 0.6 })
     this.panelOpen = false
   }
   private readonly stopMultiplayer = () => {
@@ -109,6 +122,11 @@ export default class LabLobbyScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(ROOM_THEMES[this.activeRoom].camera)
     const { obstacles, interactionHighlight, plants } = createLobbyMap(this, this.activeRoom)
     this.interactionHighlight = interactionHighlight
+    // 방 음악·환경음: 처음 클릭 전에는 브라우저 정책상 기다렸다가 시작한다. 바깥은 1분마다 시간대(밤 환경음)를 다시 맞춘다.
+    const audio = AudioManager.for(this.game as unknown as GameLike)
+    audio.enterRoom(this.activeRoom, skyPhase(new Date()))
+    this.time.addEvent({ delay: 60_000, loop: true, callback: () => audio.enterRoom(this.activeRoom, skyPhase(new Date())) })
+    this.footsteps.reset()
     this.fx = createRoomFx(this, this.activeRoom, {
       from: data.from, client: this.client, plants, player: () => this.player && { x: this.player.x, y: this.player.y },
     })
@@ -123,6 +141,7 @@ export default class LabLobbyScene extends Phaser.Scene {
         this.restartPending = true
         const from = this.activeRoom
         this.time.delayedCall(this.fx?.doors.remainingOpenMs() ?? 0, () => {
+          playSfx('transition', { volume: 0.5 })
           this.cameras.main.fadeOut(200)
           this.time.delayedCall(210, () => this.scene.restart({ from }))
         })
@@ -175,6 +194,11 @@ export default class LabLobbyScene extends Phaser.Scene {
     const textFocused = hasTextInputFocus()
     // 낚시처럼 방 연출이 진행 중이면 캐릭터를 멈춘다.
     this.player.update(!this.panelOpen && !this.transition && !textFocused && !this.fx?.locksMovement(), this.touchInput)
+    // 앉아 있거나 막혀서 좌표가 그대로면 발걸음이 나지 않는다. 음높이를 조금씩 바꿔 반복감을 줄인다.
+    if (this.player.seat) this.footsteps.reset()
+    else if (this.footsteps.update(this.player.x, this.player.y)) {
+      playSfx(footstepSound(this.activeRoom, this.player.x, this.player.y), { volume: 0.45, rate: 0.92 + Math.random() * 0.16 })
+    }
     this.multiplayer?.update(delta)
     const door = ROOMS[this.activeRoom].doors.find(d => Math.hypot(this.player!.x - d.x, this.player!.y - d.y) <= 56)
     // 출입구가 우선이며, E 한 번에 한 대상만 실행한다.
@@ -221,6 +245,9 @@ export default class LabLobbyScene extends Phaser.Scene {
     this.resetChatInput()
     this.interactionHint?.setVisible(false)
     this.interactionHighlight?.setVisible(false)
+    playSfx('panel-open', { volume: 0.6 })
+    const panelSound = PANEL_SOUNDS[target.kind]
+    if (panelSound) playSfx(panelSound, { volume: 0.7 })
     if (target.kind === 'research') this.uiEvents.emit(RESEARCH_EVENTS.openResearch)
     // 책장은 책이 날아오는 연출(RoomFx)이 끝난 뒤 책 읽기 창을 연다.
     else if (target.kind === 'bookshelf') this.time.delayedCall(450, () => { if (this.panelOpen) this.uiEvents.emit(LAB_EVENTS.openPanel, 'bookshelf') })
@@ -233,6 +260,7 @@ export default class LabLobbyScene extends Phaser.Scene {
     if (this.tableTalk === active) return
     this.tableTalk = active
     this.uiEvents.emit(LAB_EVENTS.tableTalk, active)
+    if (!quiet) playSfx('notify', { volume: 0.5 })
     this.fx?.setTableTalk(active, quiet)
   }
 
@@ -248,11 +276,13 @@ export default class LabLobbyScene extends Phaser.Scene {
     if (!this.player) return
     if (this.player.seat?.id === seat.id) {
       this.player.sit(undefined)
+      playSfx('chair-stand', { volume: 0.7 })
       this.client.sit(null)
       return
     }
     if (!this.client.sit(seat.id)) return
     this.player.sit(seat)
+    playSfx('chair-sit', { volume: 0.7 })
     this.sitRequestedAt = this.time.now
     // 회의실 의자에 앉으면 테이블 대화에 자동으로 참여한다.
     if (this.activeRoom === 'meeting-room') { this.seatTalk = true; this.setTableTalk(true, true) }
