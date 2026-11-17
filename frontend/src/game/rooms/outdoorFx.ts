@@ -10,6 +10,7 @@ import {
 } from './fishingLogic'
 import type { Catch } from './fishingLogic'
 import { playSfx } from '../../audio/AudioManager'
+import { inventoryStore } from '../../features/inventory/inventoryStore'
 
 /** 공유 맵과 같은 물 영역: 호수, 강(다리 자리 y 328~382 제외), 낚시 데크 */
 const LAKE = { x: 70, y: 180, width: 260, height: 140 }
@@ -358,6 +359,10 @@ function fishingGame(ctx: Context, currentPhase: () => SkyPhase) {
     } })
     if (fish.species.rarity === 'legendary' || fish.species.rarity === 'rare') ctx.glow(p.x, p.y - 60, '#ffd23f', 3, 3, 0.6, POPUP_DEPTH - 1)
     ctx.banner.show(message, fish.species.rarity === 'common' ? '#a7d98a' : '#ffd23f', 3000)
+    // 로그인 회원이면 가방에 넣는다(I로 확인). 비회원은 이 브라우저 기록만 남는다.
+    void inventoryStore.storeFish(fish.species.name, fish.cm).then(stored => {
+      if (stored) scene.time.delayedCall(3200, () => ctx.banner.show(`가방에 ${fish.species.name}을(를) 넣었어요 · I로 확인`, '#ffd23f', 2200))
+    })
   }
 
   return {

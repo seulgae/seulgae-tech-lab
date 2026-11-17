@@ -19,6 +19,11 @@ export const FISH: readonly FishSpecies[] = [
   { id: 'golden-carp', name: '황금 잉어', rarity: 'legendary', minCm: 45, maxCm: 90, weight: 1.5 },
 ]
 
+/** 어종 이름별 그림 색(바닥에 버린 물고기도 같은 색) */
+export const FISH_COLORS: Record<string, number> = {
+  '피라미': 0xc9d6e3, '붕어': 0xc7a04a, '쏘가리': 0xb89a4e, '메기': 0x6b5a48, '무지개송어': 0xe39aa8, '황금 잉어': 0xffd23f,
+}
+
 export const RARITY_LABELS: Record<Rarity, string> = { common: '흔함', uncommon: '조금 드묾', rare: '희귀', legendary: '전설' }
 /** 드문 물고기일수록 게이지의 초록 칸이 좁고 바늘이 빠르다. */
 const ZONE_WIDTH: Record<Rarity, number> = { common: 0.3, uncommon: 0.22, rare: 0.15, legendary: 0.1 }

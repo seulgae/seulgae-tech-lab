@@ -62,7 +62,9 @@ function createScene(room = 'lobby') {
       this.time = { now: 0, delayedCall: (_ms, fn) => { (state.delayed ??= []).push(fn) }, addEvent() {} }
       this.scale = { listeners: new Set(), on(_event, fn) { this.listeners.add(fn) }, off(_event, fn) { this.listeners.delete(fn) } }
       this.physics = { add: { collider() {} } }
-      this.input = { keyboard: { addKey: () => key, resetKeys: () => { state.resets++ } } }
+      // E와 I는 따로 누른다(I: 가방). 나머지 키는 E 대역을 함께 쓴다.
+      state.iKey = { _justDown: false }
+      this.input = { keyboard: { addKey: code => code === 'I' ? state.iKey : key, resetKeys: () => { state.resets++ } } }
       this.add = {
         text: () => ({
           visible: true,
@@ -93,6 +95,7 @@ function createScene(room = 'lobby') {
     // 사운드: 재생한 효과음 이름만 기록한다. 발걸음 규칙은 실제 모듈을 쓴다.
     AudioManager: { for: () => ({ enterRoom: (room, phase) => { (state.rooms ??= []).push([room, phase]) } }) },
     playSfx: (key, options) => { (state.sounds ??= []).push(key) }, FootstepTracker, footstepSound, skyPhase,
+    COIN_EVENT: 'lab:coin', OPEN_INVENTORY_EVENT: 'lab:open-inventory', FISH_COLORS: {}, inventoryStore: { refresh: async () => {} },
     applyRenderZoom: () => { state.zoomApplied = (state.zoomApplied ?? 0) + 1 },
     hasTextInputFocus: () => state.textFocused,
     SPAWN: { x: 400, y: 400 }, MULTIPLAYER_EVENTS, MOBILE_INPUT, LobbyMultiplayer: class {
@@ -100,7 +103,8 @@ function createScene(room = 'lobby') {
     },
   })
   const scene = new LobbyScene(uiEvents, { currentRoom() { return room }, isTravelling() { return false }, subscribe() { return () => {} }, setInput(input) { state.sentInput = input }, changeRoom(id) { state.changed = id; return true },
-    sit(id) { (state.sits ??= []).push(id); return true }, selfSeat() { return state.serverSeat ?? null } })
+    sit(id) { (state.sits ??= []).push(id); return true }, selfSeat() { return state.serverSeat ?? null },
+    ground() { return [] }, pickItem(id) { (state.picks ??= []).push(id); return true } })
   scene.create()
   const runDelayed = () => { const pending = state.delayed ?? []; state.delayed = []; pending.forEach(fn => fn()) }
   return { scene, uiEvents, key, state, runDelayed }
@@ -482,4 +486,22 @@ test('사운드: 방 음악을 시작하고, 실제로 움직일 때만 발걸�
   assert.equal(control.state.sounds.at(-1), 'chair-sit')
   control.key._justDown = true; control.scene.update()
   assert.equal(control.state.sounds.at(-1), 'chair-stand')
+})
+
+test('가방: I로 가방 창을 열고, 발밑 바닥 물고기는 E로 줍는다', () => {
+  const { scene, uiEvents, key, state } = createScene('outdoor')
+  const opened = []
+  uiEvents.on(LAB_EVENTS.openPanel, value => opened.push(value))
+  scene.player.x = 200; scene.player.y = 450
+  state.iKey._justDown = true; scene.update()
+  assert.deepEqual(opened, ['inventory'])
+  assert.equal(scene.player.movementEnabled !== undefined, true)
+  scene.uiEvents.emit(LAB_EVENTS.closePanel)
+  scene.drawGround([{ id: '00000000-0000-4000-8000-0000000000aa', kind: 'FISH', name: '붕어', sizeCm: 23, x: 210, y: 452 }])
+  scene.update()
+  assert.equal(scene.interactionHint.text, 'E · 붕어 23cm 줍기')
+  key._justDown = true; scene.update()
+  assert.deepEqual(state.picks, ['00000000-0000-4000-8000-0000000000aa'])
+  scene.player.x = 400; scene.update()
+  assert.equal(scene.interactionHint.visible, false, '멀어지면 줍기 대상이 아니다')
 })

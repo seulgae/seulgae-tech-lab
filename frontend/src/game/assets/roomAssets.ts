@@ -413,6 +413,8 @@ function outdoorScenery(scene: Phaser.Scene) {
     p('#ffffff', 2, 2, 9, 4); p('#ffffff', 4, 1, 5, 6); p('#ffffff', 11, 1, 3, 2); p('#ffffff', 11, 5, 3, 2); p('#ffffff', 11, 3, 2, 2)
     p('#1b1b1b', 4, 3, 1, 1)
   })
+  // 동전(가방 동전 연출)
+  texture(scene, 'coin', 8, 8, p => { p('#b8860b', 1, 0, 6, 8); p('#b8860b', 0, 1, 8, 6); p('#ffd23f', 1, 1, 6, 6); p('#fff2a8', 2, 2, 2, 3); p('#b8860b', 4, 2, 1, 4) })
   texture(scene, 'exclaim', 6, 12, p => { p('#ffd23f', 2, 0, 3, 8); p('#ffd23f', 2, 9, 3, 3); p('#3b2418', 1, 0, 1, 8) })
 }
 

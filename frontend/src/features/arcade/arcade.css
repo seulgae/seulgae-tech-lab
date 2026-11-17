@@ -2,3 +2,4 @@
 .arcade-hud { display: flex; justify-content: space-between; gap: 8px; margin: 12px 0 8px; font: 12px monospace; color: #c4b5fd; }
 .arcade-hud strong { color: #ffd23f; font-size: 14px; }
 .arcade-screen { display: block; width: 100%; aspect-ratio: 4 / 3; border: 3px solid #f472b6; box-shadow: 0 0 18px rgba(244, 114, 182, .45); image-rendering: pixelated; touch-action: none; cursor: none; }
+.arcade-notice { margin: 0 0 8px; font-size: 12px; color: #fbcfe8; }

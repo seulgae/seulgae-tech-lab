@@ -8,13 +8,18 @@ import { INITIAL_CONNECTION, NICKNAME_CLOSE_CODE, REPLACED_CLOSE_CODE, validNick
 export const ROOM_RESPONSE_TIMEOUT_MS = 15000
 /** 업로드가 잠시 막혀도 바로 끊지 않도록 약 4초 분량의 입력(20Hz)을 허용한다. */
 export const INPUT_BACKPRESSURE_BYTES = 16384
-import type { ConnectionInfo, MoveInput, MoveCommand, PlayerState, ChatMessage, ChatError, ChatScope, RoomFeeds, ServerMessage } from './model/protocol'
+import type { ConnectionInfo, MoveInput, MoveCommand, PlayerState, ChatMessage, ChatError, ChatScope, GroundItem, RoomFeeds, ServerMessage } from './model/protocol'
 
 type Callbacks = { room?: (roomId: RoomId, pending: boolean) => void; snapshot?: (players: PlayerState[], selfId: string | null, serverTime?: number) => void; status?: (info: ConnectionInfo) => void;
   chat?: (event: ChatMessage) => void; history?: (messages: ChatMessage[]) => void; chatError?: (reason: ChatError) => void; inputSent?: (sequence: number) => void;
   predicted?: (command: MoveCommand) => void
   /** 관제실에서만 오는 방별 참가자 목록(약 5Hz) */
-  feeds?: (feeds: RoomFeeds) => void }
+  feeds?: (feeds: RoomFeeds) => void
+  /** 지금 방 바닥 아이템 목록이 바뀌었을 때 */
+  ground?: (items: GroundItem[]) => void
+  /** 내 가방이 바뀌었을 때(버리기·줍기 성공) */
+  inventoryChanged?: () => void
+  inventoryError?: (reason: 'login' | 'unavailable') => void }
 
 /**
  * 소켓 상태와 입력 전송을 관리하고 끊김 시 제한된 지수 지연으로 재접속한다.
@@ -55,6 +60,7 @@ export default class MultiplayerClient {
   private input: MoveInput = { x: 0, y: 0 }
   private players = new Map<string, PlayerState>()
   private lastFeeds: RoomFeeds | null = null
+  private groundItems: GroundItem[] = []
   private appliedNickname: string | null = null
   private info = { ...INITIAL_CONNECTION }
   private readonly listeners = new Set<Callbacks>()
@@ -199,6 +205,18 @@ export default class MultiplayerClient {
   }
 
   /** @return 서버가 마지막으로 알려 준 내 의자, 없으면 null */
+  /** 지금 방 바닥 아이템 */
+  ground() { return this.groundItems }
+  /** 가방의 아이템을 지금 서 있는 곳에 버린다(서버가 위치를 정한다). */
+  dropItem(itemId: string) { return this.sendItem('drop', itemId) }
+  /** 가까운 바닥 아이템을 줍는다(서버가 거리를 확인한다). */
+  pickItem(itemId: string) { return this.sendItem('pick', itemId) }
+  private sendItem(type: 'drop' | 'pick', itemId: string) {
+    if (!this.scoped || this.travelling || this.socket?.readyState !== 1 || !this.selfId) return false
+    this.socket.send(JSON.stringify({ type, itemId, roomEpoch: this.roomEpoch }))
+    return true
+  }
+
   selfSeat() { return (this.selfId && this.players.get(this.selfId)?.seat) || null }
 
   canChat() { return !this.travelling && this.chatEnabled && !!this.selfId && this.socket?.readyState === 1 }
@@ -301,6 +319,16 @@ export default class MultiplayerClient {
           return
         } else if (message.type === 'chat_message') {
           if (this.remember(message)) this.notify(callbacks => callbacks.chat?.(message))
+          return
+        } else if (message.type === 'ground') {
+          this.groundItems = message.items
+          this.notify(callbacks => callbacks.ground?.(message.items))
+          return
+        } else if (message.type === 'inventory_changed') {
+          this.notify(callbacks => callbacks.inventoryChanged?.())
+          return
+        } else if (message.type === 'inventory_error') {
+          this.notify(callbacks => callbacks.inventoryError?.(message.reason))
           return
         } else if (message.type === 'chat_error') {
           this.notify(callbacks => callbacks.chatError?.(message.reason))

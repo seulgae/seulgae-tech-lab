@@ -323,6 +323,16 @@ class LobbySocketTest {
         }
     }
 
+    /** 접속하면 지금 방 바닥 아이템 목록을 받고, 비회원이 줍기·버리기를 하면 로그인 안내를 받는다. */
+    @Test void sendsGroundItemsAndAsksGuestsToLogInForItems() throws Exception {
+        var a = connect("");
+        a.type("welcome");
+        assertTrue(a.type("ground").get("items").isEmpty());
+        a.send("{\"type\":\"pick\",\"itemId\":\"00000000-0000-4000-8000-0000000000aa\",\"roomEpoch\":0}");
+        assertEquals("login", a.type("inventory_error").get("reason").stringValue());
+        assertFalse(a.closed.isDone(), "잘못된 요청으로 연결을 끊지 않는다");
+    }
+
     @Test void keepsResearchReadRoutesAndResponseContractAvailable() throws Exception {
         String base = "http://127.0.0.1:" + port() + "/api/research-records";
         var list = http.send(HttpRequest.newBuilder(URI.create(base + "?limit=10")).GET().build(), HttpResponse.BodyHandlers.ofString());
