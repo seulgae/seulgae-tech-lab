@@ -37,9 +37,7 @@ class ComposeTests(unittest.TestCase):
         self.assertEqual(set(config['secrets']), {'prod_db_password', 'kakao_client_secret', 'auth_session_secret'})
         self.assertEqual(backend['environment']['LAB_AUTH_KAKAO_REDIRECT_URI'],
                          'https://seulgae-home-server.tailac4b36.ts.net/api/auth/kakao/callback')
-        self.assertRegex(backend['environment']['LAB_AUTH_KAKAO_CLIENT_ID'], r'^[0-9a-f]{32}
-        self.assertNotIn('homeserver-net', str(config))
-)
+        self.assertRegex(backend['environment']['LAB_AUTH_KAKAO_CLIENT_ID'], r'^[0-9a-f]{32}$')
         self.assertNotIn('LAB_AUTH_SESSION_SECRET', backend['environment'])
         self.assertNotIn('LAB_AUTH_KAKAO_CLIENT_SECRET', backend['environment'])
         self.assertNotIn('homeserver-net', str(config))
