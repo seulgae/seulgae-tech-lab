@@ -204,6 +204,17 @@ def preflight():
                 raise OpsError('prod-app-password must be readable by backend UID/GID 10001; see operations.md')
         elif info.st_mode & 0o077:
             raise OpsError('prod-migrator-password must be private (0600)')
+    # 카카오 로그인 비밀 값. 백엔드 컨테이너(UID 10001)가 읽어야 하며, 세션 서명 비밀값은 32바이트 이상이어야 한다.
+    for name, minimum in (('kakao-client-secret', 1), ('auth-session-secret', 32)):
+        path = directory / name
+        if path.is_symlink() or not path.is_file() or not os.access(path, os.R_OK) or path.stat().st_size < minimum:
+            raise OpsError(f'Missing, too short or unreadable login secret: {name}; see docs/kakao-login.md')
+        info = path.stat()
+        if info.st_mode & 0o022:
+            raise OpsError(f'Credential must not be writable by group/others: {name}')
+        if not (info.st_uid == 10001 and info.st_mode & stat.S_IRUSR or info.st_gid == 10001 and info.st_mode & stat.S_IRGRP
+                or info.st_mode & stat.S_IROTH):
+            raise OpsError(f'{name} must be readable by backend UID/GID 10001; see docs/kakao-login.md')
     # Capture resolved configuration, never print it or any credentials from a local .env.
     placeholder = dict(images={s: f'ghcr.io/seulgae/seulgae-tech-lab-{s}@sha256:' + '0' * 64 for s in SERVICES})
     with compose_args(placeholder) as prefix:
@@ -216,7 +227,9 @@ def preflight():
             or env.get('SPRING_SQL_INIT_MODE') != 'never'
             or env.get('SPRING_FLYWAY_ENABLED') != 'false'
             or env.get('SPRING_CONFIG_IMPORT') != 'configtree:/run/secrets/'
-            or Path(config.get('secrets', {}).get('prod_db_password', {}).get('file', '')) != directory / 'prod-app-password'):
+            or Path(config.get('secrets', {}).get('prod_db_password', {}).get('file', '')) != directory / 'prod-app-password'
+            or Path(config.get('secrets', {}).get('kakao_client_secret', {}).get('file', '')) != directory / 'kakao-client-secret'
+            or Path(config.get('secrets', {}).get('auth_session_secret', {}).get('file', '')) != directory / 'auth-session-secret'):
         raise OpsError('Resolved Compose runtime/DB configuration is unsafe or inconsistent')
     version = schema_version()
     if version not in SUPPORTED_SCHEMAS:
