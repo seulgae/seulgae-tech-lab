@@ -212,6 +212,16 @@ V4와 같은 3단계다. 확장 PR의 릴리스는 `db_schema` **4..5**, 기능 
 
 새 테이블만 만드는 변경이라 기존 테이블·데이터는 바뀌지 않는다. 앱 계정 권한은 기본 권한(`ALTER DEFAULT PRIVILEGES`)으로 새 테이블에도 적용된다.
 
+### V6 마이그레이션 (로비 방명록, 2026-11-17)
+
+같은 3단계다. 확장 PR의 릴리스는 `db_schema` **5..6**, 기능 PR은 **6..6**이다.
+
+1. 확장 PR 머지(새 테이블 `lab.guestbook_entries`와 공통코드 `BOARD_CATEGORY/GUESTBOOK`만 추가)
+2. 서버에서 `python3 deploy/migrate-prod.py`(백업 후 V5 → V6)
+3. 기능 PR(Draft) Ready로 바꾼 뒤 머지
+
+새 테이블만 만드는 변경이라 기존 테이블·데이터는 바뀌지 않는다.
+
 ## 운영 상태와 진단
 
 상태 파일은 `/opt/homeserver/config/seulgae-tech-lab/ops`에 기록한다. 새 상태 파일은 기본 0600이다. 변경 작업은 비차단 flock으로 중복 실행을 거부한다.
