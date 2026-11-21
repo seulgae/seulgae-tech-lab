@@ -898,6 +898,39 @@
           }
         },
         {
+          "texture": "computer",
+          "x": 200,
+          "bottom": 420,
+          "body": {
+            "x": 200,
+            "y": 384,
+            "width": 112,
+            "height": 72
+          }
+        },
+        {
+          "texture": "computer",
+          "x": 400,
+          "bottom": 420,
+          "body": {
+            "x": 400,
+            "y": 384,
+            "width": 112,
+            "height": 72
+          }
+        },
+        {
+          "texture": "computer",
+          "x": 600,
+          "bottom": 420,
+          "body": {
+            "x": 600,
+            "y": 384,
+            "width": 112,
+            "height": 72
+          }
+        },
+        {
           "texture": "chair",
           "x": 200,
           "bottom": 315,
