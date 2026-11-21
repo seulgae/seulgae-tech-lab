@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { fetchTables, isReadOnly, runSql, tableQuery } from './adminApi'
 import type { DbTable, SqlResult } from './adminApi'
 import { playSfx } from '../../audio/AudioManager'
+import LevelRequestsBox from './LevelRequestsBox'
 import '../research/components/ResearchPanel.css'
 import './sqlConsole.css'
 
@@ -57,6 +58,7 @@ export default function SqlConsolePanel({ onClose }: { onClose: () => void }) {
         </div>
         <button type="button" className="research-close" onClick={onClose}>닫기</button>
       </header>
+      <LevelRequestsBox />
       <div className="sql-layout">
         <aside className="sql-tables" aria-label="테이블 목록">
           <input value={filter} onChange={event => setFilter(event.target.value)} placeholder="테이블 찾기" aria-label="테이블 찾기" />

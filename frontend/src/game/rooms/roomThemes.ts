@@ -38,7 +38,7 @@ export const ROOM_THEMES: Record<RoomId, RoomTheme> = {
     door: { frame: '#0a0f19', frameLight: '#38bdf8', panel: '#1b2538', panelLight: '#2b3a55', handle: '#39e6b4', sign: '#39e6b4' },
     page: { background: '#0a1019', card: '#101827', border: '#24405a', accent: '#39e6b4', muted: '#8fb3c9' },
     textures: { computer: 'dev-desk', chair: 'gaming-chair', equipment: 'workbench' },
-    notes: { title: '빌드는\n멈추지 않아요.', body: '네온 모니터 앞에서\n코드를 다듬는 곳입니다.', missionTitle: 'CI 파이프라인', mission: '개발 연구원들의 로비예요. 왼쪽 위는 서비스 연구실, 오른쪽은 빈 사무실(2·4번), 왼쪽 아래는 서버실이에요. 가운데 슈퍼컴퓨터에서 연구 아이디어를 등록하고, 작업대에서 실제 서버 빌드 정보를 볼 수 있어요.' },
+    notes: { title: '빌드는\n멈추지 않아요.', body: '네온 모니터 앞에서\n코드를 다듬는 곳입니다.', missionTitle: 'CI 파이프라인', mission: '개발 연구원들의 로비예요. 왼쪽 위는 서비스 연구실, 오른쪽 위는 관리자실(관리자만, 앞의 작은 컴퓨터에서 신청), 오른쪽 아래는 빈 사무실, 왼쪽 아래는 서버실이에요. 가운데 슈퍼컴퓨터에서 연구 아이디어를 등록하고, 작업대에서 실제 서버 빌드 정보를 볼 수 있어요.' },
   },
   'server-room': {
     mood: '차가운 파란 조명과 이중 바닥, 경고 줄무늬가 있는 서버실',
@@ -82,14 +82,14 @@ export const ROOM_THEMES: Record<RoomId, RoomTheme> = {
     notes: { title: '서비스 연구실', body: 'QA부터 운영까지\n한 방에서 이어져요.', missionTitle: 'QA → 유지보수 → 운영', mission: '왼쪽 컴퓨터에 QA를 등록하면 가운데 유지보수 컴퓨터로, 조치가 끝나면 오른쪽 운영업무 컴퓨터로 넘어가요. 글 하나에 동전 10원!' },
   },
   'office-2': {
-    mood: '아직 아무도 쓰지 않는 하얀 빈 사무실',
+    mood: '무엇이 들어올지 아직 정하지 않은 하얀 빈 방',
     camera: '#1a1c1d', light: '#ffffff',
     floor: { base: '#ecebe6', baseLine: '#dcdad3', alt: '#f2f1ec', altLine: '#e2e0d9', accent: '#d8d3c6', accentLine: '#c9c3b4', accentDetail: '#b5ad9b' },
     wall: { upper: '#f7f6f2', upperLight: '#ffffff', lower: '#dcd8cd', lowerDark: '#c4bfb2', trim: '#cfc9bb', detail: '#e5e1d6', side: '#dcd8cd', bottom: '#c4bfb2' },
     door: { frame: '#c4bfb2', frameLight: '#ffffff', panel: '#e9e6dd', panelLight: '#f7f6f2', handle: '#9a927f', sign: '#b5ad9b' },
     page: { background: '#171818', card: '#222424', border: '#4a4c4a', accent: '#d9d4c7', muted: '#b3b0a8' },
     textures: { computer: 'dev-desk', chair: 'office-chair', plant: 'tall-plant' },
-    notes: { title: '2번\n빈 사무실', body: '아직 비어 있어요.\n곧 누가 올까요?', missionTitle: '비어 있음', mission: '지금은 화분 하나뿐인 빈 사무실이에요. 새 공간이 곧 들어올 예정이에요.' },
+    notes: { title: '뭘\n만들까?', body: '아직 비어 있어요.\n아이디어를 기다려요.', missionTitle: '비어 있음', mission: '로비 오른쪽 위 문의 빈 방이에요. 무엇을 만들지 아이디어 일지에 남겨 주세요.' },
   },
   'office-3': {
     mood: '네온이 번쩍이는 보랏빛 오락실(월루 전용 휴게 공간)',

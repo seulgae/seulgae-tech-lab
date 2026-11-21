@@ -47,12 +47,13 @@ public class AuthController {
      * 로그인 사용 가능 여부와 현재 회원(없으면 null)
      * @param kakaoEnabled 카카오 로그인 설정 여부
      * @param member 현재 회원
-     * @param admin 관리자(방장) 회원이면 true. 관리자실 문과 쿼리 콘솔에 쓴다(실제 권한은 관리자 API가 매번 확인).
+     * @param admin 관리자 회원이면 true. 관리자실 문과 쿼리 콘솔에 쓴다(실제 권한은 관리자 API가 매번 확인).
+     * @param level 회원 등급(1 일반 사용자, 2 운영자, 3 관리자). 로그인하지 않았으면 0
      * @author seulgae
-     * @version 1.1, 내 정보 응답(관리자 여부)
+     * @version 1.2, 내 정보 응답(관리자 여부·등급)
      * @see "None"
      */
-    public record Me(boolean kakaoEnabled, MemberView member, boolean admin) {}
+    public record Me(boolean kakaoEnabled, MemberView member, boolean admin, int level) {}
     /**
      * 닉네임 변경 요청
      * @param nickname 새 닉네임
@@ -66,14 +67,16 @@ public class AuthController {
     private final MemberRepository members;
     private final WriteRateLimiter limiter;
     private final AdminAccess admins;
-    public AuthController(AuthService auth, MemberRepository members, WriteRateLimiter limiter, AdminAccess admins) {
-        this.auth = auth; this.members = members; this.limiter = limiter; this.admins = admins;
+    private final LevelService levels;
+    public AuthController(AuthService auth, MemberRepository members, WriteRateLimiter limiter, AdminAccess admins, LevelService levels) {
+        this.auth = auth; this.members = members; this.limiter = limiter; this.admins = admins; this.levels = levels;
     }
 
     @GetMapping("/me")
     public Me me(HttpServletRequest request) {
         var member = auth.current(request);
-        return new Me(auth.enabled(), member.map(m -> new MemberView(m.id(), m.nickname())).orElse(null), member.map(m -> admins.isAdmin(m.id())).orElse(false));
+        return new Me(auth.enabled(), member.map(m -> new MemberView(m.id(), m.nickname())).orElse(null), member.map(m -> admins.isAdmin(m.id())).orElse(false),
+            member.map(m -> levels.level(m.id())).orElse(0));
     }
 
     /** 로그인한 회원이 쓴 최근 글 ID. 화면이 "내 글" 표시와 수정·삭제 버튼에 쓴다. */

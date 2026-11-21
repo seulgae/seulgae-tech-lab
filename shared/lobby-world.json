@@ -137,8 +137,8 @@
           "y": 250
         },
         {
-          "id": "lobby-to-control",
-          "target": "control-room",
+          "id": "lobby-to-office-2",
+          "target": "office-2",
           "x": 730,
           "y": 250
         },
@@ -189,6 +189,16 @@
           "width": 96,
           "height": 56,
           "range": 28
+        },
+        {
+          "id": "development-admin-apply",
+          "kind": "admin-apply",
+          "label": "관리자 신청",
+          "x": 650,
+          "y": 298,
+          "width": 20,
+          "height": 16,
+          "range": 28
         }
       ],
       "spawn": {
@@ -203,8 +213,8 @@
           "y": 250
         },
         {
-          "id": "development-to-office-2",
-          "target": "office-2",
+          "id": "development-to-control",
+          "target": "control-room",
           "x": 730,
           "y": 250
         },
@@ -270,6 +280,17 @@
             "y": 392,
             "width": 96,
             "height": 56
+          }
+        },
+        {
+          "texture": "mini-terminal",
+          "x": 650,
+          "bottom": 308,
+          "body": {
+            "x": 650,
+            "y": 298,
+            "width": 20,
+            "height": 16
           }
         }
       ]
@@ -581,8 +602,8 @@
       },
       "doors": [
         {
-          "id": "control-to-lobby",
-          "target": "lobby",
+          "id": "control-to-development",
+          "target": "development-lab",
           "x": 400,
           "y": 540
         }
@@ -908,55 +929,11 @@
             "width": 28,
             "height": 24
           }
-        },
-        {
-          "texture": "rack",
-          "x": 56,
-          "bottom": 230,
-          "body": {
-            "x": 56,
-            "y": 186,
-            "width": 48,
-            "height": 88
-          }
-        },
-        {
-          "texture": "rack",
-          "x": 744,
-          "bottom": 230,
-          "body": {
-            "x": 744,
-            "y": 186,
-            "width": 48,
-            "height": 88
-          }
-        },
-        {
-          "texture": "plant",
-          "x": 700,
-          "bottom": 170,
-          "body": {
-            "x": 700,
-            "y": 160,
-            "width": 24,
-            "height": 20
-          }
-        },
-        {
-          "texture": "equipment",
-          "x": 150,
-          "bottom": 440,
-          "body": {
-            "x": 150,
-            "y": 412,
-            "width": 96,
-            "height": 56
-          }
         }
       ]
     },
     "office-2": {
-      "name": "2번 빈 사무실",
+      "name": "뭘 만들까",
       "interactions": [],
       "spawn": {
         "x": 400,
@@ -964,8 +941,8 @@
       },
       "doors": [
         {
-          "id": "office-2-to-development",
-          "target": "development-lab",
+          "id": "office-2-to-lobby",
+          "target": "lobby",
           "x": 400,
           "y": 540
         }

@@ -2,19 +2,21 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { BREAKOUT_HIGH_SCORE_KEY, FIELD, PADDLE, brickScore, createBricks, newGame, stepBreakout } from '../src/features/arcade/breakout.ts'
 import { WORK_BOARDS, addMaintenance, addOperation, codeName, createQa, fetchBoard } from '../src/features/work/workApi.ts'
-import { ROOMS, nearestInteraction } from '../src/game/maps/rooms.ts'
+import { ROOMS, nearestInteraction, roomObjects } from '../src/game/maps/rooms.ts'
 
 const idle = { left: false, right: false, pointerX: null, launch: false }
 
-test('서비스 연구실에 QA·유지보수·운영 컴퓨터가 나란히, 2·4번은 빈 사무실, 오락실은 로비에', () => {
+test('서비스 연구실에는 컴퓨터 셋과 의자만, 2번은 뭘 만들까(빈 방)·4번은 빈 사무실, 오락실은 로비에', () => {
+  assert.deepEqual([...new Set(roomObjects('office-1').map(object => object.texture))].sort(), ['chair', 'computer'], '화분·책장·입구 작업대는 치웠다')
   assert.equal(ROOMS['office-1'].name, '서비스 연구실')
   assert.deepEqual(WORK_BOARDS, { 'service-qa': 'QA', 'service-maintenance': 'MAINTENANCE', 'service-operation': 'OPERATION' })
   for (const [x, id] of [[200, 'service-qa'], [400, 'service-maintenance'], [600, 'service-operation']]) {
     const target = nearestInteraction('office-1', x, 270)
     assert.equal(target?.kind, 'work-board'); assert.equal(target?.id, id, '컴퓨터마다 자기 게시판')
   }
+  assert.equal(ROOMS['office-2'].name, '뭘 만들까')
+  assert.match(ROOMS['office-4'].name, /빈 사무실/)
   for (const room of ['office-2', 'office-4']) {
-    assert.match(ROOMS[room].name, /빈 사무실/)
     assert.equal(ROOMS[room].interactions.length, 0, room)
   }
   assert.equal(ROOMS['office-3'].name, '오락실')

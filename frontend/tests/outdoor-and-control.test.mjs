@@ -10,9 +10,9 @@ import { setRoomObstacles, constrainedPosition } from '../src/game/multiplayer/n
 const player = (id, x = 400, y = 400) => ({ id, nickname: '연구원', x, y, facing: 'down', moving: false, ack: 1 })
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
 
-test('로비 문 배치: 왼쪽 위 개발 연구실, 오른쪽 위 관리자실, 왼쪽 아래 오락실, 오른쪽 아래 회의실, 아래 가운데 나가기', () => {
+test('로비 문 배치: 왼쪽 위 개발 연구실, 오른쪽 위 뭘 만들까(빈 방), 왼쪽 아래 오락실, 오른쪽 아래 회의실, 아래 가운데 나가기', () => {
   const doors = Object.fromEntries(ROOMS.lobby.doors.map(door => [door.target, [door.x, door.y]]))
-  assert.deepEqual(doors, { 'development-lab': [70, 250], 'control-room': [730, 250], 'office-3': [70, 520], 'meeting-room': [730, 520], outdoor: [400, 540] })
+  assert.deepEqual(doors, { 'development-lab': [70, 250], 'office-2': [730, 250], 'office-3': [70, 520], 'meeting-room': [730, 520], outdoor: [400, 540] })
   const exit = ROOMS.lobby.doors.find(door => door.target === 'outdoor')
   assert.equal(doorLabel(exit), '나가기')
   assert.equal(doorHint(exit), 'E · 나가기')
@@ -31,7 +31,13 @@ test('로비 소파·의자와 개발 연구실 화분을 치웠고, 책장은 �
 
 test('관리자실: 슈퍼컴퓨터 한 대(쿼리 콘솔)와 의자 두 개, CCTV 모니터는 없다', () => {
   assert.equal(ROOMS['control-room'].name, '관리자실')
-  assert.equal(doorHint(ROOMS.lobby.doors.find(door => door.target === 'control-room')), 'E · 관리자실 입장')
+  // 관리자실은 개발 연구실 오른쪽 위 문, 그 앞에 작은 관리자 신청 컴퓨터가 있다.
+  const adminDoor = ROOMS['development-lab'].doors.find(door => door.target === 'control-room')
+  assert.deepEqual([adminDoor.x, adminDoor.y], [730, 250])
+  assert.equal(doorHint(adminDoor), 'E · 관리자실 입장')
+  assert.equal(ROOMS['control-room'].doors[0].target, 'development-lab')
+  assert.equal(nearestInteraction('development-lab', 650, 325)?.kind, 'admin-apply')
+  assert.ok(Math.hypot(650 - adminDoor.x, 325 - adminDoor.y) > 56, '신청 컴퓨터 앞은 문 범위 밖이다')
   assert.equal(roomSeats('control-room').length, 2)
   assert.deepEqual(roomObjects('control-room').filter(object => object.texture === 'supercomputer').length, 1)
   assert.ok(!roomObjects('control-room').some(object => object.texture === 'monitor-wall'))

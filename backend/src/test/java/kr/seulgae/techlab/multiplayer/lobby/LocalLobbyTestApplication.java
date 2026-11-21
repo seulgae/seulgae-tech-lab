@@ -65,7 +65,8 @@ import org.springframework.context.annotation.Import;
     ResearchController.class, ResearchService.class, ApiExceptionHandler.class, LabStatusController.class,
     ResearchIdeaController.class, ResearchIdeaService.class, MeetingAgendaController.class, MeetingAgendaService.class, WriteRateLimiter.class,
     AuthSettings.class, AuthService.class, AuthController.class, KakaoClient.class, WorkItemController.class, WorkItemService.class,
-    InventoryController.class, InventoryService.class, GuestbookController.class, GuestbookService.class, kr.seulgae.techlab.admin.AdminAccess.class})
+    InventoryController.class, InventoryService.class, GuestbookController.class, GuestbookService.class, kr.seulgae.techlab.admin.AdminAccess.class,
+    kr.seulgae.techlab.auth.LevelService.class, kr.seulgae.techlab.auth.LevelController.class})
 public class LocalLobbyTestApplication {
     public static final UUID RECORD_ID = UUID.fromString("00000000-0000-4000-8000-000000000001");
     private static final OffsetDateTime CREATED_AT = OffsetDateTime.parse("2026-11-15T12:00:00+09:00");
@@ -143,6 +144,10 @@ public class LocalLobbyTestApplication {
             @Override public int delete(UUID id) { hashes.remove(id); return agendas.remove(id) == null ? 0 : 1; }
         };
     }
+
+    /** 회원 등급·등급 신청(DB 없는 로컬 실행) */
+    @Bean
+    kr.seulgae.techlab.auth.LevelRequestStore fixtureLevelRequestStore() { return new kr.seulgae.techlab.auth.InMemoryLevelRequestStore(); }
 
     @Bean
     MemberRepository fixtureMemberRepository() {

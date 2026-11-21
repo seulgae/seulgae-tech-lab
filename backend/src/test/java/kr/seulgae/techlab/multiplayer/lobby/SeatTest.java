@@ -32,6 +32,17 @@ class SeatTest {
         fail("목표 접근 실패: " + room.player(id));
     }
 
+    /** 관리자실은 개발 연구실 오른쪽 위 문이다: 로비 → 개발 연구실 → (작업대를 피해 오른쪽으로 돌아) 관리자실 */
+    private void enterAdminRoom(String id) {
+        walk(id, 70, 260);
+        room.changeRoom(id, "lobby-to-development", clock.get());
+        sequence = 0;
+        walk(id, 730, 460);
+        walk(id, 730, 260);
+        room.changeRoom(id, "development-to-control", clock.get());
+        sequence = 0;
+    }
+
     /** 구형 입력은 마지막 방향을 300ms 유지하므로, 도착하면 정지 입력을 보낸다. */
     private void stop(String id) {
         long now = clock.addAndGet(50_000_000L);
@@ -50,12 +61,8 @@ class SeatTest {
     @Test void sitsOnlyNearAFreeChairAndStandsWhenMoving() {
         var a = room.join("앉는사람");
         var b = room.join("다른사람");
-        // 관제실 의자 0: (340, 358) 28x24. 로비 오른쪽 위 문으로 들어가 의자 아래쪽에 서면 가깝다.
-        for (var id : List.of(a.id(), b.id())) {
-            walk(id, 730, 260);
-            room.changeRoom(id, "lobby-to-control", clock.get());
-            sequence = 0;
-        }
+        // 관리자실 의자 0: (340, 358) 28x24. 개발 연구실 오른쪽 위 문으로 들어가 의자 아래쪽에 서면 가깝다.
+        for (var id : List.of(a.id(), b.id())) enterAdminRoom(id);
         assertFalse(room.sit(a.id(), "control-room-chair-0"), "멀리서는 앉을 수 없다");
         walk(a.id(), 340, 395);
         stop(a.id());
@@ -83,8 +90,7 @@ class SeatTest {
      */
     @Test void stepsSentBeforeSittingDoNotStandThePlayerUp() {
         var a = room.join("앉는사람");
-        walk(a.id(), 730, 260);
-        room.changeRoom(a.id(), "lobby-to-control", clock.get());
+        enterAdminRoom(a.id());
         walk(a.id(), 340, 395);
         stop(a.id());
         long now = clock.get();

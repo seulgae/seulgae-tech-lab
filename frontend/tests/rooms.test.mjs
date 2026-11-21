@@ -48,9 +48,10 @@ test('모든 방의 스폰은 가구 밖이고 출입구는 로비 중심으로 
   // 로비와 개발 연구실은 문이 다섯(옆문 넷 + 아래 가운데), 나머지 방은 들어온 곳으로 가는 문 하나
   const hub=id==='lobby'||id==='development-lab'
   assert.equal(room.doors.length,hub?5:1, id)
-  // 서버실·사무실(1,2,4번)은 개발 연구실로, 오락실·관리자실·회의실·바깥은 로비로 돌아간다.
-  for(const door of room.doors)assert.ok(hub||door.target==='lobby'||((id.startsWith('office-')||id==='server-room')&&door.target==='development-lab'), id)
-  if(id==='development-lab') assert.deepEqual(room.doors.map(d=>[d.target,d.x,d.y]),[['office-1',70,250],['office-2',730,250],['server-room',70,520],['office-4',730,520],['lobby',400,540]])
+  // 서버실·관리자실·사무실(1,4번)은 개발 연구실로, 오락실·뭘 만들까(2번)·회의실·바깥은 로비로 돌아간다.
+  const fromLab=['server-room','control-room','office-1','office-4'].includes(id)
+  for(const door of room.doors)assert.ok(hub||door.target===(fromLab?'development-lab':'lobby'), id)
+  if(id==='development-lab') assert.deepEqual(room.doors.map(d=>[d.target,d.x,d.y]),[['office-1',70,250],['control-room',730,250],['server-room',70,520],['office-4',730,520],['lobby',400,540]])
   for(const door of room.doors)assert.ok(Object.hasOwn(ROOMS,door.target))
  }
  setRoomObstacles(roomObstacles('server-room'))
@@ -78,9 +79,10 @@ test('회의실 밖에서도 바닥 아이템은 REST로 읽고 버리며, 관�
   assert.deepEqual(calls.at(-1),['/api/inventory/drop','POST',{itemId:fish.id,room:'outdoor',x:610,y:473}],'내 위치를 함께 보낸다')
   c.changeRoom('outdoor-to-lobby');t.mock.timers.tick(0);await settle()
   assert.equal(c.canEnter('control-room'),false);assert.equal(c.canEnter('server-room'),true)
-  assert.equal(c.changeRoom('lobby-to-control'),false,'관리자가 아니면 관리자실에 들어가지 않는다')
+  c.changeRoom('lobby-to-development');t.mock.timers.tick(0);await settle()
+  assert.equal(c.changeRoom('development-to-control'),false,'관리자가 아니면 관리자실에 들어가지 않는다')
   c.setAdmin(true)
-  assert.equal(c.changeRoom('lobby-to-control'),true);t.mock.timers.tick(0);await settle()
+  assert.equal(c.changeRoom('development-to-control'),true);t.mock.timers.tick(0);await settle()
   assert.equal(c.currentRoom(),'control-room')
  } finally {c.destroy();Object.assign(globalThis,original)}
 })
