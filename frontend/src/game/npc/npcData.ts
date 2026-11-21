@@ -2,7 +2,7 @@
  * 화면에만 사는 NPC들. 정해진 길(장애물을 피해 그린 순환 경로)을 천천히 오가며, E로 말을 걸면 한마디 한다.
  * 바깥 시민 셋은 지친 직장인을 위로하고, 로비 청소 아주머니는 돌아다니며 궁시렁거린다.
  */
-export type NpcKind = 'woman' | 'man' | 'elder' | 'cleaner'
+export type NpcKind = 'woman' | 'man' | 'elder' | 'cleaner' | 'kid-boy' | 'kid-girl' | 'fisher'
 export type NpcDef = {
   id: string
   kind: NpcKind
@@ -17,6 +17,12 @@ export type NpcDef = {
   talk: readonly string[]
   /** 혼자 중얼거리는 말(있으면 가끔 말풍선) */
   mutter?: readonly string[]
+  /** 서 있는 동안에도 두 프레임을 천천히 번갈아(낚싯대 흔들기 등) */
+  idle?: boolean
+  /** 처음 자리를 경로의 첫 지점으로 고정(제자리 NPC) */
+  fixed?: boolean
+  /** 바라보는 방향(제자리 NPC): true면 오른쪽 */
+  facesRight?: boolean
 }
 
 export const OUTDOOR_NPCS: readonly NpcDef[] = [
@@ -34,7 +40,8 @@ export const OUTDOOR_NPCS: readonly NpcDef[] = [
   },
   {
     id: 'npc-man', kind: 'man', name: '퇴근한 시민',
-    path: [{ x: 400, y: 200 }, { x: 560, y: 200 }, { x: 600, y: 270 }, { x: 420, y: 340 }],
+    // 포장마차(가운데 풀밭)를 돌아 위쪽 풀밭과 바위 옆으로 걷는다.
+    path: [{ x: 380, y: 170 }, { x: 600, y: 170 }, { x: 605, y: 280 }, { x: 470, y: 300 }, { x: 400, y: 300 }],
     speed: 52, pause: [1000, 3000],
     talk: [
       '회의 많았죠? 숨 좀 돌려요.',
@@ -55,6 +62,42 @@ export const OUTDOOR_NPCS: readonly NpcDef[] = [
       '자네 같은 사람 덕에 세상이 돌아가.',
       '너무 애쓰지 마. 내일도 해가 뜬다네.',
     ],
+  },
+  {
+    id: 'npc-kid-boy', kind: 'kid-boy', name: '뛰어노는 아이',
+    path: [{ x: 170, y: 500 }, { x: 250, y: 478 }, { x: 245, y: 535 }, { x: 160, y: 545 }],
+    speed: 78, pause: [300, 1200],
+    talk: [
+      '아저씨 오늘도 일했어요? 대단해요!',
+      '어른 되면 매일 회의해요? 으악!',
+      '힘들면 그냥 낮잠 자요! 저처럼요!',
+      '같이 술래잡기 할래요? 제가 술래!',
+    ],
+    mutter: ['잡아 봐라~!', '히히, 못 잡지롱!', '야, 기다려!'],
+  },
+  {
+    id: 'npc-kid-girl', kind: 'kid-girl', name: '뛰어노는 아이',
+    path: [{ x: 230, y: 540 }, { x: 155, y: 505 }, { x: 205, y: 470 }, { x: 270, y: 505 }],
+    speed: 70, pause: [300, 1400],
+    talk: [
+      '언니 오빠들은 왜 맨날 피곤해요?',
+      '이거 제가 주운 네잎클로버예요! 행운!',
+      '일 끝나면 꼭 놀아야 해요. 약속!',
+      '엄마가 그러는데 웃으면 덜 힘들대요!',
+    ],
+    mutter: ['꺄르르!', '나 잡아 봐!', '같이 놀자~'],
+  },
+  {
+    id: 'npc-fisher', kind: 'fisher', name: '낚시하는 아저씨',
+    // 데크 왼쪽 물가에 서서 강을 향해 낚싯대를 드리운다(데크 낚시 자리는 비워 둔다).
+    path: [{ x: 566, y: 476 }], speed: 0, pause: [600000, 600000], idle: true, fixed: true, facesRight: true,
+    talk: [
+      '낚시는 기다림이야. 일도 그렇지.',
+      '찌가 쑥 들어가면 그때 E를 눌러.',
+      '오늘 못 잡아도 괜찮아. 바람 쐬러 온 거니까.',
+      '퇴근하고 물 보는 게 제일 좋아.',
+    ],
+    mutter: ['오늘은 입질이 영 없네…', '어제 잡은 메기가 이~만 했는데…', '쉿… 물고기 도망간다…', '흠, 미끼를 바꿔 볼까…', '황금 잉어는 대체 언제 나오나…'],
   },
 ]
 
@@ -82,7 +125,7 @@ export const LOBBY_NPCS: readonly NpcDef[] = [
 
 /** 포장마차: 저녁 6시~자정에만 연다(서버도 같은 시간에만 산다). */
 export const CART_OPEN_HOUR = 18
-export const CART_SPOT = { x: 400, bottom: 344 }
+export const CART_SPOT = { x: 490, bottom: 270 }
 export const cartOpenAt = (date: Date) => date.getHours() >= CART_OPEN_HOUR
 
 /** 같은 말을 바로 반복하지 않고 고른다. */

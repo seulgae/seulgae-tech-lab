@@ -109,7 +109,7 @@ function drawGround(ctx: Context) {
   // 꽃과 풀(물·나무·길·문 근처는 피한다)
   const random = seeded(20261117)
   const blocked = (x: number, y: number) => (x > LAKE.x - 20 && x < LAKE.x + LAKE.width + 20 && y > LAKE.y - 20 && y < LAKE.y + LAKE.height + 20)
-    || (x > RIVER.x - 24 && x < RIVER.x + RIVER.width + 24) || (x > 370 && x < 430 && y > 300) || (y > 520 && x > 260 && x < 540)
+    || (x > RIVER.x - 24 && x < RIVER.x + RIVER.width + 24) || (x > 370 && x < 430 && y > 300) || (y > 470 && x > 340 && x < 460) || (y > 500 && x > 260 && x < 540)
   const flowers = scene.add.graphics().setDepth(-45)
   const colors = [0xfff6c9, 0xf6a5c0, 0xc7b4ff, 0xffd166, 0xffffff]
   for (let i = 0; i < 90; i++) {

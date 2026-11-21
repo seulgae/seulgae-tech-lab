@@ -101,6 +101,7 @@ export function createPixelAssets(scene: Phaser.Scene) {
   createResearcher(scene)
   petRobot(scene)
   townsfolk(scene)
+  kidsAndFisher(scene)
   foodCart(scene)
 }
 
@@ -154,6 +155,46 @@ function townsfolk(scene: Phaser.Scene) {
         }
       })
     }
+  }
+}
+
+/** 뛰어노는 아이 둘(16×24 캔버스 아래쪽에 작게)과 데크 옆 낚시꾼(챙 모자·조끼·낚싯대) */
+function kidsAndFisher(scene: Phaser.Scene) {
+  const kids = {
+    'kid-boy': { skin: '#f3c9a8', hair: '#3b2418', top: '#ffd23f', bottom: '#4e6fa8', shoes: '#e05a6c' },
+    'kid-girl': { skin: '#f6d0b0', hair: '#6b3a2a', top: '#a7d98a', bottom: '#f29bb5', shoes: '#ffffff' },
+  } as const
+  for (const [kind, look] of Object.entries(kids)) {
+    for (const frame of [0, 1]) {
+      texture(scene, `npc-${kind}-${frame}`, 16, 24, (p) => {
+        const left = frame ? 1 : 0, right = frame ? 0 : 1
+        // 다리·신발(짧게)
+        p(look.bottom, 5, 18, 2, 4 - left); p(look.bottom, 9, 18, 2, 4 - right)
+        p(look.shoes, 5, 22 - left, 2, 2); p(look.shoes, 9, 22 - right, 2, 2)
+        // 몸통(작게)
+        p(ink, 4, 13, 8, 6); p(look.top, 5, 13, 6, 5); p(look.top, 3, 14, 1, 3); p(look.top, 12, 14, 1, 3)
+        // 큰 머리(아이 비율)
+        p(ink, 3, 5, 10, 9); p(look.skin, 4, 6, 8, 7)
+        p(ink, 6, 9, 1, 1); p(ink, 9, 9, 1, 1); p('#ff9bb3', 5, 11, 1, 1); p('#ff9bb3', 10, 11, 1, 1); p('#c0504d', 7, 11, 2, 1)
+        if (kind === 'kid-girl') { p(look.hair, 3, 4, 10, 3); p(look.hair, 2, 6, 2, 5); p(look.hair, 12, 6, 2, 5); p('#ff7aa8', 2, 5, 2, 2); p('#ff7aa8', 12, 5, 2, 2) }
+        else { p(look.hair, 3, 4, 10, 3); p(look.hair, 3, 6, 1, 2); p(look.hair, 12, 6, 1, 2); p('#e05a6c', 4, 3, 8, 2); p('#e05a6c', 11, 4, 3, 1) }
+      })
+    }
+  }
+  for (const frame of [0, 1]) {
+    texture(scene, `npc-fisher-${frame}`, 16, 24, (p) => {
+      // 다리·장화
+      p('#4b5560', 5, 16, 2, 6); p('#4b5560', 9, 16, 2, 6); p('#2f8a4a', 5, 21, 2, 3); p('#2f8a4a', 9, 21, 2, 3)
+      // 체크 셔츠와 낚시 조끼
+      p(ink, 4, 9, 8, 8); p('#c0504d', 5, 9, 6, 7); p('#8a8f5a', 5, 10, 2, 6); p('#8a8f5a', 9, 10, 2, 6)
+      p('#c0504d', 3, 10, 1, 4); p('#c0504d', 12, 10, 1, 3); p('#e8b98f', 12, 13, 2, 1)
+      // 얼굴·수염·챙 모자
+      p(ink, 4, 3, 8, 7); p('#e8b98f', 5, 4, 6, 5); p(ink, 6, 6, 1, 1); p(ink, 9, 6, 1, 1); p('#6b5a4a', 6, 8, 4, 1)
+      p('#d9c27a', 3, 2, 10, 2); p('#b89a52', 5, 0, 6, 2)
+      // 낚싯대(오른쪽 위로), 끝이 까딱
+      for (let i = 0; i < 6; i++) p('#6b4a2a', 13 + Math.floor(i / 3), 13 - i * 2, 1, 2)
+      p('#dfe6ea', 15, frame ? 2 : 1, 1, frame ? 6 : 5)
+    })
   }
 }
 

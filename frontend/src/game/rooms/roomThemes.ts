@@ -153,6 +153,8 @@ export function floorData(roomId: RoomId): number[][] {
     if (roomId === 'outdoor') {
       // 연구소 문에서 위로 올라가 다리로 꺾이는 흙길, 나머지는 풀
       if (column === 12 && row >= 10) return 2
+      // 연구소 문 앞은 문 폭(3칸)만큼 흙길을 넓혀 잔디가 보이지 않게 한다.
+      if (row >= 15 && column >= 11 && column <= 13) return 2
       if (row === 10 && column >= 12 && column <= 20) return 2
       return (row * 7 + column * 3) % 5 === 0 ? 1 : 0
     }

@@ -22,7 +22,7 @@ function blockedOnPath(room, path) {
 test('NPC 경로는 호수·강·나무·가구를 지나지 않는다', () => {
   for (const npc of OUTDOOR_NPCS) assert.equal(blockedOnPath('outdoor', npc.path), null, npc.id)
   for (const npc of LOBBY_NPCS) assert.equal(blockedOnPath('lobby', npc.path), null, npc.id)
-  assert.deepEqual(OUTDOOR_NPCS.map(npc => npc.kind), ['woman', 'man', 'elder'])
+  assert.deepEqual(OUTDOOR_NPCS.map(npc => npc.kind), ['woman', 'man', 'elder', 'kid-boy', 'kid-girl', 'fisher'])
   assert.equal(LOBBY_NPCS[0].kind, 'cleaner')
   assert.ok(LOBBY_NPCS[0].mutter.length >= 3, '아주머니는 혼자 궁시렁거린다')
   for (const npc of [...OUTDOOR_NPCS, ...LOBBY_NPCS]) assert.ok(npc.talk.length >= 3, npc.id)
@@ -57,4 +57,25 @@ test('물고기 값은 서버와 같은 규칙: 어종·크기에 비례, 1~30�
   assert.equal(fishPrice('황금 잉어', 999), FISH_PRICE_MAX)
   assert.equal(fishPrice('고래', 300), 0)
   assert.equal(fishPrice('붕어', null), 0)
+})
+
+test('포장마차 자리는 NPC가 지나가지 않고, 낚시꾼은 데크 낚시 자리를 가리지 않는다', () => {
+  const cart = { x: CART_SPOT.x, y: CART_SPOT.bottom - 40, width: 96, height: 80 }
+  for (const npc of OUTDOOR_NPCS) {
+    for (let i = 0; i < npc.path.length; i++) {
+      const a = npc.path[i], b = npc.path[(i + 1) % npc.path.length]
+      const steps = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 4))
+      for (let s = 0; s <= steps; s++) {
+        const x = a.x + (b.x - a.x) * s / steps, y = a.y + (b.y - a.y) * s / steps
+        assert.ok(!(Math.abs(x - cart.x) < cart.width / 2 && Math.abs(y - cart.y) < cart.height / 2), `${npc.id}이 포장마차를 지나간다 (${x}, ${y})`)
+      }
+    }
+  }
+  const fisher = OUTDOOR_NPCS.find(npc => npc.kind === 'fisher')
+  assert.equal(fisher.fixed, true)
+  assert.equal(fisher.mutter.length >= 3, true, '혼자 중얼거린다')
+  // 데크 낚시 자리(612, 470)에서 낚시꾼 말 걸기 범위(22)는 닿지 않는다.
+  const reach = { x: fisher.path[0].x, y: fisher.path[0].y - 20, width: 24, height: 40 }
+  const dx = Math.max(Math.abs(612 - reach.x) - reach.width / 2, 0), dy = Math.max(Math.abs(470 - reach.y) - reach.height / 2, 0)
+  assert.ok(Math.hypot(dx, dy) > 22)
 })
