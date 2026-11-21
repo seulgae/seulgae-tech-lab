@@ -11,6 +11,7 @@ import type { RoomFx } from '../rooms/RoomFx'
 import { ROOM_THEMES } from '../rooms/roomThemes'
 import { applyRenderZoom, crispText } from '../render/renderScale'
 import LobbyMultiplayer from '../multiplayer/LobbyMultiplayer'
+import PetBot from '../pet/PetBot'
 import { SPAWN } from '../maps/lobbyLayout'
 import { MULTIPLAYER_EVENTS } from '../../features/multiplayer/model/protocol'
 import type MultiplayerClient from '../../features/multiplayer/MultiplayerClient'
@@ -50,6 +51,7 @@ export default class LabLobbyScene extends Phaser.Scene {
   private player?: Player
   private activeRoom: RoomId = 'lobby'
   private transition = false
+  private pet?: PetBot
   private roomSubscription?: () => void
   private restartPending = false
   private interactionHint?: Phaser.GameObjects.Text
@@ -177,6 +179,8 @@ export default class LabLobbyScene extends Phaser.Scene {
     this.player = new Player(this, spawn.x, spawn.y)
     this.physics.add.collider(this.player, obstacles)
     this.multiplayer = new LobbyMultiplayer(this, this.player, this.client)
+    // 곁을 따라다니며 방마다 할 일을 알려 주는 미니 로봇(내 화면에만 보인다)
+    this.pet = new PetBot(this, this.activeRoom, this.player)
     this.roomSubscription = this.client.subscribe({ room: (roomId, pending) => {
       this.transition = pending || roomId !== this.activeRoom
       if (this.transition) { this.resetChatInput(); this.setTableTalk(false) }
@@ -237,6 +241,8 @@ export default class LabLobbyScene extends Phaser.Scene {
       this.groundSprites.clear()
       this.multiplayer?.stopInput()
       this.stopMultiplayer()
+      this.pet?.destroy()
+      this.pet = undefined
       this.player = undefined
       this.uiEvents.off(MOBILE_INPUT.move, this.moveTouch)
       this.uiEvents.off(MOBILE_INPUT.interact, this.interactTouch)
@@ -268,6 +274,7 @@ export default class LabLobbyScene extends Phaser.Scene {
       playSfx(footstepSound(this.activeRoom, this.player.x, this.player.y), { volume: 0.45, rate: 0.92 + Math.random() * 0.16 })
     }
     this.multiplayer?.update(delta)
+    this.pet?.update(this.player, delta)
     const door = ROOMS[this.activeRoom].doors.find(d => Math.hypot(this.player!.x - d.x, this.player!.y - d.y) <= 56)
     // 출입구가 우선이며, E 한 번에 한 대상만 실행한다.
     // 바닥 아이템이 바로 발밑에 있으면 줍기가 먼저다.

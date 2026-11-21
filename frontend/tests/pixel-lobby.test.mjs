@@ -74,7 +74,8 @@ test('원본 픽셀을 정수 좌표로 생성하고 캐릭터 시트를 실제 
     } }
     createPixelAssets(scene)
     createPixelAssets(scene)
-    assert.equal(textures.size, 10)
+    assert.equal(textures.size, 12)
+    assert.ok(textures.has('pet-robot') && textures.has('pet-robot-blink'), '튜토리얼 미니 로봇 펫(눈 깜박임 프레임 포함)')
     assert.equal(sheets.length, 1)
     assert.equal(sheets[0].texture.key, 'researcher')
     assert.equal(sheets[0].key, 'researcher')
