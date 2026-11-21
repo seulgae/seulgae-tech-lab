@@ -341,7 +341,10 @@ export default class LabLobbyScene extends Phaser.Scene {
     if (target.kind === 'research') this.uiEvents.emit(RESEARCH_EVENTS.openResearch)
     // 책장은 책이 날아오는 연출(RoomFx)이 끝난 뒤 책 읽기 창을 연다.
     else if (target.kind === 'bookshelf') this.time.delayedCall(450, () => { if (this.panelOpen) this.uiEvents.emit(LAB_EVENTS.openPanel, 'bookshelf') })
-    else this.uiEvents.emit(LAB_EVENTS.openPanel, target.kind)
+    else {
+      if (target.kind === 'work-board') this.uiEvents.emit(LAB_EVENTS.workBoard, target.id)
+      this.uiEvents.emit(LAB_EVENTS.openPanel, target.kind)
+    }
   }
 
   /** 가방(인벤토리) 창을 연다. 장면 입력은 패널이 닫힐 때까지 멈춘다. */

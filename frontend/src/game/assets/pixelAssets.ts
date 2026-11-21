@@ -102,6 +102,7 @@ export function createPixelAssets(scene: Phaser.Scene) {
   petRobot(scene)
   townsfolk(scene)
   kidsAndFisher(scene)
+  professor(scene)
   foodCart(scene)
 }
 
@@ -194,6 +195,37 @@ function kidsAndFisher(scene: Phaser.Scene) {
       // 낚싯대(오른쪽 위로), 끝이 까딱
       for (let i = 0; i < 6; i++) p('#6b4a2a', 13 + Math.floor(i / 3), 13 - i * 2, 1, 2)
       p('#dfe6ea', 15, frame ? 2 : 1, 1, frame ? 6 : 5)
+    })
+  }
+}
+
+/**
+ * 괴짜 박사님(아인슈타인 같은 연구원): 사방으로 뻗친 흰 머리, 덥수룩한 콧수염, 흰 가운.
+ * 걷기 두 프레임과 놀란 얼굴(shock), 웃는 얼굴(happy)
+ */
+function professor(scene: Phaser.Scene) {
+  const frames: [string, number, 'normal' | 'shock' | 'happy'][] = [['npc-professor-0', 0, 'normal'], ['npc-professor-1', 1, 'normal'], ['npc-professor-shock', 0, 'shock'], ['npc-professor-happy', 0, 'happy']]
+  for (const [key, frame, face] of frames) {
+    texture(scene, key, 16, 24, (p) => {
+      const left = frame ? 1 : 0, right = frame ? 0 : 1
+      p('#5a4636', 5, 16, 2, 6 - left); p('#5a4636', 9, 16, 2, 6 - right)
+      p('#2b2220', 5, 22 - left, 2, 2); p('#2b2220', 9, 22 - right, 2, 2)
+      // 흰 가운과 넥타이, 주머니 펜
+      p(ink, 3, 9, 10, 9); p('#f4f6f8', 4, 9, 8, 8); p('#c0504d', 7, 10, 2, 4); p('#5b8fd1', 10, 11, 1, 2)
+      p('#f4f6f8', 2, 10, 1, 5); p('#f4f6f8', 13, 10, 1, 5)
+      if (face === 'shock') { p('#e9c3a0', 1, 7, 1, 2); p('#e9c3a0', 14, 7, 1, 2) } else { p('#e9c3a0', 2, 15, 1, 1); p('#e9c3a0', 13, 15, 1, 1) }
+      // 얼굴
+      p(ink, 4, 3, 8, 7); p('#e9c3a0', 5, 4, 6, 5)
+      if (face === 'shock') { p(ink, 5, 5, 2, 2); p(ink, 9, 5, 2, 2); p('#ffffff', 5, 5, 1, 1); p('#ffffff', 9, 5, 1, 1); p(ink, 7, 8, 2, 2) }
+      else if (face === 'happy') { p(ink, 5, 6, 2, 1); p(ink, 9, 6, 2, 1); p('#ff9bb3', 5, 7, 1, 1); p('#ff9bb3', 10, 7, 1, 1) }
+      else { p(ink, 6, 6, 1, 1); p(ink, 9, 6, 1, 1) }
+      // 덥수룩한 흰 콧수염(웃으면 입꼬리가 보인다)
+      p('#f0f0f0', 5, 8, 6, 1); if (face === 'happy') p('#c0504d', 7, 9, 2, 1)
+      // 사방으로 뻗친 흰 머리(놀라면 더 뻗친다)
+      const spike = face === 'shock' ? 1 : 0
+      p('#f0f0f0', 3, 1 - spike, 10, 3); p('#f0f0f0', 2, 3, 2, 4); p('#f0f0f0', 12, 3, 2, 4)
+      p('#d9d9d9', 1, 2 - spike, 2, 2); p('#d9d9d9', 13, 2 - spike, 2, 2); p('#d9d9d9', 6, 0, 1, 1); p('#d9d9d9', 10, 0, 1, 1)
+      if (face === 'shock') { p('#f0f0f0', 0, 4, 2, 1); p('#f0f0f0', 14, 4, 2, 1); p('#f0f0f0', 7, 0, 2, 1) }
     })
   }
 }

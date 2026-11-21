@@ -49,7 +49,8 @@ class RoomInteractionTest {
         var kinds = java.util.Set.of("research", "guestbook", "build-info", "server-status", "table-talk", "agenda", "admin-console", "fishing", "work-board", "arcade");
         for (var roomId : world.roomIds()) {
             var interactions = world.interactions(roomId);
-            assertFalse(interactions.isEmpty(), roomId);
+            // 2·4번은 아직 빈 사무실이라 상호작용이 없다.
+            if (!roomId.equals("office-2") && !roomId.equals("office-4")) assertFalse(interactions.isEmpty(), roomId);
             var spawn = world.roomSpawn(roomId);
             for (var interaction : interactions) {
                 assertTrue(kinds.contains(interaction.kind()), interaction.id());

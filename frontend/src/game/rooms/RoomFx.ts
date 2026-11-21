@@ -17,7 +17,7 @@ import { SNACKS, inventoryStore } from '../../features/inventory/inventoryStore'
 import { adminRoomFx } from './adminRoomFx'
 import { outdoorFx } from './outdoorFx'
 import { townsfolk } from '../npc/townsfolkFx.ts'
-import { LOBBY_NPCS } from '../npc/npcData.ts'
+import { DEV_LAB_NPCS, LOBBY_NPCS } from '../npc/npcData.ts'
 
 /** Scene이 사용하는 방 연출 핸들. 문·장식·이벤트를 한 번에 정리한다. */
 export type RoomFx = {
@@ -154,6 +154,8 @@ function developmentFx(ctx: Context): RoomHandlers {
     emitting: false, lifespan: 1600, speed: { min: 80, max: 220 }, angle: { min: 20, max: 160 }, gravityY: 220, rotate: { min: 0, max: 360 },
     scale: 2, alpha: { start: 1, end: 0.2 }, tint: [0x39e6b4, 0x38bdf8, 0xc084fc, 0xfacc15],
   }).setDepth(950)
+  // 빌드 결과에 놀라고 웃는 괴짜 박사님
+  const professor = townsfolk(ctx, DEV_LAB_NPCS)
   const pipeline = new CiPipeline()
   ctx.every(20000, 32000, () => {
     const run = pipeline.next()
@@ -166,6 +168,7 @@ function developmentFx(ctx: Context): RoomHandlers {
         confetti.explode(60, 400, 70)
         playSfx('success', { volume: 0.5 })
         ctx.banner.show(`빌드 #${run.number} 성공! 모든 테스트 통과`, '#39e6b4')
+        professor.react(true)
       } else {
         status.setText(`✖ BUILD #${run.number} FAILED`).setColor('#f87171')
         bar.setFillStyle(0xf87171)
@@ -174,10 +177,14 @@ function developmentFx(ctx: Context): RoomHandlers {
         scene.tweens.add({ targets: flash, alpha: 0, duration: 700, onComplete: () => flash.destroy() })
         playSfx('error', { volume: 0.5 })
         ctx.banner.show(`빌드 #${run.number} 실패 · 테스트 ${run.failedTests}개 확인 필요`, '#f87171')
+        professor.react(false)
       }
     } })
   }, 3000)
-  return { destroy: () => ctx.stop() }
+  return {
+    targets: professor.targets, hint: professor.hint, intercept: professor.intercept,
+    destroy: () => { ctx.stop(); professor.destroy() },
+  }
 }
 
 /** 서버실: 차가운 조명, 깜빡이는 LED, 냉기 파티클, 과열 경보 이벤트 */
@@ -445,7 +452,7 @@ function officeFx(ctx: Context): RoomHandlers {
   return { destroy: () => ctx.stop() }
 }
 
-/** 3번 오락실: 벽의 네온 간판, 오락기마다 번갈아 깜빡이는 네온 빛, 가끔 터지는 반짝이 */
+/** 오락실(로비 왼쪽 아래): 벽의 네온 간판, 오락기마다 번갈아 깜빡이는 네온 빛, 가끔 터지는 반짝이 */
 function arcadeFx(ctx: Context): RoomHandlers {
   const { scene } = ctx
   scene.add.rectangle(400, 32, 220, 34, 0x05020a, 0.9).setStrokeStyle(2, 0xf472b6).setDepth(61)

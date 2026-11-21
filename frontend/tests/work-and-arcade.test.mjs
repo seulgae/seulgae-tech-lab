@@ -1,15 +1,25 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { BREAKOUT_HIGH_SCORE_KEY, FIELD, PADDLE, brickScore, createBricks, newGame, stepBreakout } from '../src/features/arcade/breakout.ts'
-import { OFFICE_BOARDS, addMaintenance, addOperation, codeName, createQa, fetchBoard } from '../src/features/work/workApi.ts'
+import { WORK_BOARDS, addMaintenance, addOperation, codeName, createQa, fetchBoard } from '../src/features/work/workApi.ts'
 import { ROOMS, nearestInteraction } from '../src/game/maps/rooms.ts'
 
 const idle = { left: false, right: false, pointerX: null, launch: false }
 
-test('사무실 게시판 배치: 1번 QA, 2번 유지보수, 4번 운영업무, 3번은 오락실', () => {
-  assert.deepEqual(OFFICE_BOARDS, { 'office-1': 'QA', 'office-2': 'MAINTENANCE', 'office-4': 'OPERATION' })
-  for (const room of ['office-1', 'office-2', 'office-4']) assert.equal(nearestInteraction(room, 400, 290)?.kind, 'work-board', room)
-  assert.equal(ROOMS['office-3'].name, '3번 오락실')
+test('서비스 연구실에 QA·유지보수·운영 컴퓨터가 나란히, 2·4번은 빈 사무실, 오락실은 로비에', () => {
+  assert.equal(ROOMS['office-1'].name, '서비스 연구실')
+  assert.deepEqual(WORK_BOARDS, { 'service-qa': 'QA', 'service-maintenance': 'MAINTENANCE', 'service-operation': 'OPERATION' })
+  for (const [x, id] of [[200, 'service-qa'], [400, 'service-maintenance'], [600, 'service-operation']]) {
+    const target = nearestInteraction('office-1', x, 270)
+    assert.equal(target?.kind, 'work-board'); assert.equal(target?.id, id, '컴퓨터마다 자기 게시판')
+  }
+  for (const room of ['office-2', 'office-4']) {
+    assert.match(ROOMS[room].name, /빈 사무실/)
+    assert.equal(ROOMS[room].interactions.length, 0, room)
+  }
+  assert.equal(ROOMS['office-3'].name, '오락실')
+  assert.deepEqual(ROOMS.lobby.doors.find(door => door.target === 'office-3') && [ROOMS.lobby.doors.find(door => door.target === 'office-3').x, ROOMS.lobby.doors.find(door => door.target === 'office-3').y], [70, 520], '오락실은 로비 왼쪽 아래 문')
+  assert.equal(ROOMS['office-3'].doors[0].target, 'lobby')
   assert.equal(nearestInteraction('office-3', 400, 290)?.kind, 'arcade')
   assert.equal(codeName([{ group: 'WORK_STATUS', code: 'RESOLVED', name: '조치 완료', sortOrder: 3 }], 'RESOLVED'), '조치 완료')
   assert.equal(codeName([], 'APPROVED'), 'APPROVED')

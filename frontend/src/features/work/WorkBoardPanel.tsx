@@ -9,9 +9,9 @@ import '../research/components/ResearchPanel.css'
 import './work.css'
 
 const TITLES: Record<WorkBoard, { eyebrow: string; title: string; inbox: string; entries: string; help: string }> = {
-  QA: { eyebrow: 'OFFICE 1 / QA', title: 'QA 게시판', inbox: '', entries: '등록한 QA와 진행 상태', help: '발견한 문제를 등록하면 2번 오피스 유지보수 게시판으로 넘어가요.' },
-  MAINTENANCE: { eyebrow: 'OFFICE 2 / MAINTENANCE', title: '유지보수 게시판', inbox: '조치할 QA', entries: '유지보수 조치 기록', help: 'QA를 확인하고 조치 현황과 가이드를 남겨요. "조치 완료"로 등록하면 4번 오피스 운영 점검으로 넘어가요.' },
-  OPERATION: { eyebrow: 'OFFICE 4 / OPERATION', title: '운영업무 게시판', inbox: '점검 대기', entries: '운영 점검 기록', help: '조치된 내용이 정상 동작하는지 점검하고 최종 승인해요. 반려하면 다시 유지보수로 돌아가요.' },
+  QA: { eyebrow: 'SERVICE LAB / QA', title: 'QA 게시판', inbox: '', entries: '등록한 QA와 진행 상태', help: '발견한 문제를 등록하면 옆 유지보수 컴퓨터로 넘어가요.' },
+  MAINTENANCE: { eyebrow: 'SERVICE LAB / MAINTENANCE', title: '유지보수 게시판', inbox: '조치할 QA', entries: '유지보수 조치 기록', help: 'QA를 확인하고 조치 현황과 가이드를 남겨요. "조치 완료"로 등록하면 운영업무 컴퓨터 점검으로 넘어가요.' },
+  OPERATION: { eyebrow: 'SERVICE LAB / OPERATION', title: '운영업무 게시판', inbox: '점검 대기', entries: '운영 점검 기록', help: '조치된 내용이 정상 동작하는지 점검하고 최종 승인해요. 반려하면 다시 유지보수로 돌아가요.' },
 }
 const date = (value: string) => new Date(value).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 
@@ -113,7 +113,7 @@ export default function WorkBoardPanel({ board, onClose }: { board: WorkBoard; o
               <label>가이드(선택)<textarea maxLength={1000} value={guide} onChange={event => setGuide(event.target.value)} /></label>
               <div className="work-actions">
                 <button type="button" disabled={busy || !content.trim()} onClick={() => void run(() => addMaintenance(ticket!.id, content, guide, false), '조치 현황을 남겼어요.')}>조치 중으로 기록</button>
-                <button type="button" className="board-primary" disabled={busy || !content.trim()} onClick={() => void run(() => addMaintenance(ticket!.id, content, guide, true), '조치 완료! 4번 오피스 운영 점검으로 넘겼어요.')}>조치 완료(운영 점검 요청)</button>
+                <button type="button" className="board-primary" disabled={busy || !content.trim()} onClick={() => void run(() => addMaintenance(ticket!.id, content, guide, true), '조치 완료! 운영업무 컴퓨터 점검으로 넘겼어요.')}>조치 완료(운영 점검 요청)</button>
               </div>
             </form>
           )}
@@ -121,7 +121,7 @@ export default function WorkBoardPanel({ board, onClose }: { board: WorkBoard; o
             <form className="work-form" onSubmit={event => event.preventDefault()}>
               <label>점검 결과<textarea maxLength={1000} value={content} onChange={event => setContent(event.target.value)} required /></label>
               <div className="work-actions">
-                <button type="button" disabled={busy || !content.trim()} onClick={() => void run(() => addOperation(ticket!.id, content, false), '반려했어요. 2번 오피스 유지보수로 돌아가요.')}>반려</button>
+                <button type="button" disabled={busy || !content.trim()} onClick={() => void run(() => addOperation(ticket!.id, content, false), '반려했어요. 유지보수 컴퓨터로 돌아가요.')}>반려</button>
                 <button type="button" className="board-primary" disabled={busy || !content.trim()} onClick={() => void run(() => addOperation(ticket!.id, content, true), '최종 승인했어요.')}>최종 승인</button>
               </div>
             </form>
@@ -130,7 +130,7 @@ export default function WorkBoardPanel({ board, onClose }: { board: WorkBoard; o
       ) : (
         <>
           {board === 'QA' && writable && (
-            <form className="work-form" onSubmit={event => { event.preventDefault(); void run(() => createQa(title, content), 'QA를 등록했어요. 2번 오피스 유지보수 게시판으로 넘어갔어요.') }}>
+            <form className="work-form" onSubmit={event => { event.preventDefault(); void run(() => createQa(title, content), 'QA를 등록했어요. 옆 유지보수 컴퓨터로 넘어갔어요.') }}>
               <label>제목<input maxLength={60} value={title} onChange={event => setTitle(event.target.value)} required /></label>
               <label>내용<textarea maxLength={1000} value={content} onChange={event => setContent(event.target.value)} required /></label>
               <button type="submit" className="board-primary" disabled={busy || !title.trim() || !content.trim()}>QA 등록</button>
