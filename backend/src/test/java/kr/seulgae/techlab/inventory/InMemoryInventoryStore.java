@@ -68,6 +68,16 @@ public class InMemoryInventoryStore implements InventoryStore {
         return Optional.of(dropped);
     }
 
+    @Override public synchronized int swap(UUID a, UUID itemA, UUID b, UUID itemB) {
+        var first = items.get(itemA);
+        var second = items.get(itemB);
+        int matched = (first != null && a.equals(first.owner()) ? 1 : 0) + (second != null && b.equals(second.owner()) ? 1 : 0);
+        if (matched != 2) return matched;
+        items.put(itemA, new Owned(b, first.item()));
+        items.put(itemB, new Owned(a, second.item()));
+        return 2;
+    }
+
     @Override public List<Item> ground(String roomId) {
         return items.values().stream().filter(owned -> owned.owner() == null && roomId.equals(owned.item().roomId())).map(Owned::item).toList();
     }

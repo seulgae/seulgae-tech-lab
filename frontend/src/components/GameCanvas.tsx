@@ -16,6 +16,10 @@ import WorkBoardPanel from '../features/work/WorkBoardPanel'
 import { OFFICE_BOARDS } from '../features/work/workApi'
 import ArcadePanel from '../features/arcade/ArcadePanel'
 import InventoryPanel from '../features/inventory/InventoryPanel'
+import { tradeMessage } from '../features/inventory/tradeMessages'
+import TradeOfferPanel from '../features/inventory/TradeOfferPanel'
+import { inventoryStore } from '../features/inventory/inventoryStore'
+import type { TradeOffer } from '../features/multiplayer/model/protocol'
 import GuestbookPanel from '../features/guestbook/GuestbookPanel'
 import MultiplayerStatus from '../features/multiplayer/components/MultiplayerStatus'
 import { INITIAL_CONNECTION, MULTIPLAYER_EVENTS } from '../features/multiplayer/model/protocol'
@@ -49,6 +53,11 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
   const [controlsReset, setControlsReset] = useState(0)
   const [labPanel, setLabPanel] = useState<RoomPanelKind | null>(null)
   const [tableTalk, setTableTalk] = useState(false)
+  /** 회의실에서 받은 교환 신청과 결과 알림 */
+  const [tradeOffer, setTradeOffer] = useState<TradeOffer | null>(null)
+  const [tradeNotice, setTradeNotice] = useState<string | null>(null)
+  const closeTrade = useCallback(() => setTradeOffer(null), [])
+  useEffect(() => { if (!tradeNotice) return; const timer = setTimeout(() => setTradeNotice(null), 4000); return () => clearTimeout(timer) }, [tradeNotice])
   // 로그인 확인이 게임 시작보다 늦게 끝나도(모바일) 회원 닉네임으로 다시 접속한다.
   const auth = useAuth()
   const memberNickname = auth.member?.nickname
@@ -99,6 +108,12 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
         if (message.playerId !== client.selfPlayerId()) playSfx('chat', { volume: 0.6 })
       },
       chatError: setChatError,
+      tradeOffer: setTradeOffer,
+      tradeStatus: status => {
+        if (status.status === 'sent') return
+        setTradeNotice(tradeMessage(status.status, status.reason))
+        if (status.status === 'accepted') { playSfx('success', { volume: 0.6 }); void inventoryStore.refresh() }
+      },
     })
     clientRef.current = client
     eventRef.current = uiEvents
@@ -182,6 +197,9 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
       {labPanel === 'arcade' && <ArcadePanel onClose={closeLabPanel} />}
       {labPanel === 'inventory' && <InventoryPanel client={getClient} onClose={closeLabPanel} />}
       {labPanel === 'guestbook' && <GuestbookPanel onClose={closeLabPanel} />}
+      {tradeOffer && <TradeOfferPanel offer={tradeOffer} onClose={closeTrade}
+        onAnswer={itemId => { clientRef.current?.answerTrade(tradeOffer.tradeId, itemId); setTradeOffer(null) }} />}
+      {tradeNotice && <p className="trade-toast" role="status">{tradeNotice}</p>}
       {(labPanel === 'server-status' || labPanel === 'build-info') && <LabInfoPanel kind={labPanel} onClose={closeLabPanel} />}
     </>
   )

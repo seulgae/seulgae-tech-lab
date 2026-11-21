@@ -37,6 +37,11 @@ public interface InventoryStore {
     /** 내 아이템을 방 바닥에 내려놓는다. 내 것이 아니면 빈 값 */
     Optional<Item> drop(UUID member, UUID itemId, String roomId, double x, double y);
     List<Item> ground(String roomId);
+    /**
+     * 두 회원의 가방 아이템을 맞바꾼다(a의 itemA ↔ b의 itemB).
+     * @return 바뀐 행 수. 2가 아니면 호출한 쪽이 되돌려야 한다(트랜잭션).
+     */
+    int swap(UUID a, UUID itemA, UUID b, UUID itemB);
     /** 이 방 바닥의 아이템을 줍는다. 이미 누가 주웠으면 빈 값(동시에 주워도 한 명만 성공) */
     Optional<Item> pick(UUID member, UUID itemId, String roomId);
 }

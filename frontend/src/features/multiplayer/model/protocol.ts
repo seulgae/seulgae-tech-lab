@@ -8,6 +8,10 @@ export type MoveCommand = MoveInput & { seq: number; ms: number }
 export type RoomFeeds = Partial<Record<RoomId, PlayerState[]>>
 /** 방 바닥에 놓인 아이템(누구나 주울 수 있다) */
 export type GroundItem = { id: string; kind: string; name: string; sizeCm: number | null; x: number; y: number }
+/** 회의실에서 받은 교환 신청: 보낸 사람과 내민 아이템 */
+export type TradeOffer = { tradeId: string; from: { id: string; nickname: string }; item: { id: string; kind: string; name: string; sizeCm: number | null }; expiresInMs: number }
+/** 교환 진행: sent(보냄) accepted(맞바꿈) declined(거절) failed(실패, reason) */
+export type TradeStatus = { tradeId?: string; status: 'sent' | 'accepted' | 'declined' | 'failed'; reason?: string }
 export type PlayerState = { id: string; nickname: string; x: number; y: number; facing: Facing; moving: boolean; ack: number; seat?: string | null }
 export type ConnectionInfo = { roomId?: RoomId; roomOnline?: number; totalOnline?: number; travelling?: boolean; roomError?: string; phase: 'solo' | 'connecting' | 'online' | 'reconnecting' | 'replaced'; nickname: string; online: number; maxPlayers: number; message: string }
 export type ChatMessage = { type: 'chat_message'; messageId: string; playerId: string; nickname: string; message: string; sentAt: string; scope?: ChatScope }
@@ -28,6 +32,8 @@ export type ServerMessage = RoomMeta & (
   | { type: 'ground'; items: GroundItem[] }
   | { type: 'inventory_changed' }
   | { type: 'inventory_error'; reason: 'login' | 'unavailable' }
+  | ({ type: 'trade_offer' } & TradeOffer)
+  | ({ type: 'trade_status' } & TradeStatus)
 )
 
 export const MULTIPLAYER_EVENTS = { dispose: 'multiplayer:dispose' } as const
@@ -78,6 +84,9 @@ export function parseServerMessage(raw: string): ServerMessage {
   if (message.type === 'room_error' && typeof message.reason === 'string' && message.reason.length <= 100) return message
   if (message.type === 'ground' && Array.isArray(message.items) && message.items.length <= 30 && message.items.every(validGroundItem)) return message
   if (message.type === 'inventory_changed') return message
+  if (message.type === 'trade_offer' && validTradeOffer(message)) return message
+  if (message.type === 'trade_status' && ['sent', 'accepted', 'declined', 'failed'].includes(message.status)
+    && (message.tradeId === undefined || validId(message.tradeId)) && (message.reason === undefined || typeof message.reason === 'string' && message.reason.length <= 30)) return message
   if (message.type === 'inventory_error' && (message.reason === 'login' || message.reason === 'unavailable')) return message
   const players = message.players
   if (!Array.isArray(players) || players.length > 5 || !players.every(validPlayer) || new Set(players.map(p => p.id)).size !== players.length) throw new Error('Invalid players')
@@ -101,6 +110,13 @@ export const REPLACED_CLOSE_CODE = 4409
 export const REPLACED_MESSAGE = '다른 창에서 접속해 이 창의 연결을 끊었어요. 새로고침하면 이 창으로 다시 접속해요.'
 
 /** 방 id는 공유 맵에 있는 것만, 전체 인원은 정원(5) 이하, 한 사람은 한 방에만 있어야 한다. */
+function validTradeOffer(value: TradeOffer) {
+  const item = value.item
+  return validId(value.tradeId) && !!value.from && validId(value.from.id) && validNickname(value.from.nickname)
+    && !!item && validId(item.id) && typeof item.kind === 'string' && typeof item.name === 'string' && item.name.length >= 1 && item.name.length <= 30
+    && (item.sizeCm === null || Number.isSafeInteger(item.sizeCm)) && Number.isSafeInteger(value.expiresInMs) && value.expiresInMs > 0 && value.expiresInMs <= 120000
+}
+
 export function validGroundItem(value: unknown): value is GroundItem {
   const item = value as GroundItem
   return Boolean(item) && validId(item.id) && typeof item.kind === 'string' && item.kind.length <= 20 && typeof item.name === 'string'

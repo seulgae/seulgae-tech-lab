@@ -30,9 +30,18 @@ public class InventoryController {
     private final WriteRateLimiter limiter;
     private final AuthService auth;
     private final LobbyWorld world;
+    private final org.springframework.context.ApplicationEventPublisher events;
 
-    public InventoryController(InventoryService service, WriteRateLimiter limiter, AuthService auth, LobbyWorld world) {
-        this.service = service; this.limiter = limiter; this.auth = auth; this.world = world;
+    public InventoryController(InventoryService service, WriteRateLimiter limiter, AuthService auth, LobbyWorld world,
+                               org.springframework.context.ApplicationEventPublisher events) {
+        this.service = service; this.limiter = limiter; this.auth = auth; this.world = world; this.events = events;
+    }
+
+    /** 바닥이 바뀌면 같은 방에 연결된 사람(회의실)에게 바로 알린다. */
+    private List<InventoryService.GroundItem> changed(String room) {
+        var items = service.groundView(room);
+        events.publishEvent(new GroundChanged(room, items));
+        return items;
     }
 
     private String room(String roomId) {
@@ -65,7 +74,7 @@ public class InventoryController {
         var item = valid(body);
         service.drop(member, itemId(item), item.room(), item.x(), item.y())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Cannot drop"));
-        return service.groundView(item.room());
+        return changed(item.room());
     }
 
     /** 가까운(48px) 바닥 아이템을 줍는다. 멀거나 이미 주웠거나 가방이 가득하면 409. @return 이 방 바닥 목록 */
@@ -76,7 +85,7 @@ public class InventoryController {
         var item = valid(body);
         service.pickNear(member, itemId(item), item.room(), item.x(), item.y())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Cannot pick"));
-        return service.groundView(item.room());
+        return changed(item.room());
     }
 
     private UUID member(HttpServletRequest request) {

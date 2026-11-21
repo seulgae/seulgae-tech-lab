@@ -160,6 +160,23 @@ public class InventoryService {
 
     public List<InventoryStore.Item> ground(String roomId) { return store.ground(roomId); }
 
+    /** 이 회원 가방에 이 아이템이 있는지 */
+    public boolean owns(UUID member, UUID itemId) { return store.owned(member).stream().anyMatch(item -> item.id().equals(itemId)); }
+
+    /** 이 회원 가방의 아이템(교환 신청 화면에 보여 줄 값) */
+    public Optional<InventoryStore.Item> item(UUID member, UUID itemId) {
+        return store.owned(member).stream().filter(item -> item.id().equals(itemId)).findFirst();
+    }
+
+    /**
+     * 회의실 교환: a의 itemA와 b의 itemB를 맞바꾼다. 둘 중 하나라도 이미 주인이 바뀌었으면 409(아무것도 바꾸지 않음).
+     */
+    @Transactional
+    public void trade(UUID a, UUID itemA, UUID b, UUID itemB) {
+        if (a.equals(b) || itemA.equals(itemB)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid trade");
+        if (store.swap(a, itemA, b, itemB) != 2) throw new ResponseStatusException(HttpStatus.CONFLICT, "Trade failed");
+    }
+
     /** 바닥 아이템을 화면에 필요한 값만으로 */
     public record GroundItem(String id, String kind, String name, Integer sizeCm, double x, double y) {}
     /** 줍기 거리(px). 클라이언트가 알려 준 내 위치에서 이 거리 안의 아이템만 주울 수 있다. */
