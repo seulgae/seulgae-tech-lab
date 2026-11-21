@@ -83,6 +83,21 @@ export const inventoryStore = {
     } catch { return 'free' }
   },
   /**
+   * 화분을 흔든다. 서버가 5% 확률로 1~3원을 준다(하루 10번까지). 비회원·꽝·연결 문제는 0.
+   * @returns 받은 동전
+   */
+  async shakePlant(): Promise<number> {
+    try {
+      const response = await call('/api/inventory/plant', { method: 'POST' })
+      if (!response.ok) return 0
+      const { won, coins } = await response.json() as { won: number; coins: number }
+      if (!(won > 0)) return 0
+      set({ ...state, coins })
+      globalThis.dispatchEvent?.(new CustomEvent(COIN_EVENT, { detail: { amount: won } }))
+      return won
+    } catch { return 0 }
+  },
+  /**
    * 로비 데스크 간식을 산다(케이크 3원 HP +10, 커피 2원 피로도 +5).
    * 'bought' 샀음, 'guest' 비회원(무료로 즐기기만), 'broke' 동전 부족, 'full' 이미 가득(돈을 내지 않음), 'error' 연결 문제
    */

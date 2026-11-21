@@ -4,6 +4,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.LongSupplier;
+import java.util.random.RandomGenerator;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +32,11 @@ public class InventoryService {
     /** 간식: 공통코드 COIN_REASON(CAKE, COFFEE), 가격과 회복량 */
     public static final String CAKE = "CAKE", COFFEE = "COFFEE";
     public static final int CAKE_PRICE = 3, CAKE_HP = 10, COFFEE_PRICE = 2, COFFEE_FATIGUE = 5;
+    /** 식물 행운: 화분을 흔들면 5% 확률로 1~3원. 하루 10번까지만 당첨되고, 2초 안에 다시 흔들면 추첨하지 않는다(연타 방지). */
+    public static final String PLANT_LUCK = "PLANT_LUCK";
+    public static final double PLANT_LUCK_CHANCE = 0.05;
+    public static final int PLANT_LUCK_MIN = 1, PLANT_LUCK_MAX = 3, PLANT_DAILY_WINS = 10;
+    public static final long PLANT_COOLDOWN_MS = 2000;
     /** HP·피로도가 모자라 일·오락을 할 수 없음(423 Locked) */
     public static final HttpStatus TIRED = HttpStatus.LOCKED;
     /** 이미 가득 차서 간식을 사지 않음(422) */
@@ -40,9 +49,34 @@ public class InventoryService {
     /** 인벤토리 화면 */
     public record View(int coins, List<InventoryStore.Item> items, int rewardsLeftToday, int hp, int hpMax, int fatigue, int fatigueMax) {}
 
-    private final InventoryStore store;
+    /** 식물 흔들기 결과: 받은 동전(꽝이면 0)과 지금 잔액 */
+    public record PlantResult(int won, int coins) {}
 
-    public InventoryService(InventoryStore store) { this.store = store; }
+    private final InventoryStore store;
+    private final RandomGenerator random;
+    private final LongSupplier clock;
+    private final Map<UUID, Long> lastShake = new ConcurrentHashMap<>();
+
+    @Autowired
+    public InventoryService(InventoryStore store) { this(store, new java.security.SecureRandom(), System::currentTimeMillis); }
+
+    /** 테스트용: 추첨과 시계를 바꿔 끼운다. */
+    InventoryService(InventoryStore store, RandomGenerator random, LongSupplier clock) { this.store = store; this.random = random; this.clock = clock; }
+
+    /**
+     * 화분을 흔든다. 추첨은 서버가 한다(화면이 결과를 정하지 못하게).
+     * 2초 안에 다시 흔들면 추첨하지 않고, 오늘 10번 당첨됐으면 더 주지 않는다.
+     */
+    @Transactional
+    public PlantResult shakePlant(UUID member) {
+        long now = clock.getAsLong();
+        Long last = lastShake.put(member, now);
+        if (last != null && now - last < PLANT_COOLDOWN_MS) return new PlantResult(0, store.coins(member));
+        if (store.countToday(member, PLANT_LUCK) >= PLANT_DAILY_WINS || random.nextDouble() >= PLANT_LUCK_CHANCE) return new PlantResult(0, store.coins(member));
+        int amount = PLANT_LUCK_MIN + random.nextInt(PLANT_LUCK_MAX - PLANT_LUCK_MIN + 1);
+        return store.changeCoins(member, amount, PLANT_LUCK).map(coins -> new PlantResult(amount, coins))
+            .orElseGet(() -> new PlantResult(0, store.coins(member)));
+    }
 
     public View view(UUID member) {
         var vitals = store.vitals(member);

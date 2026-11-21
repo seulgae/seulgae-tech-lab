@@ -47,7 +47,7 @@ export function createRoomFx(scene: Phaser.Scene, roomId: RoomId, options: Optio
     'office-1': officeFx, 'office-2': officeFx, 'office-3': arcadeFx, 'office-4': officeFx,
   } as const
   const room = builders[roomId](new Context(scene, banner, { ...options, room: roomId }))
-  const shakePlant = plantShaker(scene, options.plants ?? new Map())
+  const shakePlant = plantShaker(scene, options.plants ?? new Map(), banner)
   if (roomId !== 'lobby' && roomId !== 'outdoor') banner.show(`${ROOMS[roomId].name}에 들어왔어요`)
   return {
     doors,
@@ -259,8 +259,11 @@ function meetingFx(ctx: Context): RoomHandlers {
   }
 }
 
-/** 화분을 누르거나 E를 누르면 흔들리며 나뭇잎이 떨어진다. 흔들리는 중에는 다시 시작하지 않는다. */
-function plantShaker(scene: Phaser.Scene, plants: Map<string, Phaser.GameObjects.Image>) {
+/**
+ * 화분을 누르거나 E를 누르면 흔들리며 나뭇잎이 떨어진다. 흔들리는 중에는 다시 시작하지 않는다.
+ * 회원이면 서버가 5% 확률로 1~3원을 준다(식물 행운). 동전이 튀어 오르는 연출은 가방 상태의 동전 이벤트가 맡는다.
+ */
+function plantShaker(scene: Phaser.Scene, plants: Map<string, Phaser.GameObjects.Image>, banner: Banner) {
   const leaves = scene.add.particles(0, 0, 'leaf', {
     emitting: false, lifespan: { min: 1400, max: 2200 }, speedX: { min: -45, max: 45 }, speedY: { min: -40, max: 0 }, gravityY: 70,
     rotate: { min: 0, max: 360 }, scale: { start: 2, end: 1.5 }, alpha: { start: 1, end: 0 }, tint: [0x4f8c61, 0x73a570, 0x92ba7b, 0xb5c97a],
@@ -273,6 +276,9 @@ function plantShaker(scene: Phaser.Scene, plants: Map<string, Phaser.GameObjects
       onComplete: () => { image.setAngle(0); image.setData('shaking', false) } })
     leaves.explode(9, image.x, image.y - image.displayHeight * 0.75)
     playSfx('leaves', { volume: 0.7 })
+    void inventoryStore.shakePlant().then(won => {
+      if (won > 0 && image.active) banner.show(`화분에서 동전이 떨어졌어요! +${won}원`, '#ffd23f', 2200)
+    })
   }
   for (const [id, image] of plants) image.setInteractive({ useHandCursor: true }).on('pointerdown', () => shake(id))
   return shake

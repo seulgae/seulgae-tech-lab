@@ -107,4 +107,42 @@ class InventoryServiceTest {
         assertTrue(service.pickNear(friend, fish.id(), "outdoor", 620, 480).isPresent());
         assertTrue(service.groundView("outdoor").isEmpty());
     }
+
+    /** 정해진 순서로 값을 내는 추첨기 */
+    private static java.util.random.RandomGenerator draws(double... values) {
+        var queue = new java.util.ArrayDeque<Double>();
+        for (double value : values) queue.add(value);
+        return new java.util.random.RandomGenerator() {
+            @Override public long nextLong() { return 0; }
+            @Override public double nextDouble() { return queue.isEmpty() ? 0.99 : queue.poll(); }
+            @Override public int nextInt(int bound) { return (int) (bound * (queue.isEmpty() ? 0 : queue.poll())); }
+        };
+    }
+
+    @Test void shakingPlantsSometimesDropsOneToThreeCoins() {
+        long[] now = {0};
+        // 5% 미만이면 당첨, 두 번째 값이 금액(0.99 → 3원)
+        var lucky = new InventoryService(new InMemoryInventoryStore(), draws(0.01, 0.99, 0.5, 0.04, 0.0), () -> now[0]);
+        var win = lucky.shakePlant(me);
+        assertEquals(3, win.won()); assertEquals(3, win.coins());
+        now[0] += 500;
+        assertEquals(0, lucky.shakePlant(me).won(), "2초 안에 다시 흔들면 추첨하지 않는다");
+        now[0] += 2500;
+        assertEquals(0, lucky.shakePlant(me).won(), "0.5는 꽝(5% 이상)");
+        now[0] += 2500;
+        var small = lucky.shakePlant(me);
+        assertEquals(1, small.won(), "0.04는 당첨, 0.0은 1원");
+        assertEquals(4, small.coins());
+    }
+
+    @Test void plantLuckStopsAfterTenWinsADay() {
+        long[] now = {0};
+        double[] alwaysWin = new double[40];
+        for (int i = 0; i < alwaysWin.length; i += 2) { alwaysWin[i] = 0.0; alwaysWin[i + 1] = 0.5; }
+        var service = new InventoryService(new InMemoryInventoryStore(), draws(alwaysWin), () -> now[0]);
+        int wins = 0;
+        for (int i = 0; i < 15; i++) { now[0] += 3000; if (service.shakePlant(me).won() > 0) wins++; }
+        assertEquals(InventoryService.PLANT_DAILY_WINS, wins, "하루 10번까지만 당첨");
+        assertEquals(20, service.view(me).coins(), "0.5 → 2원 × 10번");
+    }
 }
