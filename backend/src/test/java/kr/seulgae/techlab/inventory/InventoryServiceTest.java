@@ -156,4 +156,38 @@ class InventoryServiceTest {
         assertEquals("메기", service.view(me).items().get(0).name(), "실패하면 그대로");
         assertThrows(ResponseStatusException.class, () -> service.trade(me, theirs.id(), me, theirs.id()));
     }
+
+    @Test void fishPricesFollowSizeAndSpeciesAndNeverExceedThirty() {
+        assertEquals(2, InventoryService.fishPrice("붕어", 15));
+        assertEquals(6, InventoryService.fishPrice("붕어", 32));
+        assertEquals(4, InventoryService.fishPrice("붕어", 24), "중간 크기는 중간 값(반올림)");
+        assertEquals(1, InventoryService.fishPrice("피라미", 8));
+        assertEquals(30, InventoryService.fishPrice("황금 잉어", 90));
+        assertEquals(30, InventoryService.fishPrice("황금 잉어", 999), "범위 밖으로 커도 30원을 넘지 않는다");
+        assertEquals(0, InventoryService.fishPrice("고래", 500));
+        for (var species : InventoryService.FISH_SIZES.keySet()) {
+            var size = InventoryService.FISH_SIZES.get(species);
+            for (int cm = size[0]; cm <= size[1]; cm++) {
+                int price = InventoryService.fishPrice(species, cm);
+                assertTrue(price >= 1 && price <= 30, species + " " + cm);
+            }
+        }
+    }
+
+    @Test void foodCartBuysFishOnlyInTheEvening() {
+        // 2026-11-21 17:59 / 18:00 한국 시간
+        long[] now = {java.time.ZonedDateTime.of(2026, 11, 21, 17, 59, 0, 0, java.time.ZoneId.of("Asia/Seoul")).toInstant().toEpochMilli()};
+        var service = new InventoryService(new InMemoryInventoryStore(), new java.util.Random(1), () -> now[0]);
+        var fish = service.storeFish(me, "메기", 65);
+        var closed = assertThrows(ResponseStatusException.class, () -> service.sellFish(me, fish.id()));
+        assertEquals(409, closed.getStatusCode().value(), "저녁 6시 전에는 닫혀 있다");
+        now[0] += 60_000;
+        var sale = service.sellFish(me, fish.id());
+        assertEquals(14, sale.price(), "메기 65cm는 14원");
+        assertEquals(14, sale.view().coins());
+        assertTrue(sale.view().items().isEmpty(), "판 물고기는 가방에서 빠진다");
+        assertEquals(404, assertThrows(ResponseStatusException.class, () -> service.sellFish(me, fish.id())).getStatusCode().value(), "두 번 팔 수 없다");
+        var theirs = service.storeFish(friend, "붕어", 20);
+        assertEquals(404, assertThrows(ResponseStatusException.class, () -> service.sellFish(me, theirs.id())).getStatusCode().value(), "남의 물고기는 팔 수 없다");
+    }
 }

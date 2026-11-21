@@ -3,7 +3,7 @@ import Player from '../Player'
 import createLobbyMap from '../LobbyMap'
 import { RESEARCH_EVENTS } from '../../features/research/researchEvents'
 import { LAB_EVENTS } from '../../features/lab/labEvents'
-import { hasTextInputFocus } from '../interaction'
+import { hasTextInputFocus, isNearObject } from '../interaction'
 import { createPixelAssets } from '../assets/pixelAssets'
 import { createRoomAssets } from '../assets/roomAssets'
 import { createRoomFx } from '../rooms/RoomFx'
@@ -32,7 +32,7 @@ import { FISH_COLORS } from '../rooms/fishingLogic'
 /** 패널을 열 때 함께 나는 장비 소리(컴퓨터 타이핑, 키오스크, 화이트보드 마커 등) */
 const PANEL_SOUNDS: Partial<Record<string, EffectKey>> = {
   research: 'kiosk', 'build-info': 'typing', 'server-status': 'beep', agenda: 'marker', bookshelf: 'page', 'admin-console': 'typing',
-  'work-board': 'typing', arcade: 'success', guestbook: 'kiosk',
+  'work-board': 'typing', arcade: 'success', guestbook: 'kiosk', 'food-cart': 'coin',
 }
 
 /**
@@ -278,7 +278,7 @@ export default class LabLobbyScene extends Phaser.Scene {
     const door = ROOMS[this.activeRoom].doors.find(d => Math.hypot(this.player!.x - d.x, this.player!.y - d.y) <= 56)
     // 출입구가 우선이며, E 한 번에 한 대상만 실행한다.
     // 바닥 아이템이 바로 발밑에 있으면 줍기가 먼저다.
-    const target = door ? undefined : this.nearestPickup() ?? nearestInteraction(this.activeRoom, this.player.x, this.player.y)
+    const target = door ? undefined : this.nearestPickup() ?? this.nearestMoving() ?? nearestInteraction(this.activeRoom, this.player.x, this.player.y)
     this.syncSeat()
     // 테이블 범위를 벗어나면 서버 거부를 기다리지 않고 근거리 대화를 끈다. 회의실 의자에 앉아 있는 동안은 유지한다.
     if (this.tableTalk && target?.kind !== 'table-talk' && !this.seatTalk) this.setTableTalk(false)
@@ -352,6 +352,19 @@ export default class LabLobbyScene extends Phaser.Scene {
     this.interactionHighlight?.setVisible(false)
     playSfx('panel-open', { volume: 0.6 })
     this.uiEvents.emit(LAB_EVENTS.openPanel, 'inventory')
+  }
+
+  /** 움직이는 대상(NPC·포장마차) 중 범위 안에서 가장 가까운 것 */
+  private nearestMoving(): RoomInteraction | undefined {
+    if (!this.player) return undefined
+    let best: RoomInteraction | undefined
+    let bestDistance = Infinity
+    for (const target of this.fx?.targets?.() ?? []) {
+      if (!isNearObject(this.player.x, this.player.y, target, target.range)) continue
+      const distance = Math.hypot(this.player.x - target.x, this.player.y - target.y)
+      if (distance < bestDistance) { best = target; bestDistance = distance }
+    }
+    return best
   }
 
   /** 발밑 28px 안의 바닥 아이템을 줍기 대상으로 만든다. */

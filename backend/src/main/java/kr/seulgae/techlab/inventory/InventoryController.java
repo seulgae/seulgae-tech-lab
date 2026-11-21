@@ -23,6 +23,7 @@ import org.springframework.web.server.ResponseStatusException;
 public class InventoryController {
     public record FishRequest(String species, Integer cm) {}
     public record SnackRequest(String kind) {}
+    public record SellRequest(String itemId) {}
     /** 버리기·줍기: 아이템, 방, 지금 내 위치(회의실 밖은 서버가 위치를 모르므로 클라이언트가 알려 준다) */
     public record ItemRequest(String itemId, String room, Double x, Double y) {}
 
@@ -110,6 +111,17 @@ public class InventoryController {
         var member = member(request);
         limiter.check(request);
         return service.buySnack(member, body == null ? null : body.kind());
+    }
+
+    /** 포장마차에 물고기 팔기(저녁에만, 크기·어종별 1~30원). 닫혔으면 409, 내 물고기가 아니면 404. */
+    @PostMapping("/sell")
+    public InventoryService.Sale sellFish(@RequestBody(required = false) SellRequest body, HttpServletRequest request) {
+        var member = member(request);
+        limiter.check(request);
+        UUID itemId;
+        try { itemId = UUID.fromString(body == null || body.itemId() == null ? "" : body.itemId()); }
+        catch (IllegalArgumentException exception) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid item"); }
+        return service.sellFish(member, itemId);
     }
 
     /** 화분 흔들기: 5% 확률로 1~3원(서버가 추첨). 비회원은 401. */

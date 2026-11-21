@@ -42,6 +42,8 @@ public interface InventoryStore {
      * @return 바뀐 행 수. 2가 아니면 호출한 쪽이 되돌려야 한다(트랜잭션).
      */
     int swap(UUID a, UUID itemA, UUID b, UUID itemB);
+    /** 내 가방의 아이템을 없앤다(판매). @return 지운 행 수(내 것이 아니면 0) */
+    int remove(UUID member, UUID itemId);
     /** 이 방 바닥의 아이템을 줍는다. 이미 누가 주웠으면 빈 값(동시에 주워도 한 명만 성공) */
     Optional<Item> pick(UUID member, UUID itemId, String roomId);
 }

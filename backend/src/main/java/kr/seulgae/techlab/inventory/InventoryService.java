@@ -37,6 +37,13 @@ public class InventoryService {
     public static final double PLANT_LUCK_CHANCE = 0.05;
     public static final int PLANT_LUCK_MIN = 1, PLANT_LUCK_MAX = 3, PLANT_DAILY_WINS = 10;
     public static final long PLANT_COOLDOWN_MS = 2000;
+    /** 포장마차 물고기 판매: 저녁(한국 시간 18시~자정)에만 연다. 한 마리 최대 30원 */
+    public static final String FISH_SALE = "FISH_SALE";
+    public static final int FISH_PRICE_MAX = 30, CART_OPEN_HOUR = 18;
+    /** 어종별 값(최소~최대 원). 크기 범위(FISH_SIZES)의 작은 쪽이 최소, 큰 쪽이 최대 값이다. */
+    static final Map<String, int[]> FISH_PRICES = Map.of(
+        "피라미", new int[]{1, 3}, "붕어", new int[]{2, 6}, "쏘가리", new int[]{4, 10},
+        "메기", new int[]{6, 14}, "무지개송어", new int[]{8, 16}, "황금 잉어", new int[]{15, 30});
     /** HP·피로도가 모자라 일·오락을 할 수 없음(423 Locked) */
     public static final HttpStatus TIRED = HttpStatus.LOCKED;
     /** 이미 가득 차서 간식을 사지 않음(422) */
@@ -159,6 +166,41 @@ public class InventoryService {
     }
 
     public List<InventoryStore.Item> ground(String roomId) { return store.ground(roomId); }
+
+    /**
+     * 물고기 값: 어종의 최소~최대 값 사이를 크기(cm)에 비례해 반올림한다. 어떤 경우에도 1~30원이다.
+     * 예: 붕어 15cm 2원, 32cm 6원 / 황금 잉어 90cm 30원
+     */
+    public static int fishPrice(String species, Integer cm) {
+        var price = FISH_PRICES.get(species);
+        var size = FISH_SIZES.get(species);
+        if (price == null || size == null || cm == null) return 0;
+        double ratio = Math.max(0, Math.min(1, (cm - size[0]) / (double) (size[1] - size[0])));
+        long value = Math.round(price[0] + ratio * (price[1] - price[0]));
+        return (int) Math.max(1, Math.min(FISH_PRICE_MAX, value));
+    }
+
+    /** 포장마차가 열려 있는지(한국 시간 18시~자정) */
+    public boolean cartOpen() {
+        return java.time.Instant.ofEpochMilli(clock.getAsLong()).atZone(java.time.ZoneId.of("Asia/Seoul")).getHour() >= CART_OPEN_HOUR;
+    }
+
+    /** 판매 결과: 받은 동전과 가방 화면 */
+    public record Sale(int price, View view) {}
+
+    /**
+     * 포장마차에 물고기를 판다. 저녁이 아니면 409(closed), 내 물고기가 아니면 404. 물고기를 지우고 값만큼 동전을 준다(한 트랜잭션).
+     */
+    @Transactional
+    public Sale sellFish(UUID member, UUID itemId) {
+        if (!cartOpen()) throw new ResponseStatusException(HttpStatus.CONFLICT, "Food cart is closed");
+        var item = item(member, itemId).filter(found -> FISH.equals(found.kind()))
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Fish not found"));
+        int price = fishPrice(item.name(), item.sizeCm());
+        if (price <= 0 || store.remove(member, itemId) != 1) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Fish not found");
+        store.changeCoins(member, price, FISH_SALE).orElseThrow();
+        return new Sale(price, view(member));
+    }
 
     /** 이 회원 가방에 이 아이템이 있는지 */
     public boolean owns(UUID member, UUID itemId) { return store.owned(member).stream().anyMatch(item -> item.id().equals(itemId)); }

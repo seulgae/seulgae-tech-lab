@@ -11,6 +11,8 @@ import {
 import type { Catch } from './fishingLogic'
 import { playSfx } from '../../audio/AudioManager'
 import { inventoryStore } from '../../features/inventory/inventoryStore'
+import { townsfolk } from '../npc/townsfolkFx.ts'
+import { OUTDOOR_NPCS } from '../npc/npcData.ts'
 
 /** 공유 맵과 같은 물 영역: 호수, 강(다리 자리 y 328~382 제외), 낚시 데크 */
 const LAKE = { x: 70, y: 180, width: 260, height: 140 }
@@ -53,11 +55,14 @@ export function outdoorFx(ctx: Context): RoomHandlers {
     layer = drawPhase(ctx, phase)
   } })
   const fishing = fishingGame(ctx, () => phase)
+  // 호숫가를 오가는 시민 셋과 저녁 6시에 들어오는 포장마차
+  const folks = townsfolk(ctx, OUTDOOR_NPCS, true)
   return {
-    intercept: target => target.kind === 'fishing' ? fishing.press() : false,
-    hint: target => target.kind === 'fishing' ? fishing.hint() : undefined,
+    intercept: target => target.kind === 'fishing' ? fishing.press() : folks.intercept(target),
+    hint: target => target.kind === 'fishing' ? fishing.hint() : folks.hint(target),
     locksMovement: () => fishing.busy(),
-    destroy: () => { ctx.stop(); fishing.destroy() },
+    targets: folks.targets,
+    destroy: () => { ctx.stop(); fishing.destroy(); folks.destroy() },
   }
 }
 
@@ -104,7 +109,7 @@ function drawGround(ctx: Context) {
   // 꽃과 풀(물·나무·길·문 근처는 피한다)
   const random = seeded(20261117)
   const blocked = (x: number, y: number) => (x > LAKE.x - 20 && x < LAKE.x + LAKE.width + 20 && y > LAKE.y - 20 && y < LAKE.y + LAKE.height + 20)
-    || (x > RIVER.x - 24 && x < RIVER.x + RIVER.width + 24) || (x > 370 && x < 430 && y > 300) || (y > 520 && x > 260 && x < 540)
+    || (x > RIVER.x - 24 && x < RIVER.x + RIVER.width + 24) || (x > 370 && x < 430 && y > 300) || (y > 470 && x > 340 && x < 460) || (y > 500 && x > 260 && x < 540)
   const flowers = scene.add.graphics().setDepth(-45)
   const colors = [0xfff6c9, 0xf6a5c0, 0xc7b4ff, 0xffd166, 0xffffff]
   for (let i = 0; i < 90; i++) {

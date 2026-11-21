@@ -3,7 +3,7 @@ import { isNearObject } from '../interaction.ts'
 export type RoomId = keyof typeof layout.rooms
 /** 공유 맵에 정의한 상호작용과, 가구에서 만든 의자(seat)·식물(plant) 상호작용 */
 export type InteractionKind = 'research' | 'guestbook' | 'build-info' | 'server-status' | 'table-talk' | 'agenda' | 'seat' | 'plant'
-  | 'coffee' | 'cake' | 'bookshelf' | 'admin-console' | 'fishing' | 'work-board' | 'arcade' | 'pickup'
+  | 'coffee' | 'cake' | 'bookshelf' | 'admin-console' | 'fishing' | 'work-board' | 'arcade' | 'pickup' | 'npc' | 'food-cart'
 export type RoomInteraction = { id: string; kind: InteractionKind; label: string; x: number; y: number; width: number; height: number; range: number }
 /** 의자: 서버 LobbyWorld.Seat와 같은 id(방-chair-순번)와 충돌 영역, 그림 기준선(bottom) */
 export type Seat = RoomInteraction & { kind: 'seat'; bottom: number }

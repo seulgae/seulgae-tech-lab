@@ -27,3 +27,4 @@
 .inventory-grid li.trade-picked { border-color: #ffd23f; background: rgba(255, 210, 63, .12); }
 .trade-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
 .trade-toast { position: fixed; left: 50%; bottom: 24px; z-index: 50; transform: translateX(-50%); max-width: min(480px, calc(100vw - 32px)); padding: 8px 14px; border: 1px solid #d8bd87; background: rgba(20, 32, 42, .92); color: #fff2d2; font-size: 13px; }
+.food-cart-talk { padding: 8px 10px; border-left: 3px solid #f07a2b; background: rgba(240, 122, 43, .1); color: #ffe1a3; }
