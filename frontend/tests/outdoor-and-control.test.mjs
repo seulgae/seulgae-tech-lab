@@ -10,9 +10,9 @@ import { setRoomObstacles, constrainedPosition } from '../src/game/multiplayer/n
 const player = (id, x = 400, y = 400) => ({ id, nickname: '연구원', x, y, facing: 'down', moving: false, ack: 1 })
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
 
-test('로비 문 배치: 왼쪽 위 개발 연구실, 오른쪽 위 뭘 만들까(빈 방), 왼쪽 아래 오락실, 오른쪽 아래 회의실, 아래 가운데 나가기', () => {
+test('로비 문 배치: 왼쪽 위 개발 연구실, 오른쪽 위 뭘 만들까(빈 방), 왼쪽 아래 오락실, 오른쪽 아래 뭘만들지, 아래 가운데 나가기', () => {
   const doors = Object.fromEntries(ROOMS.lobby.doors.map(door => [door.target, [door.x, door.y]]))
-  assert.deepEqual(doors, { 'development-lab': [70, 250], 'office-2': [730, 250], 'office-3': [70, 520], 'meeting-room': [730, 520], outdoor: [400, 540] })
+  assert.deepEqual(doors, { 'development-lab': [70, 250], 'office-2': [730, 250], 'office-3': [70, 520], 'office-4': [730, 520], outdoor: [400, 540] })
   const exit = ROOMS.lobby.doors.find(door => door.target === 'outdoor')
   assert.equal(doorLabel(exit), '나가기')
   assert.equal(doorHint(exit), 'E · 나가기')

@@ -21,7 +21,7 @@ test('테이블 대화만 scope를 보내고 일반 대화의 전송 형식은 �
   Object.assign(globalThis, { window: Object.assign(new EventTarget(), { location: { protocol: 'http:', host: 'localhost:5188' } }), document: Object.assign(new EventTarget(), { hidden: false }), WebSocket: Socket, sessionStorage: { getItem() { return null }, setItem() {} } })
   const client = new MultiplayerClient({})
   try {
-    client.start(); client.changeRoom('lobby-to-meeting') // 멀티플레이는 회의실에서만: 회의실 문을 열 때 연결한다
+    client.start(); client.changeRoom('lobby-to-development'); t.mock.timers.tick(0); client.changeRoom('development-to-meeting') // 멀티플레이는 회의실에서만: 회의실 문을 열 때 연결한다
     const socket = Socket.all[0]
     socket.receive({ type: 'welcome', selfId: own.id, players: [own], maxPlayers: 5, protocolVersion: 4, roomId: 'lobby', roomEpoch: 0 })
     assert.equal(client.sendChat('모두에게'), true)

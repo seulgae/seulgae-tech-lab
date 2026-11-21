@@ -82,7 +82,7 @@ class LobbySocketTest {
         a.type("chat_history");
         var b = connect(""); String other = b.type("welcome").get("selfId").stringValue(); b.type("chat_history");
         assertNotEquals(room.player(id).x(), room.player(other).x(), "두 번째 사람은 옆에 선다");
-        a.send("{\"type\":\"room_change\",\"doorId\":\"meeting-to-lobby\",\"roomEpoch\":0}");
+        a.send("{\"type\":\"room_change\",\"doorId\":\"meeting-to-development\",\"roomEpoch\":0}");
         assertTrue(a.type("room_error").get("reason").stringValue().contains("회의실"));
         assertEquals("meeting-room", room.roomId(id), "서버 방 이동은 하지 않는다");
         a.send("{\"type\":\"chat\",\"message\":\"회의 시작할게요\"}");

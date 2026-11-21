@@ -12,7 +12,7 @@ function setup(t) {
   class Socket { static all = []; readyState = 1; bufferedAmount = 0; sent = []; closes = []; constructor() { Socket.all.push(this) } send(s) { this.sent.push(JSON.parse(s)) } close(code, reason) { this.closes.push([code, reason]) } receive(m) { this.onmessage({ data: JSON.stringify(m) }) } }
   Object.assign(globalThis, { window: Object.assign(new EventTarget(), { location: { protocol: 'https:', host: 'lab.example' } }), document: Object.assign(new EventTarget(), { hidden: false }), WebSocket: Socket, sessionStorage: { getItem() { return null }, setItem() {}, removeItem() {} } })
   const client = new MultiplayerClient({})
-  client.start(); client.changeRoom('lobby-to-meeting') // 멀티플레이는 회의실에서만: 회의실 문을 열 때 연결한다
+  client.start(); client.changeRoom('lobby-to-development'); t.mock.timers.tick(0); client.changeRoom('development-to-meeting') // 멀티플레이는 회의실에서만: 회의실 문을 열 때 연결한다
   const socket = Socket.all[0]
   socket.receive({ type: 'welcome', selfId: own.id, players: [own], maxPlayers: 5, protocolVersion: 4, roomId: 'meeting-room', roomEpoch: 0 })
   t.after(() => { client.destroy(); Object.assign(globalThis, original) })
@@ -30,16 +30,17 @@ test('회의실 연결이 수 초 늦어도 문 앞에서 기다리고, 제한 �
   client.start()
   assert.equal(Socket.all.length, 0, '로비에서는 연결하지 않는다')
   assert.ok(ROOM_RESPONSE_TIMEOUT_MS >= 10000, '연결 수립 3~5초를 견딜 여유')
-  assert.equal(client.changeRoom('lobby-to-meeting'), true)
+  client.changeRoom('lobby-to-development'); t.mock.timers.tick(0)
+  assert.equal(client.changeRoom('development-to-meeting'), true)
   assert.equal(Socket.all.length, 1)
   t.mock.timers.tick(6000)
   assert.equal(client.isTravelling(), true, '연결을 기다리는 동안 문 앞에 머문다')
-  assert.equal(client.currentRoom(), 'lobby')
+  assert.equal(client.currentRoom(), 'development-lab')
   t.mock.timers.tick(ROOM_RESPONSE_TIMEOUT_MS)
   assert.equal(client.isTravelling(), false)
-  assert.equal(client.currentRoom(), 'lobby', '회의실에 들어가지 못하면 로비에 남는다')
+  assert.equal(client.currentRoom(), 'development-lab', '회의실에 들어가지 못하면 개발 연구실에 남는다')
   assert.deepEqual(Socket.all[0].closes.at(-1), [1000, 'Left meeting room'])
-  assert.deepEqual(rooms.at(-1), ['lobby', false])
+  assert.deepEqual(rooms.at(-1), ['development-lab', false])
   t.mock.timers.tick(20000)
   assert.equal(Socket.all.length, 1, '포기한 뒤에는 다시 연결하지 않는다')
 })

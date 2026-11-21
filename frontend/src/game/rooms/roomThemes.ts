@@ -38,7 +38,7 @@ export const ROOM_THEMES: Record<RoomId, RoomTheme> = {
     door: { frame: '#0a0f19', frameLight: '#38bdf8', panel: '#1b2538', panelLight: '#2b3a55', handle: '#39e6b4', sign: '#39e6b4' },
     page: { background: '#0a1019', card: '#101827', border: '#24405a', accent: '#39e6b4', muted: '#8fb3c9' },
     textures: { computer: 'dev-desk', chair: 'gaming-chair', equipment: 'workbench' },
-    notes: { title: '빌드는\n멈추지 않아요.', body: '네온 모니터 앞에서\n코드를 다듬는 곳입니다.', missionTitle: 'CI 파이프라인', mission: '개발 연구원들의 로비예요. 왼쪽 위는 서비스 연구실, 오른쪽 위는 관리자실(관리자만, 앞의 작은 컴퓨터에서 신청), 오른쪽 아래는 빈 사무실, 왼쪽 아래는 서버실이에요. 가운데 슈퍼컴퓨터에서 연구 아이디어를 등록하고, 작업대에서 실제 서버 빌드 정보를 볼 수 있어요.' },
+    notes: { title: '빌드는\n멈추지 않아요.', body: '네온 모니터 앞에서\n코드를 다듬는 곳입니다.', missionTitle: 'CI 파이프라인', mission: '개발 연구원들의 로비예요. 왼쪽 위는 서비스 연구실, 오른쪽 위는 관리자실(관리자만, 앞의 작은 컴퓨터에서 신청), 오른쪽 아래는 회의실, 왼쪽 아래는 서버실이에요. 가운데 슈퍼컴퓨터에서 연구 아이디어를 등록하고, 작업대에서 실제 서버 빌드 정보를 볼 수 있어요.' },
   },
   'server-room': {
     mood: '차가운 파란 조명과 이중 바닥, 경고 줄무늬가 있는 서버실',
@@ -109,7 +109,7 @@ export const ROOM_THEMES: Record<RoomId, RoomTheme> = {
     door: { frame: '#3a4b56', frameLight: '#9cb5c4', panel: '#6f8796', panelLight: '#8aa2b0', handle: '#e7d29a', sign: '#3f6b7a' },
     page: { background: '#12161a', card: '#1b2228', border: '#3e4f5b', accent: '#8fc4d9', muted: '#a9bac4' },
     textures: { computer: 'dev-desk', chair: 'office-chair', rack: 'bookshelf', equipment: 'workbench', plant: 'tall-plant' },
-    notes: { title: '4번\n빈 사무실', body: '아직 비어 있어요.\n곧 누가 올까요?', missionTitle: '비어 있음', mission: '지금은 화분 하나뿐인 빈 사무실이에요. 새 공간이 곧 들어올 예정이에요.' },
+    notes: { title: '뭘만들지', body: '아직 비어 있어요.\n곧 누가 올까요?', missionTitle: '비어 있음', mission: '지금은 화분 하나뿐인 빈 사무실이에요. 새 공간이 곧 들어올 예정이에요.' },
   },
   outdoor: {
     mood: '연구소 밖, 시간 따라 하늘과 빛이 바뀌는 초원과 호수, 낚시터가 있는 강',

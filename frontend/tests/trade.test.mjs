@@ -27,7 +27,7 @@ test('교환: 회의실에서만 신청·답을 보내고, 받은 신청과 결�
   t.after(() => { client.destroy(); Object.assign(globalThis, original) })
   client.start()
   assert.equal(client.offerTrade(id(2), id(5)), false, '회의실 밖에서는 교환하지 않는다')
-  client.changeRoom('lobby-to-meeting')
+  client.changeRoom('lobby-to-development'); t.mock.timers.tick(0); client.changeRoom('development-to-meeting')
   const socket = Socket.all[0]
   const me = { id: id(1), nickname: '나', x: 400, y: 480, facing: 'down', moving: false, ack: -1 }
   const friend = { ...me, id: id(2), nickname: '낚시왕', x: 440 }

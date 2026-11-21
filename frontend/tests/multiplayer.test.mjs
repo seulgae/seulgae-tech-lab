@@ -75,7 +75,7 @@ test('연결·목록 변경·재연결·입력 전송·종료 정리를 중복 �
   let throwOnSnapshot = false
   const client = new MultiplayerClient({ snapshot: (players, selfId) => { if (throwOnSnapshot) throw new Error('render failure'); snapshots.push({ players, selfId }) }, status: status => statuses.push(status), chat: event => chats.push(event), history: messages => histories.push(messages), chatError: error => errors.push(error) })
   try {
-    client.start(); client.start(); client.changeRoom('lobby-to-meeting') // 멀티플레이는 회의실에서만: 회의실 문을 열 때 연결한다
+    client.start(); client.start(); client.changeRoom('lobby-to-development'); t.mock.timers.tick(0); client.changeRoom('development-to-meeting') // 멀티플레이는 회의실에서만: 회의실 문을 열 때 연결한다
     assert.equal(Socket.instances.length, 1)
     const a = Socket.instances[0]
     a.open(); a.receive(welcome())
@@ -227,7 +227,7 @@ test('같은 주소의 새 창이 연결을 가져가면(4409) 다시 연결하�
   const statuses = []
   const client = new MultiplayerClient({ status: status => statuses.push(status) })
   try {
-    client.start(); client.changeRoom('lobby-to-meeting') // 멀티플레이는 회의실에서만: 회의실 문을 열 때 연결한다
+    client.start(); client.changeRoom('lobby-to-development'); t.mock.timers.tick(0); client.changeRoom('development-to-meeting') // 멀티플레이는 회의실에서만: 회의실 문을 열 때 연결한다
     const a = Socket.instances[0]
     a.open(); a.receive(welcome())
     a.drop(REPLACED_CLOSE_CODE, 'Replaced by a newer connection from the same address')
@@ -267,7 +267,7 @@ test('로그인 확인이 늦게 끝나면 회원 닉네임으로 한 번만 바
   globalThis.WebSocket = Socket
   const client = new MultiplayerClient({})
   try {
-    client.start(); client.changeRoom('lobby-to-meeting') // 멀티플레이는 회의실에서만: 회의실 문을 열 때 연결한다
+    client.start(); client.changeRoom('lobby-to-development'); t.mock.timers.tick(0); client.changeRoom('development-to-meeting') // 멀티플레이는 회의실에서만: 회의실 문을 열 때 연결한다
     const a = Socket.instances[0]
     a.open(); a.receive(welcome())
     assert.equal(client.applyNickname('bad name!'), false, '규칙에 맞지 않는 이름은 무시')

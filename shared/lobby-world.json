@@ -149,8 +149,8 @@
           "y": 520
         },
         {
-          "id": "lobby-to-meeting",
-          "target": "meeting-room",
+          "id": "lobby-to-office-4",
+          "target": "office-4",
           "x": 730,
           "y": 520
         },
@@ -225,8 +225,8 @@
           "y": 520
         },
         {
-          "id": "development-to-office-4",
-          "target": "office-4",
+          "id": "development-to-meeting",
+          "target": "meeting-room",
           "x": 730,
           "y": 520
         },
@@ -430,8 +430,8 @@
       },
       "doors": [
         {
-          "id": "meeting-to-lobby",
-          "target": "lobby",
+          "id": "meeting-to-development",
+          "target": "development-lab",
           "x": 400,
           "y": 540
         }
@@ -1090,7 +1090,7 @@
       ]
     },
     "office-4": {
-      "name": "4번 빈 사무실",
+      "name": "뭘만들지",
       "interactions": [],
       "spawn": {
         "x": 400,
@@ -1098,8 +1098,8 @@
       },
       "doors": [
         {
-          "id": "office-4-to-development",
-          "target": "development-lab",
+          "id": "office-4-to-lobby",
+          "target": "lobby",
           "x": 400,
           "y": 540
         }
