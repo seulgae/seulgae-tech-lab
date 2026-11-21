@@ -39,8 +39,12 @@ class RoomInteractionTest {
     }
 
     private void enterMeetingRoom(String id) {
+        walk(id, 70, 260);
+        room.changeRoom(id, "lobby-to-development", clock.get());
+        sequence = 0;
+        clock.addAndGet(1_100_000_000L);
         walk(id, 730, 530);
-        room.changeRoom(id, "lobby-to-meeting", clock.get());
+        room.changeRoom(id, "development-to-meeting", clock.get());
         sequence = 0;
         clock.addAndGet(1_100_000_000L);
     }

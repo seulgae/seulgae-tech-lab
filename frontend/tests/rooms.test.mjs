@@ -18,11 +18,15 @@ test('회의실 밖은 서버 없이 방을 옮기고, 회의실 문에서만 �
   assert.equal(c.isTravelling(),true)
   t.mock.timers.tick(0)
   assert.equal(c.currentRoom(),'development-lab');assert.equal(c.isTravelling(),false);assert.deepEqual(rooms.at(-1),['development-lab',false])
-  assert.equal(c.changeRoom('lobby-to-meeting'),false,'지금 방에 없는 문은 쓸 수 없다')
+  assert.equal(c.changeRoom('lobby-to-office-4'),false,'지금 방에 없는 문은 쓸 수 없다')
   assert.equal(c.changeRoom('development-to-lobby'),true);t.mock.timers.tick(0)
   assert.equal(c.currentRoom(),'lobby');assert.equal(Socket.all.length,0,'회의실 밖 이동은 서버 없이')
-  assert.equal(c.changeRoom('lobby-to-meeting'),true)
-  assert.equal(Socket.all.length,1);assert.equal(c.currentRoom(),'lobby','입장 확인 전에는 아직 로비')
+  assert.equal(c.changeRoom('lobby-to-office-4'),true);t.mock.timers.tick(0)
+  assert.equal(c.currentRoom(),'office-4');assert.equal(ROOMS['office-4'].name,'뭘만들지');assert.equal(Socket.all.length,0)
+  assert.equal(c.changeRoom('office-4-to-lobby'),true);t.mock.timers.tick(0)
+  assert.equal(c.changeRoom('lobby-to-development'),true);t.mock.timers.tick(0)
+  assert.equal(c.changeRoom('development-to-meeting'),true)
+  assert.equal(Socket.all.length,1);assert.equal(c.currentRoom(),'development-lab','입장 확인 전에는 아직 개발 연구실')
   const s=Socket.all[0]
   s.receive({type:'welcome',selfId:own.id,players:[{...own,y:480}],maxPlayers:5,protocolVersion:4,time:1000,roomId:'meeting-room',roomEpoch:0})
   assert.equal(c.currentRoom(),'meeting-room');assert.equal(c.isTravelling(),false);assert.equal(c.isOnline(),true)
@@ -31,11 +35,11 @@ test('회의실 밖은 서버 없이 방을 옮기고, 회의실 문에서만 �
   assert.equal(s.sent.at(-1).type,'move');assert.equal(s.sent.at(-1).roomEpoch,0)
   s.receive({type:'state',tick:1,players:[{...own,x:403,y:480,ack:1}],roomId:'meeting-room',roomEpoch:0})
   assert.equal(snapshots.at(-1)[0].x,403)
-  assert.equal(c.changeRoom('meeting-to-lobby'),true)
+  assert.equal(c.changeRoom('meeting-to-development'),true)
   assert.deepEqual(s.closes.at(-1),[1000,'Left meeting room'],'회의실을 나오면 연결을 끊는다')
   assert.deepEqual(snapshots.at(-1),[]);assert.deepEqual(histories.at(-1),[],'회의실 채팅은 비운다')
   t.mock.timers.tick(0)
-  assert.equal(c.currentRoom(),'lobby');assert.equal(c.isOnline(),false);assert.equal(statuses.at(-1).phase,'solo')
+  assert.equal(c.currentRoom(),'development-lab');assert.equal(c.isOnline(),false);assert.equal(statuses.at(-1).phase,'solo')
   t.mock.timers.tick(20000)
   assert.equal(Socket.all.length,1,'나온 뒤에는 다시 연결하지 않는다')
  } finally {c.destroy();Object.assign(globalThis,original)}
@@ -48,10 +52,10 @@ test('모든 방의 스폰은 가구 밖이고 출입구는 로비 중심으로 
   // 로비와 개발 연구실은 문이 다섯(옆문 넷 + 아래 가운데), 나머지 방은 들어온 곳으로 가는 문 하나
   const hub=id==='lobby'||id==='development-lab'
   assert.equal(room.doors.length,hub?5:1, id)
-  // 서버실·관리자실·사무실(1,4번)은 개발 연구실로, 오락실·뭘 만들까(2번)·회의실·바깥은 로비로 돌아간다.
-  const fromLab=['server-room','control-room','office-1','office-4'].includes(id)
+  // 서버실·관리자실·서비스 연구실·회의실은 개발 연구실로, 오락실·빈 사무실(2번)·뭘만들지·바깥은 로비로 돌아간다.
+  const fromLab=['server-room','control-room','office-1','meeting-room'].includes(id)
   for(const door of room.doors)assert.ok(hub||door.target===(fromLab?'development-lab':'lobby'), id)
-  if(id==='development-lab') assert.deepEqual(room.doors.map(d=>[d.target,d.x,d.y]),[['office-1',70,250],['control-room',730,250],['server-room',70,520],['office-4',730,520],['lobby',400,540]])
+  if(id==='development-lab') assert.deepEqual(room.doors.map(d=>[d.target,d.x,d.y]),[['office-1',70,250],['control-room',730,250],['server-room',70,520],['meeting-room',730,520],['lobby',400,540]])
   for(const door of room.doors)assert.ok(Object.hasOwn(ROOMS,door.target))
  }
  setRoomObstacles(roomObstacles('server-room'))
