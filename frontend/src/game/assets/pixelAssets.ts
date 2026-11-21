@@ -99,6 +99,32 @@ export function createPixelAssets(scene: Phaser.Scene) {
     p('#355c62', 23, 5, 2, 32); p('#d7c28a', 19, 27, 2, 4)
   })
   createResearcher(scene)
+  petRobot(scene)
+}
+
+/** 튜토리얼 미니 로봇 펫(16×16, 2배로 그린다): 동그란 화면 얼굴, 안테나, 볼터치. 눈 깜박임용 프레임을 하나 더 둔다. */
+function petRobot(scene: Phaser.Scene) {
+  for (const blink of [false, true]) {
+    texture(scene, blink ? 'pet-robot-blink' : 'pet-robot', 16, 16, (p) => {
+      // 안테나: 분홍 전구
+      p('#8aa4a8', 7, 2, 2, 1); p('#ff7aa8', 7, 0, 2, 2); p('#ffd1e1', 7, 0, 1, 1)
+      // 둥근 머리와 옆 귀
+      p(ink, 3, 3, 10, 9); p(ink, 2, 4, 12, 7)
+      p('#eaf7f5', 3, 4, 10, 7); p('#ffffff', 4, 4, 3, 1)
+      p('#5ad1bf', 1, 6, 1, 3); p('#5ad1bf', 14, 6, 1, 3)
+      // 화면 얼굴: 눈(깜박이면 가늘게), 웃는 입
+      p('#1f3a3f', 4, 5, 8, 5)
+      if (blink) { p('#6ff7de', 5, 7, 2, 1); p('#6ff7de', 9, 7, 2, 1) }
+      else { p('#6ff7de', 5, 6, 2, 2); p('#6ff7de', 9, 6, 2, 2); p('#ffffff', 5, 6, 1, 1); p('#ffffff', 9, 6, 1, 1) }
+      p('#6ff7de', 7, 9, 2, 1)
+      // 볼터치
+      p('#ff9bb3', 3, 10, 2, 1); p('#ff9bb3', 11, 10, 2, 1)
+      // 작은 몸통과 팔, 가슴 불빛
+      p(ink, 5, 12, 6, 3); p('#9fe3d6', 6, 12, 4, 2); p('#ffd23f', 7, 12, 2, 1)
+      p('#9fe3d6', 3, 12, 2, 1); p('#9fe3d6', 11, 12, 2, 1)
+      p(ink, 6, 15, 4, 1)
+    })
+  }
 }
 
 /** 4방향의 걷기·대기 8행에 각각 4프레임을 배치한 스프라이트 시트를 생성한다. */

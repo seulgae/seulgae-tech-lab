@@ -97,6 +97,7 @@ function createScene(room = 'lobby') {
     // 사운드: 재생한 효과음 이름만 기록한다. 발걸음 규칙은 실제 모듈을 쓴다.
     AudioManager: { for: () => ({ enterRoom: (room, phase) => { (state.rooms ??= []).push([room, phase]) } }) },
     playSfx: (key, options) => { (state.sounds ??= []).push(key) }, FootstepTracker, footstepSound, skyPhase,
+    PetBot: class { constructor() { state.pets = (state.pets ?? 0) + 1 } update() {} destroy() {} },
     COIN_EVENT: 'lab:coin', OPEN_INVENTORY_EVENT: 'lab:open-inventory', FISH_COLORS: {}, inventoryStore: { refresh: async () => {} },
     applyRenderZoom: () => { state.zoomApplied = (state.zoomApplied ?? 0) + 1 },
     hasTextInputFocus: () => state.textFocused,
