@@ -14,28 +14,28 @@ def release(minimum, maximum):
 
 
 class MigrationPlanTests(unittest.TestCase):
-    def test_current_v9_needs_no_migration(self):
-        self.assertIsNone(migrate.migration_plan(9, release(8, 9), release(8, 9)))
+    def test_current_v10_needs_no_migration(self):
+        self.assertIsNone(migrate.migration_plan(10, release(9, 10), release(9, 10)))
 
-    def test_v8_migrates_to_v9_while_the_expand_release_is_running(self):
-        self.assertEqual(migrate.migration_plan(8, release(8, 9), release(8, 9)), 9)
-        self.assertEqual(migrate.migration_plan(8, release(9, 9), release(8, 9)), 9)
+    def test_v9_migrates_to_v10_while_the_expand_release_is_running(self):
+        self.assertEqual(migrate.migration_plan(9, release(9, 10), release(9, 10)), 10)
+        self.assertEqual(migrate.migration_plan(9, release(10, 10), release(9, 10)), 10)
 
-    def test_older_databases_migrate_to_v9(self):
-        for version in (0, 1, 2, 3, 4, 5, 6, 7):
-            self.assertEqual(migrate.migration_plan(version, release(9, 9)), 9)
+    def test_older_databases_migrate_to_v10(self):
+        for version in (0, 1, 2, 3, 4, 5, 6, 7, 8):
+            self.assertEqual(migrate.migration_plan(version, release(10, 10)), 10)
 
-    def test_running_release_that_needs_v8_only_is_protected(self):
-        with self.assertRaisesRegex(migrate.ops.OpsError, 'Running release does not support schema V9'):
-            migrate.migration_plan(8, release(8, 9), release(8, 8))
+    def test_running_release_that_needs_v9_only_is_protected(self):
+        with self.assertRaisesRegex(migrate.ops.OpsError, 'Running release does not support schema V10'):
+            migrate.migration_plan(9, release(9, 10), release(9, 9))
 
     def test_old_release_or_unknown_schema_is_refused_without_changes(self):
-        with self.assertRaisesRegex(migrate.ops.OpsError, 'declare schema V9'):
-            migrate.migration_plan(8, release(8, 8))
+        with self.assertRaisesRegex(migrate.ops.OpsError, 'declare schema V10'):
+            migrate.migration_plan(9, release(9, 9))
         with self.assertRaisesRegex(migrate.ops.OpsError, 'Unsupported'):
-            migrate.migration_plan(10, release(8, 9))
+            migrate.migration_plan(11, release(9, 10))
         with self.assertRaisesRegex(migrate.ops.OpsError, 'Unsupported'):
-            migrate.migration_plan(-1, release(8, 9))
+            migrate.migration_plan(-1, release(9, 10))
 
 if __name__ == '__main__':
     unittest.main()
