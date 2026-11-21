@@ -234,7 +234,7 @@ test('터치 E는 범위 밖에서 예약되지 않고 패널 동안 재실행�
 })
 
 test('모든 방에 스폰과 겹치지 않는 상호작용이 있고 위치별로 하나만 고른다', () => {
-  const kinds = new Set(['research', 'guestbook', 'build-info', 'server-status', 'table-talk', 'agenda', 'admin-console', 'fishing', 'work-board', 'arcade'])
+  const kinds = new Set(['research', 'guestbook', 'build-info', 'server-status', 'table-talk', 'agenda', 'admin-console', 'admin-apply', 'fishing', 'work-board', 'arcade'])
   for (const [id, room] of Object.entries(ROOMS)) {
     // 2·4번은 아직 빈 사무실이라 상호작용이 없다.
     if (id !== 'office-2' && id !== 'office-4') assert.ok(room.interactions.length > 0, id)
@@ -548,8 +548,9 @@ test('글 입력 칸에 포커스가 있으면 게임 키 가로채기를 꺼서
 })
 
 test('관리자실 문: 관리자가 아니면 열지 않고 안내만 하며, 관리자는 들어간다', () => {
-  const { scene, key, state } = createScene('lobby')
-  const door = ROOMS.lobby.doors.find(entry => entry.target === 'control-room')
+  // 관리자실은 개발 연구실 오른쪽 위 문이다.
+  const { scene, key, state } = createScene('development-lab')
+  const door = ROOMS['development-lab'].doors.find(entry => entry.target === 'control-room')
   let admin = false
   const changes = []
   scene.client.canEnter = target => target !== 'control-room' || admin

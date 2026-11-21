@@ -12,6 +12,7 @@ import type { RoomPanelKind } from '../features/lab/model/labTypes'
 import AgendaPanel from '../features/boards/AgendaPanel'
 import BookPanel from '../features/books/BookPanel'
 import SqlConsolePanel from '../features/admin/SqlConsolePanel'
+import AdminApplyPanel from '../features/admin/AdminApplyPanel'
 import WorkBoardPanel from '../features/work/WorkBoardPanel'
 import { WORK_BOARDS } from '../features/work/workApi'
 import ArcadePanel from '../features/arcade/ArcadePanel'
@@ -199,6 +200,7 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
       {labPanel === 'agenda' && <AgendaPanel onClose={closeLabPanel} />}
       {labPanel === 'bookshelf' && <BookPanel onClose={closeLabPanel} />}
       {labPanel === 'admin-console' && <SqlConsolePanel onClose={closeLabPanel} />}
+      {labPanel === 'admin-apply' && <AdminApplyPanel onClose={closeLabPanel} />}
       {labPanel === 'work-board' && WORK_BOARDS[workBoardId] && <WorkBoardPanel board={WORK_BOARDS[workBoardId]!} onClose={closeLabPanel} />}
       {labPanel === 'arcade' && <ArcadePanel onClose={closeLabPanel} />}
       {labPanel === 'inventory' && <InventoryPanel client={getClient} onClose={closeLabPanel} />}

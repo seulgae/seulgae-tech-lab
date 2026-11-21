@@ -12,13 +12,15 @@ export type AuthState = {
   member: Member | null
   /** 관리자(방장) 회원이면 true: 관리자실 문과 쿼리 콘솔 */
   admin: boolean
+  /** 회원 등급(1 일반 사용자, 2 운영자, 3 관리자), 비회원 0 */
+  level: number
   ownedRecords: Set<string>
   ownedAgendas: Set<string>
 }
 export const NICKNAME_PATTERN = /^[\p{L}\p{N}_-]{1,16}$/u
 export const LOGIN_URL = '/api/auth/kakao/login'
 
-let state: AuthState = { loaded: false, kakaoEnabled: false, member: null, admin: false, ownedRecords: new Set(), ownedAgendas: new Set() }
+let state: AuthState = { loaded: false, kakaoEnabled: false, member: null, admin: false, level: 0, ownedRecords: new Set(), ownedAgendas: new Set() }
 const listeners = new Set<() => void>()
 const set = (patch: Partial<AuthState>) => { state = { ...state, ...patch }; listeners.forEach(listener => listener()) }
 
@@ -29,9 +31,9 @@ export const authStore = {
   async load(fetcher: typeof fetch = fetch) {
     try {
       const response = await fetcher('/api/auth/me', { headers: { Accept: 'application/json' } })
-      const me = response.ok ? await response.json() as { kakaoEnabled?: unknown; member?: Member | null; admin?: unknown } : null
+      const me = response.ok ? await response.json() as { kakaoEnabled?: unknown; member?: Member | null; admin?: unknown; level?: unknown } : null
       const member = me?.member && typeof me.member.id === 'string' && typeof me.member.nickname === 'string' ? me.member : null
-      set({ loaded: true, kakaoEnabled: me?.kakaoEnabled === true, member, admin: !!member && me?.admin === true })
+      set({ loaded: true, kakaoEnabled: me?.kakaoEnabled === true, member, admin: !!member && me?.admin === true, level: member && typeof me?.level === 'number' && me.level >= 1 && me.level <= 3 ? me.level : 0 })
       if (member) await authStore.refreshOwned(fetcher)
     } catch { set({ loaded: true }) }
   },
@@ -47,7 +49,7 @@ export const authStore = {
   },
   async logout(fetcher: typeof fetch = fetch) {
     await fetcher('/api/auth/logout', { method: 'POST' }).catch(() => undefined)
-    set({ member: null, admin: false, ownedRecords: new Set(), ownedAgendas: new Set() })
+    set({ member: null, admin: false, level: 0, ownedRecords: new Set(), ownedAgendas: new Set() })
   },
   async rename(nickname: string, fetcher: typeof fetch = fetch) {
     const response = await fetcher('/api/auth/me/nickname', { method: 'PUT', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ nickname }) })
@@ -57,7 +59,7 @@ export const authStore = {
     return member
   },
   /** 테스트용 상태 초기화 */
-  reset(patch: Partial<AuthState> = {}) { state = { loaded: false, kakaoEnabled: false, member: null, admin: false, ownedRecords: new Set(), ownedAgendas: new Set(), ...patch } },
+  reset(patch: Partial<AuthState> = {}) { state = { loaded: false, kakaoEnabled: false, member: null, admin: false, level: 0, ownedRecords: new Set(), ownedAgendas: new Set(), ...patch } },
 }
 
 /** 로그인이 꺼져 있거나, 로그인한 회원이면 쓸 수 있다. */

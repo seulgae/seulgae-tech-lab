@@ -20,3 +20,20 @@
 .sql-result tr:nth-child(even) td { background: rgba(255, 255, 255, .03); }
 .sql-null { color: #8a6f5c; font-style: italic; }
 @media (max-width: 720px) { .sql-layout { grid-template-columns: 1fr; } .sql-tables { max-height: 25vh; } }
+.research-panel.admin-apply { width: min(520px, calc(100vw - 32px)); }
+.admin-apply-level { margin: 12px 0 4px; font-size: 14px; color: #f6e7c8; }
+.admin-apply-status { margin: 4px 0; font-size: 13px; color: #e8c9a0; }
+.admin-apply-status.status-APPROVED strong { color: #9fe0a0; }
+.admin-apply-status.status-REJECTED strong { color: #ff9a9a; }
+.admin-apply-form { display: grid; gap: 8px; margin-top: 10px; }
+.admin-apply-form label { display: grid; gap: 4px; font-size: 13px; color: #e8c9a0; }
+.admin-apply-form label small { justify-self: end; margin-top: -18px; font: 11px monospace; color: #a8876a; }
+.admin-apply-form select, .admin-apply-form textarea { box-sizing: border-box; width: 100%; padding: 6px 8px; border: 1px solid #6b4b36; background: #1a1210; color: #f6e7c8; font: inherit; }
+.level-requests { margin-top: 10px; padding: 8px 10px; border: 1px solid #5a3a2a; background: rgba(0, 0, 0, .2); }
+.level-requests h3 { margin: 0 0 6px; font-size: 13px; color: #e7c66f; }
+.level-requests h3 span { font: 11px monospace; padding: 1px 6px; border: 1px solid #6b4b36; }
+.level-requests ul { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.level-requests li { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; font-size: 13px; color: #f6e7c8; }
+.level-requests li small { color: #c8ab8e; overflow-wrap: anywhere; }
+.level-requests li span { display: flex; gap: 4px; }
+.research-panel .level-requests button { padding: 2px 10px; font-size: 12px; }

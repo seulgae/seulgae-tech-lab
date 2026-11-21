@@ -103,6 +103,11 @@ export function createPixelAssets(scene: Phaser.Scene) {
   townsfolk(scene)
   kidsAndFisher(scene)
   professor(scene)
+  // 관리자실 앞 작은 관리자 신청 컴퓨터(10×8, 2배로 그린다)
+  texture(scene, 'mini-terminal', 10, 8, (p) => {
+    p(ink, 0, 0, 10, 6); p('#1f3a3f', 1, 1, 8, 4); p('#39e6b4', 2, 2, 4, 1); p('#e7c66f', 2, 3, 6, 1)
+    p('#26344d', 3, 6, 4, 1); p(ink, 2, 7, 6, 1)
+  })
   foodCart(scene)
 }
 
