@@ -103,6 +103,10 @@ public class InventoryController {
         return service.buySnack(member, body == null ? null : body.kind());
     }
 
+    /** 화분 흔들기: 5% 확률로 1~3원(서버가 추첨). 비회원은 401. */
+    @PostMapping("/plant")
+    public InventoryService.PlantResult shakePlant(HttpServletRequest request) { return service.shakePlant(member(request)); }
+
     /** 오락실 한 판(동전 1원, HP -3, 피로도 -5). 지치면 423, 동전 부족 409. @return {"coins": 남은 동전} */
     @PostMapping("/arcade")
     public Map<String, Integer> playArcade(HttpServletRequest request) {

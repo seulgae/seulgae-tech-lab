@@ -83,3 +83,25 @@ test('HP·피로도: 간식 구매 결과를 구분하고, 바뀐 만큼 변화 
     assert.equal(await inventoryStore.buySnack('COFFEE'), 'guest', '비회원은 무료로 즐기기만')
   } finally { globalThis.fetch = original; globalThis.removeEventListener(VITALS_EVENT, listener); delete globalThis.addEventListener; delete globalThis.removeEventListener; delete globalThis.dispatchEvent }
 })
+
+test('식물 행운: 당첨이면 받은 만큼 동전 이벤트를 보내고, 꽝·비회원은 0', async () => {
+  const original = globalThis.fetch
+  const target = new EventTarget()
+  Object.assign(globalThis, { addEventListener: target.addEventListener.bind(target), removeEventListener: target.removeEventListener.bind(target), dispatchEvent: target.dispatchEvent.bind(target) })
+  const amounts = []
+  const listener = event => amounts.push(event.detail.amount)
+  globalThis.addEventListener(COIN_EVENT, listener)
+  try {
+    let url
+    globalThis.fetch = async (path, options) => { url = [path, options.method]; return new Response(JSON.stringify({ won: 2, coins: 12 })) }
+    assert.equal(await inventoryStore.shakePlant(), 2)
+    assert.deepEqual(url, ['/api/inventory/plant', 'POST'])
+    assert.equal(inventoryStore.get().coins, 12)
+    assert.deepEqual(amounts, [2])
+    globalThis.fetch = async () => new Response(JSON.stringify({ won: 0, coins: 12 }))
+    assert.equal(await inventoryStore.shakePlant(), 0)
+    globalThis.fetch = async () => new Response('', { status: 401 })
+    assert.equal(await inventoryStore.shakePlant(), 0, '비회원은 그냥 흔들기만')
+    assert.deepEqual(amounts, [2], '꽝이면 동전 연출 없음')
+  } finally { globalThis.fetch = original; globalThis.removeEventListener(COIN_EVENT, listener); delete globalThis.addEventListener; delete globalThis.removeEventListener; delete globalThis.dispatchEvent }
+})
