@@ -83,6 +83,21 @@ export const inventoryStore = {
     } catch { return 'free' }
   },
   /**
+   * 포장마차에 물고기를 판다(저녁 6시~자정). 받은 동전만큼 동전 연출이 나온다.
+   * @returns 받은 값(원) 또는 'closed'(장사 끝) 'login'(비회원) 'gone'(이미 없음·연결 문제)
+   */
+  async sellFish(itemId: string): Promise<number | 'closed' | 'login' | 'gone'> {
+    try {
+      const response = await call('/api/inventory/sell', { method: 'POST', body: JSON.stringify({ itemId }) })
+      if (response.status === 401) return 'login'
+      if (response.status === 409) return 'closed'
+      if (!response.ok) return 'gone'
+      const sale = await response.json() as { price: number; view: Parameters<typeof apply>[0] }
+      apply(sale.view)
+      return sale.price
+    } catch { return 'gone' }
+  },
+  /**
    * 화분을 흔든다. 서버가 5% 확률로 1~3원을 준다(하루 10번까지). 비회원·꽝·연결 문제는 0.
    * @returns 받은 동전
    */

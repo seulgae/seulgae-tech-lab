@@ -84,6 +84,8 @@ assert.deepEqual(await (await fetch(`${base}/api/auth/me`)).json(), { kakaoEnabl
 assert.equal((await fetch(`${base}/api/admin/tables`)).status, 401)
 // 식물 행운: 비회원은 추첨하지 않는다.
 assert.equal((await fetch(`${base}/api/inventory/plant`, json('POST', null))).status, 401)
+// 포장마차: 비회원은 팔 수 없다.
+assert.equal((await fetch(`${base}/api/inventory/sell`, json('POST', { itemId: '00000000-0000-4000-8000-0000000000aa' }))).status, 401)
 assert.equal((await fetch(`${base}/api/admin/sql`, json('POST', { sql: 'SELECT 1' }))).status, 401)
 assert.deepEqual(await (await fetch(`${base}/api/auth/me/owned`)).json(), { recordIds: [], agendaIds: [] })
 assert.equal((await fetch(`${base}/api/auth/kakao/login`, { redirect: 'manual' })).status, 404)

@@ -68,6 +68,13 @@ public class InMemoryInventoryStore implements InventoryStore {
         return Optional.of(dropped);
     }
 
+    @Override public synchronized int remove(UUID member, UUID itemId) {
+        var owned = items.get(itemId);
+        if (owned == null || !member.equals(owned.owner())) return 0;
+        items.remove(itemId);
+        return 1;
+    }
+
     @Override public synchronized int swap(UUID a, UUID itemA, UUID b, UUID itemB) {
         var first = items.get(itemA);
         var second = items.get(itemB);

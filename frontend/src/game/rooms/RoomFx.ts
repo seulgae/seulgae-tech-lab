@@ -16,6 +16,8 @@ import { playSfx } from '../../audio/AudioManager'
 import { SNACKS, inventoryStore } from '../../features/inventory/inventoryStore'
 import { adminRoomFx } from './adminRoomFx'
 import { outdoorFx } from './outdoorFx'
+import { townsfolk } from '../npc/townsfolkFx.ts'
+import { LOBBY_NPCS } from '../npc/npcData.ts'
 
 /** Scene이 사용하는 방 연출 핸들. 문·장식·이벤트를 한 번에 정리한다. */
 export type RoomFx = {
@@ -28,6 +30,8 @@ export type RoomFx = {
   setTableTalk(active: boolean, quiet?: boolean): void
   /** 낚시처럼 연출이 진행 중이라 캐릭터를 멈춰야 하면 true */
   locksMovement(): boolean
+  /** 움직이는 상호작용 대상(NPC·포장마차). 공유 맵에 없는 화면 전용 대상이다. */
+  targets(): RoomInteraction[]
   destroy(): void
 }
 
@@ -56,11 +60,12 @@ export function createRoomFx(scene: Phaser.Scene, roomId: RoomId, options: Optio
     hint: target => room.hint?.(target),
     setTableTalk: (active, quiet) => room.setTableTalk?.(active, quiet),
     locksMovement: () => room.locksMovement?.() ?? false,
+    targets: () => room.targets?.() ?? [],
     destroy: () => { room.destroy?.(); banner.destroy() },
   }
 }
 
-export type RoomHandlers = Partial<Pick<RoomFx, 'intercept' | 'hint' | 'setTableTalk' | 'locksMovement' | 'destroy'>>
+export type RoomHandlers = Partial<Pick<RoomFx, 'intercept' | 'hint' | 'setTableTalk' | 'locksMovement' | 'targets' | 'destroy'>>
 
 
 /** 로비: 창문과 샹들리에, 안내판, 안내 방송, 도착 환영 */
@@ -102,14 +107,19 @@ function lobbyFx(ctx: Context): RoomHandlers {
     known = new Set(players.map(player => player.id))
   } })
   const treats = treatTable(ctx)
+  // 로비를 오가며 청소하고 궁시렁거리는 아주머니
+  const cleaner = townsfolk(ctx, LOBBY_NPCS)
   return {
+    targets: cleaner.targets,
+    hint: cleaner.hint,
     intercept: target => {
+      if (cleaner.intercept(target)) return true
       if (target.kind === 'coffee' || target.kind === 'cake') { treats.buy(target.kind); return true }
       // 책장은 책이 날아오는 연출만 하고, 책 읽기 창은 Scene이 연다.
       if (target.kind === 'bookshelf') treats.pullBook(target)
       return false
     },
-    destroy: () => { ctx.stop(); unsubscribe() },
+    destroy: () => { ctx.stop(); unsubscribe(); cleaner.destroy() },
   }
 }
 

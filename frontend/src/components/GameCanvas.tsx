@@ -18,6 +18,7 @@ import ArcadePanel from '../features/arcade/ArcadePanel'
 import InventoryPanel from '../features/inventory/InventoryPanel'
 import { tradeMessage } from '../features/inventory/tradeMessages'
 import TradeOfferPanel from '../features/inventory/TradeOfferPanel'
+import FoodCartPanel from '../features/inventory/FoodCartPanel'
 import { inventoryStore } from '../features/inventory/inventoryStore'
 import type { TradeOffer } from '../features/multiplayer/model/protocol'
 import GuestbookPanel from '../features/guestbook/GuestbookPanel'
@@ -197,6 +198,7 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
       {labPanel === 'arcade' && <ArcadePanel onClose={closeLabPanel} />}
       {labPanel === 'inventory' && <InventoryPanel client={getClient} onClose={closeLabPanel} />}
       {labPanel === 'guestbook' && <GuestbookPanel onClose={closeLabPanel} />}
+      {labPanel === 'food-cart' && <FoodCartPanel onClose={closeLabPanel} />}
       {tradeOffer && <TradeOfferPanel offer={tradeOffer} onClose={closeTrade}
         onAnswer={itemId => { clientRef.current?.answerTrade(tradeOffer.tradeId, itemId); setTradeOffer(null) }} />}
       {tradeNotice && <p className="trade-toast" role="status">{tradeNotice}</p>}

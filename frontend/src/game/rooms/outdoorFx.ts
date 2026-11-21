@@ -11,6 +11,8 @@ import {
 import type { Catch } from './fishingLogic'
 import { playSfx } from '../../audio/AudioManager'
 import { inventoryStore } from '../../features/inventory/inventoryStore'
+import { townsfolk } from '../npc/townsfolkFx.ts'
+import { OUTDOOR_NPCS } from '../npc/npcData.ts'
 
 /** 공유 맵과 같은 물 영역: 호수, 강(다리 자리 y 328~382 제외), 낚시 데크 */
 const LAKE = { x: 70, y: 180, width: 260, height: 140 }
@@ -53,11 +55,14 @@ export function outdoorFx(ctx: Context): RoomHandlers {
     layer = drawPhase(ctx, phase)
   } })
   const fishing = fishingGame(ctx, () => phase)
+  // 호숫가를 오가는 시민 셋과 저녁 6시에 들어오는 포장마차
+  const folks = townsfolk(ctx, OUTDOOR_NPCS, true)
   return {
-    intercept: target => target.kind === 'fishing' ? fishing.press() : false,
-    hint: target => target.kind === 'fishing' ? fishing.hint() : undefined,
+    intercept: target => target.kind === 'fishing' ? fishing.press() : folks.intercept(target),
+    hint: target => target.kind === 'fishing' ? fishing.hint() : folks.hint(target),
     locksMovement: () => fishing.busy(),
-    destroy: () => { ctx.stop(); fishing.destroy() },
+    targets: folks.targets,
+    destroy: () => { ctx.stop(); fishing.destroy(); folks.destroy() },
   }
 }
 
