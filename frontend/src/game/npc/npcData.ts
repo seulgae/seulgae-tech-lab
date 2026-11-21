@@ -82,7 +82,7 @@ export const LOBBY_NPCS: readonly NpcDef[] = [
 
 /** 포장마차: 저녁 6시~자정에만 연다(서버도 같은 시간에만 산다). */
 export const CART_OPEN_HOUR = 18
-export const CART_SPOT = { x: 210, bottom: 530 }
+export const CART_SPOT = { x: 450, bottom: 356 }
 export const cartOpenAt = (date: Date) => date.getHours() >= CART_OPEN_HOUR
 
 /** 같은 말을 바로 반복하지 않고 고른다. */
