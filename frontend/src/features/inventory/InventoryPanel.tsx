@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { LOGIN_URL } from '../auth/authStore'
 import type MultiplayerClient from '../multiplayer/MultiplayerClient'
 import { inventoryStore, useInventory } from './inventoryStore'
+import { tradeMessage } from './tradeMessages'
 import { FISH_COLORS } from '../../game/rooms/fishingLogic'
 import { playSfx } from '../../audio/AudioManager'
 import '../research/components/ResearchPanel.css'
@@ -20,6 +21,21 @@ export default function InventoryPanel({ client, onClose }: { client: () => Mult
   const dialogRef = useRef<HTMLDialogElement>(null)
   const inventory = useInventory()
   const [message, setMessage] = useState<string | null>(null)
+  /** 교환할 내 아이템(고르면 같은 방 연구원 목록이 열린다) */
+  const [trading, setTrading] = useState<string | null>(null)
+  const online = client()?.isOnline() ?? false
+  const others = online ? client()!.roomPlayers() : []
+
+  useEffect(() => client()?.subscribe({ tradeStatus: status => {
+    if (status.status === 'sent') setMessage('교환을 신청했어요. 상대가 고르면 바로 맞바꿔요.')
+    else setMessage(tradeMessage(status.status, status.reason))
+    if (status.status === 'accepted') void inventoryStore.refresh()
+  } }), [client])
+
+  const offer = (itemId: string, playerId: string) => {
+    if (client()?.offerTrade(playerId, itemId)) { setTrading(null); playSfx('click', { volume: 0.6 }) }
+    else setMessage('회의실에 연결돼 있을 때만 교환할 수 있어요.')
+  }
 
   useEffect(() => { const dialog = dialogRef.current; dialog?.showModal(); void inventoryStore.refresh(); return () => dialog?.close() }, [])
 
@@ -70,12 +86,20 @@ export default function InventoryPanel({ client, onClose }: { client: () => Mult
                 <strong>{item.name}</strong>
                 {item.sizeCm && <small>{item.sizeCm}cm</small>}
                 <button type="button" onClick={() => drop(item.id, item.name)}>버리기</button>
+                {online && <button type="button" aria-expanded={trading === item.id} onClick={() => setTrading(trading === item.id ? null : item.id)}>교환</button>}
+                {trading === item.id && (
+                  <div className="trade-targets" role="group" aria-label="교환할 연구원">
+                    {others.length === 0 && <small>회의실에 다른 연구원이 없어요.</small>}
+                    {others.map(player => <button type="button" key={player.id} onClick={() => offer(item.id, player.id)}>{player.nickname}</button>)}
+                  </div>
+                )}
               </li>
             ))}
           </ul>
         </>
       )}
-      <p className="research-footer">I 키나 가방 버튼으로 열고, ESC로 닫아요.</p>
+      <p className="research-footer">I 키나 가방 버튼으로 열고, ESC로 닫아요.{online ? ' 회의실에서는 다른 연구원과 아이템을 맞바꿀 수 있어요.' : ''}</p>
     </dialog>
   )
 }
+

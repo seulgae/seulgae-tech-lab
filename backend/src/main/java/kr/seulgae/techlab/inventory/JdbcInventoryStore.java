@@ -78,6 +78,13 @@ public class JdbcInventoryStore implements InventoryStore {
             .param("room", roomId).param("x", x).param("y", y).param("id", itemId).param("m", member).query((rs, row) -> map(rs)).optional();
     }
 
+    @Override public int swap(UUID a, UUID itemA, UUID b, UUID itemB) {
+        return jdbc.sql("""
+            UPDATE lab.items SET owner_id = CASE WHEN id = :itemA THEN :b ELSE :a END
+            WHERE (id = :itemA AND owner_id = :a) OR (id = :itemB AND owner_id = :b)
+            """).param("a", a).param("b", b).param("itemA", itemA).param("itemB", itemB).update();
+    }
+
     @Override public List<Item> ground(String roomId) {
         return jdbc.sql("SELECT " + COLUMNS + " FROM lab.items WHERE owner_id IS NULL AND room_id = :room ORDER BY created_at, id").param("room", roomId)
             .query((rs, row) -> map(rs)).list();
