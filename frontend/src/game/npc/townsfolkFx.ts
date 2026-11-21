@@ -1,3 +1,4 @@
+import Phaser from 'phaser'
 import type { Context } from '../rooms/fxContext'
 import type { RoomInteraction } from '../maps/rooms'
 import { playSfx } from '../../audio/AudioManager'
@@ -46,11 +47,17 @@ function foodCart(ctx: Context) {
   const { scene } = ctx
   const startX = -120, endX = 920
   const image = scene.add.image(startX, CART_SPOT.bottom, 'food-cart').setOrigin(0.5, 1).setScale(2).setDepth(CART_SPOT.bottom).setVisible(false)
-  const light = scene.add.circle(startX, CART_SPOT.bottom - 50, 70, 0xffb46b, 0.16).setDepth(CART_SPOT.bottom - 1).setVisible(false)
-  const sign = ctx.text(startX, CART_SPOT.bottom - 92, '포장마차', 11, '#ffd23f', CART_SPOT.bottom + 1, true).setVisible(false)
+  // 저녁을 밝히는 조명: 지붕 위에 매단 백열등(전선·전구)과 넓게 퍼지는 따뜻한 빛, 수레 아래 바닥 빛
+  const bulbY = CART_SPOT.bottom - 92
+  const wire = scene.add.rectangle(startX, bulbY - 8, 2, 12, 0x2b2220).setDepth(CART_SPOT.bottom + 2).setVisible(false)
+  const bulb = scene.add.circle(startX, bulbY, 5, 0xfff4c2).setDepth(CART_SPOT.bottom + 3).setVisible(false)
+  const halo = scene.add.circle(startX, bulbY, 110, 0xffe08a, 0.3).setBlendMode(Phaser.BlendModes.ADD).setDepth(CART_SPOT.bottom + 1).setVisible(false)
+  const light = scene.add.circle(startX, CART_SPOT.bottom - 16, 90, 0xffb46b, 0.2).setBlendMode(Phaser.BlendModes.ADD).setDepth(CART_SPOT.bottom - 1).setVisible(false)
+  const sign = ctx.text(startX, bulbY - 22, '포장마차', 11, '#ffd23f', CART_SPOT.bottom + 4, true).setVisible(false)
+  const lamp = [wire, bulb, halo, light, sign]
   let state: 'closed' | 'arriving' | 'open' | 'leaving' = 'closed'
-  const place = (x: number) => { image.setX(x); light.setX(x); sign.setX(x) }
-  const show = (visible: boolean) => { image.setVisible(visible); light.setVisible(visible); sign.setVisible(visible) }
+  const place = (x: number) => { image.setX(x); for (const part of lamp) part.setX(x) }
+  const show = (visible: boolean) => { image.setVisible(visible); for (const part of lamp) part.setVisible(visible) }
   const roll = (from: number, to: number, done: () => void) => {
     show(true); place(from)
     scene.tweens.addCounter({ from, to, duration: 7000, ease: 'Sine.easeOut', onUpdate: tween => {
@@ -78,10 +85,15 @@ function foodCart(ctx: Context) {
   const timer = scene.time.addEvent({ delay: 5000, loop: true, callback: () => check(false) })
   let glowAge = 0
   return {
-    update() { if (light.visible) light.setAlpha(0.13 + Math.abs(Math.sin(glowAge++ / 40)) * 0.06) },
+    // 백열등이 아주 살짝 일렁인다.
+    update() {
+      if (!halo.visible) return
+      const flicker = Math.abs(Math.sin(glowAge++ / 37)) * 0.05 + (Math.random() < 0.02 ? -0.06 : 0)
+      halo.setAlpha(0.27 + flicker); light.setAlpha(0.18 + flicker)
+    },
     target(): RoomInteraction[] {
       return state === 'open' ? [{ id: 'food-cart', kind: 'food-cart', label: '포장마차', x: CART_SPOT.x, y: CART_SPOT.bottom - 34, width: 96, height: 60, range: 28 }] : []
     },
-    destroy() { timer.remove(); image.destroy(); light.destroy(); sign.destroy() },
+    destroy() { timer.remove(); image.destroy(); for (const part of lamp) part.destroy() },
   }
 }
