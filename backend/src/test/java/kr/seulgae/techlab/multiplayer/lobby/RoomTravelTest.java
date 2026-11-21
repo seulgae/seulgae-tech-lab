@@ -36,8 +36,10 @@ class RoomTravelTest {
     /** 로비 다섯 문(옆문 넷, 아래 나가기)을 여러 번 왕복해 방 세대·정지·스폰을 확인한다. */
     @Test void repeatsAllLobbyDoorRoutesAndRejectsWrongDoorAndCooldown() {
         var p = room.join(null);
-        String[] ids = {"development", "control", "server", "meeting", "outdoor"};
-        String[] targets = {"development-lab", "control-room", "server-room", "meeting-room", "outdoor"};
+        // 로비 왼쪽 아래 문은 오락실(office-3)이다. 서버실은 개발 연구실에서 들어간다.
+        String[] ids = {"development", "control", "arcade", "meeting", "outdoor"};
+        String[] targets = {"development-lab", "control-room", "office-3", "meeting-room", "outdoor"};
+        String[] backs = {"development-to-lobby", "control-to-lobby", "office-3-to-lobby", "meeting-to-lobby", "outdoor-to-lobby"};
         int[] xs = {70, 730, 70, 730, 400};
         int[] ys = {260, 260, 530, 530, 530};
         for (int cycle = 0; cycle < 3; cycle++) {
@@ -55,7 +57,7 @@ class RoomTravelTest {
                 assertThrows(IllegalArgumentException.class, () -> room.changeRoom(p.id(), "lobby-to-development", clock.get()));
                 walk(p.id(), 400, 530);
                 clock.addAndGet(1_100_000_000L);
-                room.changeRoom(p.id(), ids[i] + "-to-lobby", clock.get());
+                room.changeRoom(p.id(), backs[i], clock.get());
                 sequence = 0;
                 assertEquals("lobby", room.roomId(p.id()));
                 clock.addAndGet(1_100_000_000L);

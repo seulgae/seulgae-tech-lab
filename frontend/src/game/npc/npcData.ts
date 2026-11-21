@@ -2,7 +2,7 @@
  * 화면에만 사는 NPC들. 정해진 길(장애물을 피해 그린 순환 경로)을 천천히 오가며, E로 말을 걸면 한마디 한다.
  * 바깥 시민 셋은 지친 직장인을 위로하고, 로비 청소 아주머니는 돌아다니며 궁시렁거린다.
  */
-export type NpcKind = 'woman' | 'man' | 'elder' | 'cleaner' | 'kid-boy' | 'kid-girl' | 'fisher'
+export type NpcKind = 'woman' | 'man' | 'elder' | 'cleaner' | 'kid-boy' | 'kid-girl' | 'fisher' | 'professor'
 export type NpcDef = {
   id: string
   kind: NpcKind
@@ -23,6 +23,8 @@ export type NpcDef = {
   fixed?: boolean
   /** 바라보는 방향(제자리 NPC): true면 오른쪽 */
   facesRight?: boolean
+  /** 개발 연구실 빌드 결과에 따른 반응(실패하면 놀라고, 성공하면 웃는다) */
+  reactions?: { fail: readonly string[]; pass: readonly string[] }
 }
 
 export const OUTDOOR_NPCS: readonly NpcDef[] = [
@@ -120,6 +122,34 @@ export const LOBBY_NPCS: readonly NpcDef[] = [
       '책은 제자리에 꽂아 두라니까…',
       '궁시렁궁시렁… 아무도 안 듣지?',
     ],
+  },
+]
+
+export const DEV_LAB_NPCS: readonly NpcDef[] = [
+  {
+    id: 'npc-professor', kind: 'professor', name: '괴짜 박사님',
+    // 슈퍼컴퓨터 앞 의자와 가운데 작업대 사이를 돌며 연구한다.
+    path: [{ x: 180, y: 340 }, { x: 620, y: 340 }, { x: 620, y: 460 }, { x: 470, y: 470 }, { x: 330, y: 470 }, { x: 180, y: 460 }],
+    speed: 34, pause: [2000, 4500],
+    talk: [
+      '빌드는 실패의 어머니라네!',
+      'E=mc²… 아니, 여기선 E가 상호작용 키지.',
+      '가설을 세우고, 테스트하고, 또 테스트하게.',
+      '커피는 연구의 연료라네. 물도 마시고.',
+      '재현이 되면 반은 고친 거야!',
+    ],
+    mutter: [
+      '흠… 이 버그는 양자 상태인가…',
+      '재현이 안 되면 버그가 아니라 유령이야…',
+      '테스트 커버리지를 조금만 더…',
+      '로그에 답이 있어… 분명히…',
+      '캐시를 지우면 되려나…',
+      '어제는 됐는데… 어제는…',
+    ],
+    reactions: {
+      fail: ['으아악! 빌드가 깨졌어!', '이럴 수가! 테스트가 빨갛잖아!', '누가 main에 바로 푸시했나?!'],
+      pass: ['유레카! 빌드 성공이다!', '하하하! 모든 테스트 통과!', '봤나? 이것이 과학이야!'],
+    },
   },
 ]
 

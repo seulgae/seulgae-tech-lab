@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { CART_OPEN_HOUR, CART_SPOT, LOBBY_NPCS, OUTDOOR_NPCS, cartOpenAt, pickLine, stepToward } from '../src/game/npc/npcData.ts'
+import { CART_OPEN_HOUR, CART_SPOT, DEV_LAB_NPCS, LOBBY_NPCS, OUTDOOR_NPCS, cartOpenAt, pickLine, stepToward } from '../src/game/npc/npcData.ts'
 import { roomObstacles } from '../src/game/maps/rooms.ts'
 import { FISH_PRICE_MAX, fishPrice } from '../src/features/inventory/fishPrices.ts'
 
@@ -22,6 +22,11 @@ function blockedOnPath(room, path) {
 test('NPC 경로는 호수·강·나무·가구를 지나지 않는다', () => {
   for (const npc of OUTDOOR_NPCS) assert.equal(blockedOnPath('outdoor', npc.path), null, npc.id)
   for (const npc of LOBBY_NPCS) assert.equal(blockedOnPath('lobby', npc.path), null, npc.id)
+  for (const npc of DEV_LAB_NPCS) assert.equal(blockedOnPath('development-lab', npc.path), null, npc.id)
+  const professor = DEV_LAB_NPCS[0]
+  assert.equal(professor.kind, 'professor')
+  assert.ok(professor.reactions.fail.length >= 2 && professor.reactions.pass.length >= 2, '빌드 실패에 놀라고 성공에 웃는다')
+  assert.ok(professor.mutter.length >= 3, '연구 이야기를 중얼거린다')
   assert.deepEqual(OUTDOOR_NPCS.map(npc => npc.kind), ['woman', 'man', 'elder', 'kid-boy', 'kid-girl', 'fisher'])
   assert.equal(LOBBY_NPCS[0].kind, 'cleaner')
   assert.ok(LOBBY_NPCS[0].mutter.length >= 3, '아주머니는 혼자 궁시렁거린다')

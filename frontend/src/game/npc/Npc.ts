@@ -17,6 +17,7 @@ const MUTTER_GAP: readonly [number, number] = [11000, 19000]
  */
 export default class Npc {
   readonly def: NpcDef
+  private readonly scene: Phaser.Scene
   private readonly sprite: Phaser.GameObjects.Image
   private readonly bubble: SpeechBubble
   private x: number
@@ -28,9 +29,12 @@ export default class Npc {
   private frameAt = 0
   private lastLine: string | undefined
   private nextMutterAt: number
+  /** 놀람·웃음 표정을 보여 주는 동안(이때는 걷기 프레임으로 바꾸지 않는다) */
+  private expressionUntil = 0
 
   constructor(scene: Phaser.Scene, def: NpcDef) {
     this.def = def
+    this.scene = scene
     // 처음 자리는 경로 중 한 곳(매번 조금 다르게)
     const start = def.fixed ? 0 : Math.floor(Math.random() * def.path.length)
     this.x = def.path[start]!.x; this.y = def.path[start]!.y
@@ -57,6 +61,26 @@ export default class Npc {
     return this.lastLine
   }
 
+  /**
+   * 빌드 결과에 반응한다: 실패하면 "!!"와 함께 펄쩍 놀라고, 성공하면 "♪"와 함께 웃으며 깡충 뛴다.
+   * @returns 한 말(반응이 없는 NPC면 빈 문자열)
+   */
+  react(passed: boolean) {
+    const lines = passed ? this.def.reactions?.pass : this.def.reactions?.fail
+    if (!lines) return ''
+    this.lastLine = pickLine(lines, this.lastLine)
+    this.bubble.show(this.lastLine, this.age, TALK_MS)
+    this.restUntil = this.age + TALK_MS
+    if (this.def.kind === 'professor') this.sprite.setTexture(passed ? 'npc-professor-happy' : 'npc-professor-shock')
+    this.expressionUntil = this.age + 1800
+    const emote = this.scene.add.text(Math.round(this.x), Math.round(this.y - 62), passed ? '♪' : '!!', {
+      fontFamily: 'monospace', fontSize: '18px', fontStyle: 'bold', color: passed ? '#39e6b4' : '#f87171', stroke: '#0a0f19', strokeThickness: 4,
+    }).setOrigin(0.5).setDepth(1150)
+    this.scene.tweens.add({ targets: emote, y: emote.y - 18, alpha: 0, delay: 600, duration: 900, onComplete: () => emote.destroy() })
+    this.scene.tweens.add({ targets: this.sprite, y: this.sprite.y - (passed ? 8 : 14), duration: passed ? 160 : 110, yoyo: true, repeat: passed ? 2 : 0, ease: 'Sine.easeOut' })
+    return this.lastLine
+  }
+
   update(deltaMs: number) {
     this.age += deltaMs
     if (this.age >= this.restUntil) {
@@ -76,7 +100,8 @@ export default class Npc {
       // 제자리에서도 천천히 두 프레임을 번갈아(낚싯대 까딱)
       if (this.age - this.frameAt > 900) { this.frame = 1 - this.frame; this.frameAt = this.age }
     } else this.frame = 0
-    this.sprite.setTexture(`npc-${this.def.kind}-${this.frame}`).setPosition(Math.round(this.x), Math.round(this.y - (this.frame && !this.def.idle ? 1 : 0))).setDepth(this.y)
+    if (this.age >= this.expressionUntil) this.sprite.setTexture(`npc-${this.def.kind}-${this.frame}`)
+    this.sprite.setPosition(Math.round(this.x), Math.round(this.y - (this.frame && !this.def.idle ? 1 : 0))).setDepth(this.y)
     if (this.def.mutter && this.age >= this.nextMutterAt && !this.bubble.visible) {
       this.lastLine = pickLine(this.def.mutter, this.lastLine)
       this.bubble.show(this.lastLine, this.age, 3200)

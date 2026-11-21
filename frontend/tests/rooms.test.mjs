@@ -48,8 +48,9 @@ test('모든 방의 스폰은 가구 밖이고 출입구는 로비 중심으로 
   // 로비와 개발 연구실은 문이 다섯(옆문 넷 + 아래 가운데), 나머지 방은 들어온 곳으로 가는 문 하나
   const hub=id==='lobby'||id==='development-lab'
   assert.equal(room.doors.length,hub?5:1, id)
-  for(const door of room.doors)assert.ok(hub||door.target==='lobby'||(id.startsWith('office-')&&door.target==='development-lab'), id)
-  if(id==='development-lab') assert.deepEqual(room.doors.map(d=>[d.target,d.x,d.y]),[['office-1',70,250],['office-2',730,250],['office-3',70,520],['office-4',730,520],['lobby',400,540]])
+  // 서버실·사무실(1,2,4번)은 개발 연구실로, 오락실·관리자실·회의실·바깥은 로비로 돌아간다.
+  for(const door of room.doors)assert.ok(hub||door.target==='lobby'||((id.startsWith('office-')||id==='server-room')&&door.target==='development-lab'), id)
+  if(id==='development-lab') assert.deepEqual(room.doors.map(d=>[d.target,d.x,d.y]),[['office-1',70,250],['office-2',730,250],['server-room',70,520],['office-4',730,520],['lobby',400,540]])
   for(const door of room.doors)assert.ok(Object.hasOwn(ROOMS,door.target))
  }
  setRoomObstacles(roomObstacles('server-room'))

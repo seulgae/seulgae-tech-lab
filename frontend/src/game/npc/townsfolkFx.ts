@@ -12,6 +12,8 @@ export type Townsfolk = {
   /** NPC면 말을 걸고 true. 포장마차는 장면이 창을 열도록 false */
   intercept(target: RoomInteraction): boolean
   hint(target: RoomInteraction): string | undefined
+  /** 개발 연구실 빌드 결과에 반응하게 한다. */
+  react(passed: boolean): void
   destroy(): void
 }
 
@@ -34,6 +36,7 @@ export function townsfolk(ctx: Context, defs: readonly NpcDef[], withCart = fals
       playSfx('chat', { volume: 0.5 })
       return true
     },
+    react: passed => { for (const npc of npcs) npc.react(passed) },
     hint: target => target.kind === 'npc' ? 'E · 말 걸기' : target.kind === 'food-cart' ? 'E · 포장마차 (물고기 팔기)' : undefined,
     destroy: () => { scene.events.off('update', tick); for (const npc of npcs) npc.destroy(); cart?.destroy() },
   }

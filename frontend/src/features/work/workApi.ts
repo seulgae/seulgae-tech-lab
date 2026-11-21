@@ -13,8 +13,8 @@ export type Code = { group: string; code: string; name: string; sortOrder: numbe
 export type BoardView = { board: WorkBoard; categories: Code[]; statuses: Code[]; inbox: WorkItem[]; entries: WorkItem[] }
 export type Thread = { ticket: WorkItem; records: WorkItem[] }
 
-/** 사무실(방)마다 보이는 게시판 */
-export const OFFICE_BOARDS: Partial<Record<string, WorkBoard>> = { 'office-1': 'QA', 'office-2': 'MAINTENANCE', 'office-4': 'OPERATION' }
+/** 서비스 연구실의 컴퓨터(상호작용 id)마다 열리는 게시판: QA → 유지보수 → 운영 */
+export const WORK_BOARDS: Partial<Record<string, WorkBoard>> = { 'service-qa': 'QA', 'service-maintenance': 'MAINTENANCE', 'service-operation': 'OPERATION' }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(path, { ...init, headers: { Accept: 'application/json', ...(init.body ? { 'Content-Type': 'application/json' } : {}) } })

@@ -13,7 +13,7 @@ import AgendaPanel from '../features/boards/AgendaPanel'
 import BookPanel from '../features/books/BookPanel'
 import SqlConsolePanel from '../features/admin/SqlConsolePanel'
 import WorkBoardPanel from '../features/work/WorkBoardPanel'
-import { OFFICE_BOARDS } from '../features/work/workApi'
+import { WORK_BOARDS } from '../features/work/workApi'
 import ArcadePanel from '../features/arcade/ArcadePanel'
 import InventoryPanel from '../features/inventory/InventoryPanel'
 import { tradeMessage } from '../features/inventory/tradeMessages'
@@ -53,6 +53,8 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
   const [chatFocused, setChatFocused] = useState(false)
   const [controlsReset, setControlsReset] = useState(0)
   const [labPanel, setLabPanel] = useState<RoomPanelKind | null>(null)
+  /** 서비스 연구실에서 연 업무 게시판 컴퓨터 */
+  const [workBoardId, setWorkBoardId] = useState('')
   const [tableTalk, setTableTalk] = useState(false)
   /** 회의실에서 받은 교환 신청과 결과 알림 */
   const [tradeOffer, setTradeOffer] = useState<TradeOffer | null>(null)
@@ -121,6 +123,8 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
     const openResearch = () => setResearchOpen(true)
     uiEvents.on(RESEARCH_EVENTS.openResearch, openResearch)
     const openLabPanel = (kind: RoomPanelKind) => setLabPanel(kind)
+    const pickWorkBoard = (id: string) => setWorkBoardId(id)
+    uiEvents.on(LAB_EVENTS.workBoard, pickWorkBoard)
     uiEvents.on(LAB_EVENTS.openPanel, openLabPanel)
     uiEvents.on(LAB_EVENTS.tableTalk, setTableTalk)
     const resetMobile = () => setControlsReset(value => value + 1)
@@ -166,6 +170,7 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
       uiEvents.emit(MULTIPLAYER_EVENTS.dispose)
       uiEvents.off(RESEARCH_EVENTS.openResearch, openResearch)
       uiEvents.off(LAB_EVENTS.openPanel, openLabPanel)
+      uiEvents.off(LAB_EVENTS.workBoard, pickWorkBoard)
       uiEvents.off(LAB_EVENTS.tableTalk, setTableTalk)
       uiEvents.off(MOBILE_INPUT.reset, resetMobile)
       client.destroy()
@@ -194,7 +199,7 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
       {labPanel === 'agenda' && <AgendaPanel onClose={closeLabPanel} />}
       {labPanel === 'bookshelf' && <BookPanel onClose={closeLabPanel} />}
       {labPanel === 'admin-console' && <SqlConsolePanel onClose={closeLabPanel} />}
-      {labPanel === 'work-board' && OFFICE_BOARDS[connection.roomId ?? ''] && <WorkBoardPanel board={OFFICE_BOARDS[connection.roomId ?? '']!} onClose={closeLabPanel} />}
+      {labPanel === 'work-board' && WORK_BOARDS[workBoardId] && <WorkBoardPanel board={WORK_BOARDS[workBoardId]!} onClose={closeLabPanel} />}
       {labPanel === 'arcade' && <ArcadePanel onClose={closeLabPanel} />}
       {labPanel === 'inventory' && <InventoryPanel client={getClient} onClose={closeLabPanel} />}
       {labPanel === 'guestbook' && <GuestbookPanel onClose={closeLabPanel} />}
