@@ -52,6 +52,8 @@ public class LobbySocketHandler extends TextWebSocketHandler {
     static final int CONTROL_QUEUE_CAPACITY = 64;
     /** 멀티플레이는 회의실에서만 연다. 소켓은 회의실 문을 열 때 연결하고, 회의실을 나가면 끊는다. */
     public static final String MEETING_ROOM = "meeting-room";
+    /** 핸드셰이크가 남기는 로그인 회원 id(UUID). 비회원이면 없다. 회의실 아이템 교환에 쓴다. */
+    public static final String MEMBER_ID = "lab.memberId";
     /** 핸드셰이크가 연결 속성에 남기는 방문자 주소 키 */
     public static final String CLIENT_ADDRESS = "lab.clientAddress";
     /** 같은 주소의 새 연결이 기존 연결을 대신할 때 보내는 종료 코드. 클라이언트는 이 코드에서 재연결하지 않는다. */
@@ -66,6 +68,7 @@ public class LobbySocketHandler extends TextWebSocketHandler {
         final WebSocketSession socket;
         final String playerId;
         final String address;
+        java.util.UUID memberId;
         final AtomicBoolean sending = new AtomicBoolean();
         final ArrayBlockingQueue<WebSocketMessage<?>> controls = new ArrayBlockingQueue<>(CONTROL_QUEUE_CAPACITY);
         final AtomicReference<WebSocketMessage<?>> latestState = new AtomicReference<>();
@@ -96,6 +99,19 @@ public class LobbySocketHandler extends TextWebSocketHandler {
     private long lastTick = System.nanoTime(), tick;
 
     public LobbySocketHandler(LobbyRoom room, LobbyChat chat) { this(room, chat, false); }
+
+    private final kr.seulgae.techlab.multiplayer.lobby.domain.TradeDesk trades = new kr.seulgae.techlab.multiplayer.lobby.domain.TradeDesk();
+    private kr.seulgae.techlab.inventory.InventoryService inventory;
+
+    /** 인벤토리(아이템 교환). 없으면(테스트) 교환 요청에 unavailable로 답한다. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setInventory(kr.seulgae.techlab.inventory.InventoryService inventory) { this.inventory = inventory; }
+
+    /** 버리기·줍기로 바닥이 바뀌면 그 방에 연결된 사람에게 바로 다시 보낸다(회의실 실시간). */
+    @org.springframework.context.event.EventListener
+    public synchronized void groundChanged(kr.seulgae.techlab.inventory.GroundChanged event) {
+        broadcastIn(event.roomId(), Map.of("type", "ground", "items", event.items()));
+    }
 
     /**
      * @param singleConnectionPerAddress true면 한 주소에 연결 하나만 두고, 같은 주소의 새 연결이 기존 연결을 끊는다.
@@ -138,6 +154,7 @@ public class LobbySocketHandler extends TextWebSocketHandler {
             // 입장 기록과 실시간 방송 사이에 메시지가 빠지지 않게 같은 채팅 잠금을 사용한다.
             synchronized (chat) {
                 var peer = new Peer(socket, player.id(), address);
+                peer.memberId = session.getAttributes().get(MEMBER_ID) instanceof java.util.UUID member ? member : null;
                 peer.controls.add(new TextMessage(json.writeValueAsString(Map.of("type", "welcome", "selfId", player.id(), "players", room.snapshot(MEETING_ROOM), "maxPlayers", LobbyRoom.MAX_PLAYERS, "protocolVersion", 4, "time", System.nanoTime() / 1_000_000d, "roomId", MEETING_ROOM, "roomEpoch", 0))));
                 peer.controls.add(new TextMessage(json.writeValueAsString(Map.of("type", "chat_history", "messages", chat.history(MEETING_ROOM)))));
                 peers.put(session.getId(), peer);
@@ -171,6 +188,11 @@ public class LobbySocketHandler extends TextWebSocketHandler {
             }
             long expectedEpoch = room.epoch(peer.playerId);
             if (input.has("roomEpoch") ? !input.get("roomEpoch").isIntegralNumber() || input.get("roomEpoch").asLong() != expectedEpoch : expectedEpoch != 0) return;
+            if (input.isObject() && input.path("type").stringValue("").startsWith("trade_")) {
+                if (peer.allow(now)) handleTrade(session.getId(), peer, input, now);
+                peer.lastSeen = now;
+                return;
+            }
             if (input.isObject() && input.path("type").stringValue("").equals("seat")) {
                 // 의자 앉기(seatId)·일어나기(null). 조건이 맞지 않으면 무시하고 다음 상태로 결과를 알린다.
                 if (peer.allow(now)) {
@@ -292,6 +314,64 @@ public class LobbySocketHandler extends TextWebSocketHandler {
     }
 
     /** 이동 입력 필드에는 선택적인 방 세대만 추가할 수 있다. */
+    /**
+     * 회의실 아이템 교환. trade_offer {to, itemId}: 내 아이템을 보여 주며 신청한다.
+     * trade_answer {tradeId, itemId|null}: 받은 사람이 내 아이템을 골라 맞바꾸거나(null이면 거절) 답한다.
+     * 결과는 양쪽에 trade_status {tradeId, status: sent|accepted|declined|failed, reason}로 알린다.
+     */
+    private void handleTrade(String id, Peer peer, tools.jackson.databind.JsonNode input, long now) {
+        String type = input.get("type").stringValue();
+        if (peer.memberId == null) { sendScoped(id, peer, Map.of("type", "trade_status", "status", "failed", "reason", "login")); return; }
+        if (inventory == null) { sendScoped(id, peer, Map.of("type", "trade_status", "status", "failed", "reason", "unavailable")); return; }
+        try {
+            if (type.equals("trade_offer")) {
+                if (!fields(input, Set.of("type", "to", "itemId")) || !input.get("to").isString() || !input.get("itemId").isString()) return;
+                var itemId = java.util.UUID.fromString(input.get("itemId").stringValue());
+                String to = input.get("to").stringValue();
+                var target = peers.entrySet().stream().filter(entry -> entry.getValue().playerId.equals(to)
+                    && room.roomId(to).equals(room.roomId(peer.playerId))).findFirst().orElse(null);
+                if (target == null) { sendScoped(id, peer, Map.of("type", "trade_status", "status", "failed", "reason", "partner")); return; }
+                if (target.getValue().memberId == null) { sendScoped(id, peer, Map.of("type", "trade_status", "status", "failed", "reason", "partner_login")); return; }
+                var item = inventory.item(peer.memberId, itemId).orElse(null);
+                if (item == null) { sendScoped(id, peer, Map.of("type", "trade_status", "status", "failed", "reason", "item")); return; }
+                var offer = trades.offer(peer.playerId, peer.memberId, to, target.getValue().memberId, itemId, now);
+                var from = room.player(peer.playerId);
+                Map<String, Object> shown = new java.util.LinkedHashMap<>();
+                shown.put("id", item.id().toString()); shown.put("kind", item.kind()); shown.put("name", item.name()); shown.put("sizeCm", item.sizeCm());
+                sendScoped(target.getKey(), target.getValue(), Map.of("type", "trade_offer", "tradeId", offer.id(),
+                    "from", Map.of("id", peer.playerId, "nickname", from.nickname()), "item", shown, "expiresInMs", kr.seulgae.techlab.multiplayer.lobby.domain.TradeDesk.OFFER_TTL_NANOS / 1_000_000));
+                sendScoped(id, peer, Map.of("type", "trade_status", "tradeId", offer.id(), "status", "sent"));
+                return;
+            }
+            if (type.equals("trade_answer")) {
+                if (!fields(input, Set.of("type", "tradeId", "itemId")) || !input.get("tradeId").isString()
+                    || !(input.get("itemId").isNull() || input.get("itemId").isString())) return;
+                String tradeId = input.get("tradeId").stringValue();
+                var offer = trades.take(tradeId, peer.playerId, now).orElse(null);
+                if (offer == null) { sendScoped(id, peer, Map.of("type", "trade_status", "tradeId", tradeId, "status", "failed", "reason", "expired")); return; }
+                var sender = peers.entrySet().stream().filter(entry -> entry.getValue().playerId.equals(offer.fromPlayer())).findFirst().orElse(null);
+                if (input.get("itemId").isNull()) {
+                    tell(sender, Map.of("type", "trade_status", "tradeId", tradeId, "status", "declined"));
+                    sendScoped(id, peer, Map.of("type", "trade_status", "tradeId", tradeId, "status", "declined"));
+                    return;
+                }
+                var mine = java.util.UUID.fromString(input.get("itemId").stringValue());
+                String status = "accepted", reason = "";
+                try { inventory.trade(offer.fromMember(), offer.itemId(), offer.toMember(), mine); }
+                catch (org.springframework.web.server.ResponseStatusException exception) { status = "failed"; reason = "item"; }
+                Map<String, Object> result = Map.of("type", "trade_status", "tradeId", tradeId, "status", status, "reason", reason);
+                tell(sender, result);
+                sendScoped(id, peer, result);
+            }
+        } catch (kr.seulgae.techlab.multiplayer.lobby.domain.TradeDesk.Rejected rejected) {
+            sendScoped(id, peer, Map.of("type", "trade_status", "status", "failed", "reason", rejected.reason()));
+        } catch (IllegalArgumentException invalid) {
+            sendScoped(id, peer, Map.of("type", "trade_status", "status", "failed", "reason", "item"));
+        }
+    }
+
+    private void tell(Map.Entry<String, Peer> target, Object payload) { if (target != null) sendScoped(target.getKey(), target.getValue(), payload); }
+
     private boolean fields(tools.jackson.databind.JsonNode input, Set<String> expected, String... optional) {
         var keys = new java.util.HashSet<>(input.propertyNames());
         keys.remove("roomEpoch");
@@ -355,6 +435,12 @@ public class LobbySocketHandler extends TextWebSocketHandler {
             peer.playerId, status.getCode(), status.getReason(), peer.receivedInputs,
             (System.nanoTime() - peer.connectedAt) / 1_000_000);
         String previousRoom = room.roomId(peer.playerId);
+        // 나가는 사람이 보냈거나 받은 교환 신청은 취소하고 상대에게 알린다.
+        for (var offer : trades.removePlayer(peer.playerId)) {
+            String other = offer.fromPlayer().equals(peer.playerId) ? offer.toPlayer() : offer.fromPlayer();
+            peers.forEach((otherId, otherPeer) -> { if (otherPeer.playerId.equals(other))
+                sendScoped(otherId, otherPeer, Map.of("type", "trade_status", "tradeId", offer.id(), "status", "failed", "reason", "left")); });
+        }
         room.leave(peer.playerId);
         chat.leave(peer.playerId);
         peer.controls.clear();

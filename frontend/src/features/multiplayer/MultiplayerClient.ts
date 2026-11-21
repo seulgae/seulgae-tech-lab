@@ -13,7 +13,7 @@ export const INPUT_BACKPRESSURE_BYTES = 16384
 export const MEETING_ROOM: RoomId = 'meeting-room'
 /** 관리자실(관리자 회원만 들어간다. 실제 권한은 서버의 관리자 API가 확인한다) */
 export const ADMIN_ROOM: RoomId = 'control-room'
-import type { ConnectionInfo, MoveInput, MoveCommand, PlayerState, ChatMessage, ChatError, ChatScope, GroundItem, ServerMessage } from './model/protocol'
+import type { ConnectionInfo, MoveInput, MoveCommand, PlayerState, ChatMessage, ChatError, ChatScope, GroundItem, ServerMessage, TradeOffer, TradeStatus } from './model/protocol'
 
 type Callbacks = { room?: (roomId: RoomId, pending: boolean) => void; snapshot?: (players: PlayerState[], selfId: string | null, serverTime?: number) => void; status?: (info: ConnectionInfo) => void;
   chat?: (event: ChatMessage) => void; history?: (messages: ChatMessage[]) => void; chatError?: (reason: ChatError) => void; inputSent?: (sequence: number) => void;
@@ -22,7 +22,11 @@ type Callbacks = { room?: (roomId: RoomId, pending: boolean) => void; snapshot?:
   ground?: (items: GroundItem[]) => void
   /** 내 가방이 바뀌었을 때(버리기·줍기 성공) */
   inventoryChanged?: () => void
-  inventoryError?: (reason: 'login' | 'unavailable') => void }
+  inventoryError?: (reason: 'login' | 'unavailable') => void
+  /** 회의실에서 교환 신청을 받았을 때 */
+  tradeOffer?: (offer: TradeOffer) => void
+  /** 교환이 진행됐을 때(보냄·맞바꿈·거절·실패) */
+  tradeStatus?: (status: TradeStatus) => void }
 
 /**
  * 소켓 상태와 입력 전송을 관리하고 끊김 시 제한된 지수 지연으로 재접속한다.
@@ -220,6 +224,18 @@ export default class MultiplayerClient {
   /** @return 서버가 마지막으로 알려 준 내 의자, 없으면 null */
   /** 지금 방 바닥 아이템 */
   ground() { return this.groundItems }
+  /** 지금 방(회의실)에 함께 있는 다른 연구원 */
+  roomPlayers() { return [...this.players.values()].filter(player => player.id !== this.selfId) }
+  /** 회의실에서 내 아이템을 보여 주며 교환을 신청한다. */
+  offerTrade(toPlayerId: string, itemId: string) { return this.sendTrade({ type: 'trade_offer', to: toPlayerId, itemId }) }
+  /** 받은 교환 신청에 답한다(내 아이템 id, 거절이면 null). */
+  answerTrade(tradeId: string, itemId: string | null) { return this.sendTrade({ type: 'trade_answer', tradeId, itemId }) }
+  private sendTrade(payload: object) {
+    if (!this.isOnline()) return false
+    this.socket!.send(JSON.stringify({ ...payload, roomEpoch: this.roomEpoch }))
+    return true
+  }
+
   /** 장면이 매 프레임 내 위치를 알려 준다(버리기·줍기 위치). */
   setPosition(x: number, y: number) { this.position = { x, y } }
   /** 가방의 아이템을 지금 서 있는 곳에 버린다. */
@@ -415,6 +431,14 @@ export default class MultiplayerClient {
         } else if (message.type === 'ground') {
           this.groundItems = message.items
           this.notify(callbacks => callbacks.ground?.(message.items))
+          return
+        } else if (message.type === 'trade_offer') {
+          const { type: _type, roomId: _room, roomEpoch: _epoch, totalOnline: _total, ...offer } = message
+          this.notify(callbacks => callbacks.tradeOffer?.(offer))
+          return
+        } else if (message.type === 'trade_status') {
+          const { type: _type, roomId: _room, roomEpoch: _epoch, totalOnline: _total, ...status } = message
+          this.notify(callbacks => callbacks.tradeStatus?.(status))
           return
         } else if (message.type === 'inventory_changed') {
           this.notify(callbacks => callbacks.inventoryChanged?.())

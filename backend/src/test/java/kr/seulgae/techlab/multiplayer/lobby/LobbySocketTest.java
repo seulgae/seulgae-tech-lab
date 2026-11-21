@@ -309,6 +309,17 @@ class LobbySocketTest {
         }
     }
 
+    /** 회의실 아이템 교환은 로그인 회원만: 비회원이 신청하면 login으로 답하고 연결은 유지한다. */
+    @Test void guestsAreAskedToLogInBeforeTrading() throws Exception {
+        var a = connect(""); a.type("welcome");
+        var b = connect(""); String other = b.type("welcome").get("selfId").stringValue();
+        a.send("{\"type\":\"trade_offer\",\"to\":\"" + other + "\",\"itemId\":\"00000000-0000-4000-8000-0000000000aa\"}");
+        var status = a.type("trade_status");
+        assertEquals("failed", status.get("status").stringValue());
+        assertEquals("login", status.get("reason").stringValue());
+        assertFalse(a.closed.isDone());
+    }
+
     /** 바닥 아이템은 소켓이 아니라 REST로 읽고 쓴다(회의실 밖에는 소켓이 없다). 비회원은 줍기·버리기를 할 수 없다. */
     @Test void groundItemsUseRestAndGuestsCannotPickOrDrop() throws Exception {
         String base = "http://127.0.0.1:" + port() + "/api/inventory";

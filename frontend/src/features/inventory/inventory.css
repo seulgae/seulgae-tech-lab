@@ -20,3 +20,10 @@
 .vital-hp .inventory-bar span { background: linear-gradient(#ff8a8a, #e05a6c); }
 .vital-fatigue .inventory-bar span { background: linear-gradient(#9fe0ff, #38bdf8); }
 .inventory-vitals small { font-size: 11px; color: #aab9a3; line-height: 1.5; }
+.trade-targets { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
+.research-panel .trade-targets button { padding: 2px 8px; font-size: 12px; }
+.trade-offer { display: flex; align-items: center; gap: 10px; margin: 12px 0; padding: 10px; border: 1px solid #d8bd87; background: rgba(255, 210, 63, .08); }
+.trade-offer p { margin: 0; font-size: 14px; color: #f1f6f4; }
+.inventory-grid li.trade-picked { border-color: #ffd23f; background: rgba(255, 210, 63, .12); }
+.trade-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.trade-toast { position: fixed; left: 50%; bottom: 24px; z-index: 50; transform: translateX(-50%); max-width: min(480px, calc(100vw - 32px)); padding: 8px 14px; border: 1px solid #d8bd87; background: rgba(20, 32, 42, .92); color: #fff2d2; font-size: 13px; }

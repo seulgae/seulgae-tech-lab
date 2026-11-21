@@ -145,4 +145,15 @@ class InventoryServiceTest {
         assertEquals(InventoryService.PLANT_DAILY_WINS, wins, "하루 10번까지만 당첨");
         assertEquals(20, service.view(me).coins(), "0.5 → 2원 × 10번");
     }
+
+    @Test void tradeSwapsTwoBagItemsOrNothing() {
+        var mine = service.storeFish(me, "붕어", 20);
+        var theirs = service.storeFish(friend, "메기", 40);
+        service.trade(me, mine.id(), friend, theirs.id());
+        assertEquals("메기", service.view(me).items().get(0).name());
+        assertEquals("붕어", service.view(friend).items().get(0).name());
+        assertThrows(ResponseStatusException.class, () -> service.trade(me, mine.id(), friend, theirs.id()), "이미 주인이 바뀐 아이템은 교환되지 않는다");
+        assertEquals("메기", service.view(me).items().get(0).name(), "실패하면 그대로");
+        assertThrows(ResponseStatusException.class, () -> service.trade(me, theirs.id(), me, theirs.id()));
+    }
 }
