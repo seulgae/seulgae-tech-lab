@@ -40,17 +40,9 @@ class RecruitmentRulesTest {
         assertFalse(RecruitmentRules.safeUrl("javascript:alert(1)"));
         assertFalse(RecruitmentRules.safeUrl("https://user:password@jobplanet.co.kr/a"));
     }
-    @Test void searchSnippetsRemainUnverifiedCandidates() {
-        JsonNode response=JSON.valueToTree(Map.of("query",Map.of("original","test"),"web",Map.of("results",List.of(
-            Map.of("url","https://www.saramin.co.kr/zf_user/jobs/relay/view?rec_idx=123","title","[테스트기업] Java 백엔드 채용","description","직원 100명, 평점 4.0"),
-            Map.of("url","https://www.jobkorea.co.kr/Recruit/GI_Read/456","title","Spring 개발","description","신입 가능"),
-            Map.of("url","https://www.jobplanet.co.kr/companies/123","title","회사 리뷰")))));
-        var parsed=RecruitmentSearch.parse(response);
-        assertEquals(2,parsed.size());assertEquals("123",parsed.get(0).path("externalId").asText());
-        assertEquals("테스트기업",parsed.get(0).path("company").asText());
-        assertEquals("REVIEW",state(parsed.get(0)),"검색 발췌문에 숫자가 있어도 확정 근거가 아니다");
-        assertEquals("미확인",parsed.get(1).path("company").asText());
-        assertFalse(new RecruitmentSearch("").available());
-        assertThrows(IllegalStateException.class,()->RecruitmentSearch.parse(JSON.readTree("{}")));
+    @Test void normalizedCompaniesAndIntakeValidation() {
+        assertEquals(RecruitmentInbox.companyKey("주식회사 슬개 기술"),RecruitmentInbox.companyKey("(주)슬개기술"));
+        var p=item();assertEquals("CHAT",RecruitmentInbox.validate(p).path("intakeMethod").asText());
+        p.put("company","미확인");assertThrows(org.springframework.web.server.ResponseStatusException.class,()->RecruitmentInbox.validate(p));
     }
 }

@@ -28,45 +28,47 @@ class RecruitmentDatabaseTest {
     }
     @AfterEach void clean() {
         if(store==null) return;
-        for(String table:List.of("recruitment_evidence","recruitment_posting_source","recruitment_posting_history","recruitment_posting","recruitment_company","recruitment_collection","recruitment_agent_job","recruitment_daily_report"))
+        for(String table:List.of("recruitment_review","recruitment_intake","recruitment_evidence","recruitment_posting_source","recruitment_posting_history","recruitment_posting","recruitment_company","recruitment_collection","recruitment_agent_job","recruitment_daily_report"))
             store.jdbc.sql("DELETE FROM lab."+table).update();
     }
-    @Test void pipelineIsIdempotentAndPreservesExpiredHistory() throws Exception {
-        var search=mock(RecruitmentSearch.class);when(search.available()).thenReturn(true);when(search.inspect(any())).thenAnswer(call->call.getArgument(0));
-        var candidate=RecruitmentRulesTest.item();
-        when(search.search(any(),anyList())).thenReturn(List.of(candidate));
-        var jobs=new RecruitmentJobs(ds,store,search,true);var date=LocalDate.now(RecruitmentJobs.SEOUL);
-        assertEquals(409,assertThrows(ResponseStatusException.class,()->jobs.run(date,"REGISTER",true)).getStatusCode().value());
-        jobs.run(date,"SEARCH",true);jobs.run(date,"CHECK",true);jobs.run(date,"REGISTER",true);
-        assertEquals(409,assertThrows(ResponseStatusException.class,()->jobs.run(date,"SEARCH",true)).getStatusCode().value());
-        store.collect(List.of(candidate));store.collect(List.of(candidate));store.check();store.register();
-        assertEquals(1,store.jdbc.sql("SELECT count(*) FROM lab.recruitment_posting").query(Integer.class).single());
-        assertEquals(1,store.jdbc.sql("SELECT count(*) FROM lab.recruitment_posting_source").query(Integer.class).single());
-        assertEquals(1,store.jdbc.sql("SELECT count(*) FROM lab.recruitment_company").query(Integer.class).single());
-        assertEquals(1,store.jdbc.sql("SELECT count(*) FROM lab.recruitment_posting_history WHERE kind='NEW'").query(Integer.class).single());
-        store.jdbc.sql("UPDATE lab.recruitment_posting SET deadline=now()-interval '1 minute'").update();
-        store.report(date);store.report(date);
-        assertEquals("EXPIRED",store.jdbc.sql("SELECT status FROM lab.recruitment_posting").query(String.class).single());
-        assertEquals(1,store.jdbc.sql("SELECT count(*) FROM lab.recruitment_posting_history WHERE kind='EXPIRED'").query(Integer.class).single());
-        assertEquals(1,store.jdbc.sql("SELECT count(*) FROM lab.recruitment_daily_report").query(Integer.class).single());
-        assertNotNull(store.dashboard(date).get("postings"));
-        try(var c=ds.getConnection();var s=c.createStatement()) {
-            s.execute("SELECT pg_advisory_lock(1256381,12)");
-            assertEquals(409,assertThrows(ResponseStatusException.class,()->jobs.run(date,"REPORT",true)).getStatusCode().value());
-        }
+    private RecruitmentInbox inbox() {return new RecruitmentInbox(store,ds,new DataSourceTransactionManager(ds));}
+    private tools.jackson.databind.node.ObjectNode candidate(int n) {
+        var p=RecruitmentRulesTest.item();p.put("company","테스트기업"+n);p.put("externalId",String.valueOf(n));
+        p.put("url","https://www.saramin.co.kr/zf_user/jobs/relay/view?rec_idx="+n);return p;
     }
-    @Test void missingKeyAndFailedPredecessorNeverProduceFakeSuccess() {
-        var search=mock(RecruitmentSearch.class);when(search.available()).thenReturn(false);
-        var jobs=new RecruitmentJobs(ds,store,search,true);var date=LocalDate.now(RecruitmentJobs.SEOUL);
-        jobs.run(date,"SEARCH",true);
-        assertEquals("UNAVAILABLE",store.jdbc.sql("SELECT state FROM lab.recruitment_agent_job").query(String.class).single());
-        assertEquals(409,assertThrows(ResponseStatusException.class,()->jobs.run(date,"CHECK",true)).getStatusCode().value());
-        when(search.available()).thenReturn(true);when(search.inspect(any())).thenAnswer(call->call.getArgument(0));when(search.search(any(),anyList())).thenThrow(new IllegalStateException("test"));
-        jobs.run(date,"SEARCH",true);
-        assertEquals("FAILED",store.jdbc.sql("SELECT state FROM lab.recruitment_agent_job").query(String.class).single());
-        doReturn(List.of(RecruitmentRulesTest.item())).when(search).search(any(),anyList());
-        // 프로세스 재시작을 새 실행 서비스 인스턴스로 재현한다. 이력은 DB에 유지된다.
-        var restarted=new RecruitmentJobs(ds,store,search,true);restarted.run(date,"SEARCH",true);
-        assertEquals("COMPLETED",store.jdbc.sql("SELECT state FROM lab.recruitment_agent_job").query(String.class).single());
+    @Test void limitsAndCompanyDuplicatesAreAtomic() {
+        var inbox=inbox();var json=tools.jackson.databind.json.JsonMapper.builder().build();
+        inbox.ingest(json.valueToTree(List.of(candidate(1))));
+        assertThrows(ResponseStatusException.class,()->inbox.ingest(json.valueToTree(List.of(candidate(2),candidate(1)))));
+        assertEquals(1,store.jdbc.sql("SELECT count(*) FROM lab.recruitment_intake").query(Integer.class).single(),"중복 배치의 앞 공고도 롤백한다");
+        var remaining=new ArrayList<Object>();for(int i=2;i<=10;i++) remaining.add(candidate(i));inbox.ingest(json.valueToTree(remaining));
+        assertEquals(10,store.jdbc.sql("SELECT count(*) FROM lab.recruitment_collection").query(Integer.class).single());
+        assertEquals(409,assertThrows(ResponseStatusException.class,()->inbox.ingest(json.valueToTree(List.of(candidate(11))))).getStatusCode().value());
+    }
+    @Test void reviewDecisionsSurvivePhysicalExpiryDeletion() {
+        var inbox=inbox();var json=tools.jackson.databind.json.JsonMapper.builder().build();
+        inbox.ingest(json.valueToTree(List.of(candidate(20))));
+        var jobs=new RecruitmentJobs(store,inbox,true);jobs.run(LocalDate.now(RecruitmentJobs.SEOUL),"CHECK",true);jobs.run(LocalDate.now(RecruitmentJobs.SEOUL),"REGISTER",true);
+        UUID id=store.jdbc.sql("SELECT id FROM lab.recruitment_review").query(UUID.class).single();UUID actor=UUID.randomUUID();
+        assertThrows(ResponseStatusException.class,()->inbox.transition(id,"APPLIED",actor));
+        inbox.transition(id,"READ",actor);inbox.transition(id,"CONFIRMED",actor);inbox.transition(id,"HOLD",actor);inbox.transition(id,"APPLIED",actor);
+        store.jdbc.sql("UPDATE lab.recruitment_posting SET deadline=now()-interval '1 minute'").update();
+        assertEquals(1,inbox.purgeExpired());assertEquals(0,inbox.purgeExpired());
+        assertEquals(0,store.jdbc.sql("SELECT count(*) FROM lab.recruitment_posting").query(Integer.class).single());
+        assertEquals(0,store.jdbc.sql("SELECT count(*) FROM lab.recruitment_collection").query(Integer.class).single());
+        assertEquals("APPLIED",store.jdbc.sql("SELECT state FROM lab.recruitment_review WHERE collection_id IS NULL").query(String.class).single());
+        assertEquals(1,store.jdbc.sql("SELECT count(*) FROM lab.recruitment_intake").query(Integer.class).single());
+        assertThrows(ResponseStatusException.class,()->inbox.ingest(json.valueToTree(List.of(candidate(20)))));
+        assertNotNull(store.dashboard(LocalDate.now(RecruitmentJobs.SEOUL)).get("reviews"));
+    }
+    @Test void sessionLockProtectsMultipleInstances() throws Exception {
+        var inbox=inbox();var json=tools.jackson.databind.json.JsonMapper.builder().build();
+        try(var connection=ds.getConnection();var statement=connection.createStatement()) {
+            statement.execute("SELECT pg_advisory_lock(1256381,12)");
+            assertEquals(409,assertThrows(ResponseStatusException.class,()->inbox.ingest(json.valueToTree(List.of(candidate(30))))).getStatusCode().value());
+        }
+        inbox.ingest(json.valueToTree(List.of(candidate(30))));
+        new RecruitmentJobs(store,inbox(),true).tick();
+        assertEquals(1,store.jdbc.sql("SELECT count(*) FROM lab.recruitment_posting").query(Integer.class).single(),"재시작 후 수신함 처리, 검색 키 불필요");
     }
 }

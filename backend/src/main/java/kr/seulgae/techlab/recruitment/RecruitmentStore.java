@@ -64,21 +64,6 @@ public class RecruitmentStore {
             evidence(id,p,"MANUAL");
         });
     }
-    /** 체크 봇이 원문 확인을 위한 기업 검색 단서를 최대 3건 보완한다. 수동 확인 근거는 유지한다. */
-    public void inspect(RecruitmentSearch search) {
-        if(!search.available()) return;
-        var candidates=jdbc.sql("SELECT id,payload::text FROM lab.recruitment_collection WHERE checked_at IS NULL ORDER BY collected_at DESC LIMIT 3")
-            .query((rs,n)->Map.entry(rs.getObject(1,UUID.class),rs.getString(2))).list();
-        for(var row:candidates) {
-            try {
-                var enriched=search.inspect(node(row.getValue()));
-                jdbc.sql("UPDATE lab.recruitment_collection SET payload=CAST(:p AS jsonb) WHERE id=:id")
-                    .param("p",enriched.toString()).param("id",row.getKey()).update();
-            } catch(IllegalStateException e) {
-                // 검색에 실패한 기업의 필수 정보는 미확인으로 남긴다.
-            }
-        }
-    }
     /** 모든 후보를 다시 검증해 근거 유효기간과 수동 보완 결과도 반영한다. */
     public int check() {
         return tx.execute(status -> {
@@ -170,6 +155,7 @@ public class RecruitmentStore {
         return Map.of("stats",stats(date),"jobs",jdbc.sql("SELECT id,work_date,task,state,attempts,processed,error,started_at,finished_at FROM lab.recruitment_agent_job ORDER BY work_date DESC,created_at LIMIT 40").query().listOfRows(),
             "postings",jdbc.sql("SELECT row_to_json(p)::text FROM (SELECT c.id,c.payload AS details,c.validation,c.reasons,p.status FROM lab.recruitment_collection c LEFT JOIN lab.recruitment_posting_source s ON s.source=c.source AND s.external_id=c.external_id LEFT JOIN lab.recruitment_posting p ON p.id=s.posting_id ORDER BY c.collected_at DESC LIMIT 100) p")
                 .query((rs,n)->node(rs.getString(1))).list(),
+            "reviews",jdbc.sql("SELECT row_to_json(r)::text FROM (SELECT * FROM lab.recruitment_review ORDER BY updated_at DESC LIMIT 200) r").query((rs,n)->node(rs.getString(1))).list(),
             "reports",jdbc.sql("SELECT row_to_json(r)::text FROM (SELECT * FROM lab.recruitment_daily_report ORDER BY work_date DESC LIMIT 7) r").query((rs,n)->node(rs.getString(1))).list());
     }
 }

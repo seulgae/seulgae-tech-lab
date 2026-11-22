@@ -21,7 +21,8 @@ public class RecruitmentController {
     private final AdminAccess access;
     private final RecruitmentStore store;
     private final RecruitmentJobs jobs;
-    public RecruitmentController(AdminAccess access,RecruitmentStore store,RecruitmentJobs jobs) {this.access=access;this.store=store;this.jobs=jobs;}
+    private final RecruitmentInbox inbox;
+    public RecruitmentController(AdminAccess access,RecruitmentStore store,RecruitmentJobs jobs,RecruitmentInbox inbox) {this.access=access;this.store=store;this.jobs=jobs;this.inbox=inbox;}
     /** NPC 공개 상태는 개인정보·오류 세부 내용 없이 오늘 업무 상태만 제공한다. */
     @GetMapping("/agents")
     public Map<String,Object> agents() {
@@ -47,6 +48,14 @@ public class RecruitmentController {
         try {jobs.updateEvidence(id,facts);}
         catch(NoSuchElementException e) {throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Collection not found");}
         return dashboard(request);
+    }
+    /** 관리자 로그인으로 정형 공고 배열을 접수한다. 토큰 경로와 같은 한도·중복 규칙을 적용한다. */
+    @PostMapping("/imports")
+    public Map<String,Object> ingest(@RequestBody JsonNode items,HttpServletRequest request) {require(request);return inbox.ingest(items);}
+    /** 읽음·확인·지원·보류는 사용자 관리자 세션으로만 변경한다. */
+    @PatchMapping("/reviews/{id}")
+    public Map<String,Object> transition(@PathVariable UUID id,@RequestBody Map<String,String> body,HttpServletRequest request) {
+        require(request);inbox.transition(id,body.get("state"),access.require(request));return dashboard(request);
     }
     private void require(HttpServletRequest request) {access.require(request);if(!jobs.enabled) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"Recruitment disabled");}
 }
