@@ -34,6 +34,7 @@ public class RecruitmentJobs {
     public void tick() {
         if(!enabled) return;
         try {
+            inbox.adoptLegacy();
             inbox.purgeExpired();
             for(String task:TASKS) run(LocalDate.now(SEOUL),task,false);
         } catch(Exception e) {org.slf4j.LoggerFactory.getLogger(getClass()).warn("Recruitment inbox cycle failed ({})",e.getClass().getSimpleName());}

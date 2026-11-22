@@ -71,4 +71,11 @@ class RecruitmentDatabaseTest {
         new RecruitmentJobs(store,inbox(),true).tick();
         assertEquals(1,store.jdbc.sql("SELECT count(*) FROM lab.recruitment_posting").query(Integer.class).single(),"재시작 후 수신함 처리, 검색 키 불필요");
     }
+    @Test void oldCandidatesJoinTheReviewWorkflowWithoutNewImport() {
+        store.collect(List.of(candidate(40)));
+        var jobs=new RecruitmentJobs(store,inbox(),true);jobs.tick();jobs.tick();
+        assertEquals(1,store.jdbc.sql("SELECT count(*) FROM lab.recruitment_review").query(Integer.class).single());
+        assertEquals(1,store.jdbc.sql("SELECT count(*) FROM lab.recruitment_intake").query(Integer.class).single());
+    }
+
 }

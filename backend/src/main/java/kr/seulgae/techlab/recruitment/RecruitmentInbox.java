@@ -160,6 +160,28 @@ public class RecruitmentInbox {
             FROM lab.recruitment_collection c WHERE c.id=r.collection_id AND r.state NOT IN ('APPLIED','HOLD')
             """).update();
     }
+    /** 기존 V12 후보도 기업명이 있으면 검토 흐름에 연결한다. 원래 접수 날짜를 유지한다. */
+    public void adoptLegacy() {
+        exclusive(()->tx.execute(status->{
+            var rows=store.jdbc.sql("""
+                SELECT c.id,c.payload::text,(c.collected_at AT TIME ZONE 'Asia/Seoul')::date
+                FROM lab.recruitment_collection c
+                WHERE NOT EXISTS(SELECT 1 FROM lab.recruitment_intake i WHERE i.source=c.source AND i.external_id=c.external_id)
+                ORDER BY c.collected_at
+                """).query((rs,n)->List.of(rs.getObject(1,UUID.class),store.node(rs.getString(2)),rs.getObject(3,LocalDate.class))).list();
+            for(var row:rows) {
+                var p=(JsonNode)row.get(1);String company=p.path("company").asText(),key=companyKey(company);
+                if(key.isBlank() || company.equals("미확인")) continue;
+                var id=store.jdbc.sql("""
+                    INSERT INTO lab.recruitment_intake(id,company_key,source,external_id,work_date) VALUES (:id,:key,:source,:external,:date)
+                    ON CONFLICT DO NOTHING RETURNING id
+                    """).param("id",UUID.randomUUID()).param("key",key).param("source",p.path("source").asText()).param("external",p.path("externalId").asText()).param("date",row.get(2)).query(UUID.class).optional();
+                if(id.isPresent()) store.jdbc.sql("INSERT INTO lab.recruitment_review(id,collection_id,company,title,snapshot) VALUES (:id,:collection,:company,:title,CAST(:p AS jsonb))")
+                    .param("id",id.get()).param("collection",row.get(0)).param("company",company).param("title",p.path("title").asText()).param("p",p.toString()).update();
+            }
+            return null;
+        }));
+    }
     /** 모든 쓰기 경로에서 기존 업무와 같은 DB 락을 사용한다. */
     public <T> T exclusive(Supplier<T> action) {
         try(Connection c=ds.getConnection()) {
