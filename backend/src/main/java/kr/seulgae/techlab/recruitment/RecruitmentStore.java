@@ -35,7 +35,7 @@ public class RecruitmentStore {
                     RETURNING id
                     """).param("id",UUID.randomUUID()).param("source",p.path("source").asText()).param("external",p.path("externalId").asText())
                     .param("url",p.path("url").asText()).param("payload",p.toString()).query(UUID.class).single();
-                if(p.path("facts").size()>0) evidence(id,p,"WEB_SEARCH");
+                if(p.path("facts").size()>0) evidence(id,p,p.path("intakeMethod").asText().equals("CHAT")?"MANUAL":"WEB_SEARCH");
             }
             return items.size();
         });

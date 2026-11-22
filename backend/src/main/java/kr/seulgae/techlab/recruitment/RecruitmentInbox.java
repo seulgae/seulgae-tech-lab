@@ -76,6 +76,8 @@ public class RecruitmentInbox {
         String host=java.net.URI.create(p.path("url").asText()).getHost();
         String domain=p.path("source").asText().equals("SARAMIN")?"saramin.co.kr":"jobkorea.co.kr";
         if(!host.equals(domain) && !host.endsWith("."+domain)) throw bad("출처와 원본 주소가 다릅니다");
+        for(String f:List.of("summary","content","stack","career","region"))
+            if(p.hasNonNull(f) && !p.path(f).isTextual()) throw bad("문자열 항목: "+f);
         if(!p.path("facts").isObject()) throw bad("facts 객체가 필요합니다. 미확인 값은 생략하세요");
         for(String f:List.of("javaBackend","companyType","employees","rating","probationMonths","accepting","deadline")) {
             var fact=p.path("facts").path(f);
