@@ -29,7 +29,20 @@ public interface InventoryStore {
      */
     Optional<Vitals> changeVitals(UUID member, int hp, int fatigue);
     /** 동전을 더하거나 뺀다. 잔액이 음수가 되면 빈 값을 돌려준다(아무것도 바꾸지 않음). */
-    Optional<Integer> changeCoins(UUID member, int amount, String reason);
+    default Optional<Integer> changeCoins(UUID member, int amount, String reason) { return changeCoins(member, amount, reason, null); }
+    /** 동전을 더하거나 뺀다. 송금이면 상대 회원(counterpart)을 함께 남긴다(V11). */
+    Optional<Integer> changeCoins(UUID member, int amount, String reason, UUID counterpart);
+
+    /** 은행 거래 내역 한 줄: 변동, 사유 코드와 이름, 송금 상대 닉네임(없으면 null) */
+    record CoinEvent(UUID id, int amount, String reason, String reasonName, String counterpart, OffsetDateTime createdAt) {}
+    /** 송금 받을 사람 */
+    record Recipient(UUID id, String nickname) {}
+    /** 최근 동전 변동(최근순) */
+    List<CoinEvent> history(UUID member, int limit);
+    /** 닉네임에 이 글자가 들어간 회원(나는 빼고, 최근 로그인순) */
+    List<Recipient> recipients(String query, UUID exclude, int limit);
+    /** 회원 닉네임(없는 회원이면 빈 값) */
+    Optional<String> nickname(UUID member);
     /** 오늘(한국 시간) 이 사유로 동전이 바뀐 횟수 */
     int countToday(UUID member, String reason);
     List<Item> owned(UUID member);

@@ -205,7 +205,7 @@ export default class LabLobbyScene extends Phaser.Scene {
     this.groundSubscription = this.client.subscribe({
       ground: items => this.drawGround(items),
       inventoryChanged: () => { void inventoryStore.refresh() },
-      inventoryError: reason => this.floatText(reason === 'login' ? '로그인하면 가방을 쓸 수 있어요' : '지금은 할 수 없어요'),
+      inventoryError: reason => this.floatText(reason === 'login' ? '로그인하면 폰 보관함을 쓸 수 있어요' : '지금은 할 수 없어요'),
     })
     this.drawGround(this.client.ground?.() ?? [])
     globalThis.addEventListener?.(COIN_EVENT, this.showCoin)

@@ -66,7 +66,10 @@ import org.springframework.context.annotation.Import;
     ResearchIdeaController.class, ResearchIdeaService.class, MeetingAgendaController.class, MeetingAgendaService.class, WriteRateLimiter.class,
     AuthSettings.class, AuthService.class, AuthController.class, KakaoClient.class, WorkItemController.class, WorkItemService.class,
     InventoryController.class, InventoryService.class, GuestbookController.class, GuestbookService.class, kr.seulgae.techlab.admin.AdminAccess.class,
-    kr.seulgae.techlab.auth.LevelService.class, kr.seulgae.techlab.auth.LevelController.class})
+    kr.seulgae.techlab.auth.LevelService.class, kr.seulgae.techlab.auth.LevelController.class,
+    kr.seulgae.techlab.inventory.BankService.class, kr.seulgae.techlab.inventory.BankController.class,
+    kr.seulgae.techlab.phone.TodoService.class, kr.seulgae.techlab.phone.TodoController.class,
+    kr.seulgae.techlab.phone.SnsService.class, kr.seulgae.techlab.phone.SnsController.class})
 public class LocalLobbyTestApplication {
     public static final UUID RECORD_ID = UUID.fromString("00000000-0000-4000-8000-000000000001");
     private static final OffsetDateTime CREATED_AT = OffsetDateTime.parse("2026-11-15T12:00:00+09:00");
@@ -81,6 +84,14 @@ public class LocalLobbyTestApplication {
     /** 인벤토리(DB 없는 로컬 실행) */
     @Bean
     InventoryStore fixtureInventoryStore() { return new InMemoryInventoryStore(); }
+
+    /** 폰 캘린더 할 일(DB 없는 로컬 실행) */
+    @Bean
+    kr.seulgae.techlab.phone.TodoStore fixtureTodoStore() { return new kr.seulgae.techlab.phone.InMemoryPhoneStores.Todos(); }
+
+    /** 폰 SNS(DB 없는 로컬 실행) */
+    @Bean
+    kr.seulgae.techlab.phone.SnsStore fixtureSnsStore() { return new kr.seulgae.techlab.phone.InMemoryPhoneStores.Sns(); }
 
     /** 로비 방명록(DB 없는 로컬 실행) */
     @Bean

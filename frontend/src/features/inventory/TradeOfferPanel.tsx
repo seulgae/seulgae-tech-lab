@@ -46,7 +46,7 @@ export default function TradeOfferPanel({ offer, onAnswer, onClose }: { offer: T
         <span className="inventory-fish" style={{ background: swatch(offer.item.name) }} aria-hidden="true" />
         <p><strong>{offer.from.nickname}</strong>님이 <strong>{label(offer.item)}</strong>을(를) 내밀며 교환을 신청했어요.</p>
       </div>
-      <p className="inventory-note">내 가방에서 줄 아이템을 하나 골라 주세요.</p>
+      <p className="inventory-note">내 물고기 보관함에서 줄 아이템을 하나 골라 주세요.</p>
       {inventory.loaded && inventory.items.length === 0 && <p className="inventory-note">가방이 비어 있어 교환할 수 없어요.</p>}
       <ul className="inventory-grid">
         {inventory.items.map(item => (
