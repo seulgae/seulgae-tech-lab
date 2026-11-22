@@ -90,3 +90,14 @@ test('회의실 밖에서도 바닥 아이템은 REST로 읽고 버리며, 관�
   assert.equal(c.currentRoom(),'control-room')
  } finally {c.destroy();Object.assign(globalThis,original)}
 })
+
+test('관리자실 문: 로그인 확인이 클라이언트보다 먼저 끝나도(setAdmin 없이) 로그인 상태로 연다', () => {
+  let admin = true
+  // 연결·타이머를 만들지 않는 판단만 본다(정리할 것이 없다).
+  const c = new MultiplayerClient({}, { isAdmin: () => admin })
+  assert.equal(c.canEnter('control-room'), true, '이미 관리자로 로그인돼 있으면 바로 열린다')
+  admin = false
+  assert.equal(c.canEnter('control-room'), false, '관리자가 아니면 닫힌다')
+  assert.equal(c.canEnter('server-room'), true)
+  assert.equal(new MultiplayerClient({}).canEnter('control-room'), false, '로그인 정보가 없으면 닫힌다')
+})

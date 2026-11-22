@@ -81,7 +81,10 @@ export default class MultiplayerClient {
   private readonly stopInput = () => this.setInput({ x: 0, y: 0 })
   private readonly onVisibility = () => { if (document.hidden) this.stopInput() }
 
-  constructor(callbacks: Callbacks = {}) { this.listeners.add(callbacks) }
+  /** 지금 로그인한 회원이 관리자인지 묻는 함수(화면의 로그인 상태). 문을 열 때마다 묻는다. */
+  private readonly isAdmin?: () => boolean
+
+  constructor(callbacks: Callbacks = {}, options: { isAdmin?: () => boolean } = {}) { this.listeners.add(callbacks); this.isAdmin = options.isAdmin }
 
   /** Scene은 구독만 교체하고 React 게임 컴포넌트가 소켓 수명을 소유한다. */
   /**
@@ -105,7 +108,8 @@ export default class MultiplayerClient {
   /** 로그인 상태가 바뀌면 화면이 관리자 여부를 알려 준다. */
   setAdmin(admin: boolean) { this.admin = admin }
   /** 이 방에 들어갈 수 있는지(관리자실은 관리자만) */
-  canEnter(target: string) { return target !== ADMIN_ROOM || this.admin }
+  // 로그인 확인이 클라이언트 생성보다 먼저 끝나면 setAdmin이 불리지 않을 수 있어, 문을 열 때 로그인 상태를 직접 묻는다.
+  canEnter(target: string) { return target !== ADMIN_ROOM || this.admin || this.isAdmin?.() === true }
 
   subscribe(callbacks: Callbacks) {
     this.listeners.add(callbacks)
