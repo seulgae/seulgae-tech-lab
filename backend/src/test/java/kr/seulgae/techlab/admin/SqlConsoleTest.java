@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.UUID;
 import javax.sql.DataSource;
 import kr.seulgae.techlab.auth.AuthService;
+import kr.seulgae.techlab.auth.InMemoryLevelRequestStore;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.server.ResponseStatusException;
 import static org.junit.jupiter.api.Assertions.*;
@@ -94,12 +95,15 @@ class SqlConsoleTest {
         assertEquals("SELECT 1", SqlConsole.statement("SELECT 1;;"));
     }
 
-    @Test void onlyConfiguredMemberIdsAreAdmins() {
-        var id = UUID.fromString("45678072-690e-4b6f-a647-f083cf3d95c9");
-        var access = new AdminAccess((AuthService) null, " " + id + " ,");
+    @Test void onlyLevelThreeMembersAreAdmins() {
+        var store = new InMemoryLevelRequestStore();
+        var access = new AdminAccess((AuthService) null, store);
+        var id = UUID.randomUUID();
+        assertFalse(access.isAdmin(id), "일반 사용자(1)는 관리자가 아니다");
+        store.setLevel(id, 2);
+        assertFalse(access.isAdmin(id), "운영자(2)도 관리자가 아니다");
+        store.setLevel(id, 3);
         assertTrue(access.isAdmin(id));
-        assertFalse(access.isAdmin(UUID.randomUUID()));
         assertFalse(access.isAdmin(null));
-        assertFalse(new AdminAccess((AuthService) null, "").isAdmin(id), "설정이 없으면 아무도 관리자가 아니다");
     }
 }
