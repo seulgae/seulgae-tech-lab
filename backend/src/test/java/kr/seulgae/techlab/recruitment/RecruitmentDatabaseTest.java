@@ -64,7 +64,7 @@ class RecruitmentDatabaseTest {
         when(search.available()).thenReturn(true);when(search.inspect(any())).thenAnswer(call->call.getArgument(0));when(search.search(any(),anyList())).thenThrow(new IllegalStateException("test"));
         jobs.run(date,"SEARCH",true);
         assertEquals("FAILED",store.jdbc.sql("SELECT state FROM lab.recruitment_agent_job").query(String.class).single());
-        when(search.search(any(),anyList())).thenReturn(List.of(RecruitmentRulesTest.item()));
+        doReturn(List.of(RecruitmentRulesTest.item())).when(search).search(any(),anyList());
         // 프로세스 재시작을 새 실행 서비스 인스턴스로 재현한다. 이력은 DB에 유지된다.
         var restarted=new RecruitmentJobs(ds,store,search,true);restarted.run(date,"SEARCH",true);
         assertEquals("COMPLETED",store.jdbc.sql("SELECT state FROM lab.recruitment_agent_job").query(String.class).single());

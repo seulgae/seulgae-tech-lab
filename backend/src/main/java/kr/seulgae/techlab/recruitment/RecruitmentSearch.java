@@ -40,6 +40,7 @@ public class RecruitmentSearch {
                 }
                 successes++;
             } catch(IllegalStateException e) {
+                org.slf4j.LoggerFactory.getLogger(getClass()).warn("Recruitment search subrequest failed ({})",e.getMessage());
                 // 공급원 검색 하나가 실패해도 다른 출처 검색은 계속한다. 부분 실패를 후보에 기록한다.
             }
         }
@@ -60,8 +61,12 @@ public class RecruitmentSearch {
         copy.set("companyClues",clues);
         return copy;
     }
-    private JsonNode query(String query) {
+    private long nextRequestAt;
+    private synchronized JsonNode query(String query) {
         try {
+            long pause=nextRequestAt-System.nanoTime();
+            if(pause>0) Thread.sleep(Math.max(1,pause/1000000));
+            nextRequestAt=System.nanoTime()+1000000000L;
             URI uri=URI.create("https://api.search.brave.com/res/v1/web/search?q="+URLEncoder.encode(query,StandardCharsets.UTF_8)+"&country=KR&search_lang=ko&count=20&extra_snippets=true&text_decorations=false&result_filter=web");
             var request=HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(25)).header("X-Subscription-Token",key).header("Accept","application/json").GET().build();
             var response=http.send(request,HttpResponse.BodyHandlers.ofInputStream());

@@ -20,7 +20,7 @@ export function nextRun(hours: readonly number[], now = new Date()) {
 }
 /** 관리자 인증은 서버가 검사한다. 요청 취소와 긴 검색 작업 제한도 함께 적용한다. */
 export async function request<T>(path = '', method = 'GET', body?: unknown, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(`/api/recruitment${path}`, { method, credentials: 'same-origin', signal: signal ?? AbortSignal.timeout(150000), headers: { 'Content-Type': 'application/json' }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) })
+  const response = await fetch(`/api/recruitment${path}`, { method, credentials: 'same-origin', signal: signal ?? AbortSignal.timeout(360000), headers: { 'Content-Type': 'application/json' }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) })
   if (!response.ok) throw new Error(response.status === 403 || response.status === 401 ? '관리자 로그인 후 확인할 수 있어요.' : response.status === 503 ? '채용 모듈이 아직 활성화되지 않았어요.' : response.status === 409 ? '이미 처리했거나 선행 작업이 끝나지 않았어요.' : '요청을 처리하지 못했어요.')
   return response.json() as Promise<T>
 }

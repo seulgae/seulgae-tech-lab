@@ -57,7 +57,7 @@ export default function RecruitmentPanel({ agent, onClose }: { agent: string; on
     {!auth.admin ? <p>공고와 상세 업무 기록은 관리자 로그인 후 확인할 수 있어요.</p> : <>
       <p>공개 웹 검색으로 찾은 후보입니다. 출처 확인이 부족한 공고는 확정 추천에 포함하지 않습니다.</p>
       <section className="recruitment-actions" aria-label="수동 업무 실행">{['SEARCH', 'CHECK', 'REGISTER', 'REPORT'].map((task, i) => <button key={task} disabled={busy} onClick={() => { void run(task) }}>{['서치 · 수집', '체크 · 검증', '로그 · 등록', '로그 · 현행화·보고'][i]}</button>)}</section>
-      {busy && <p role="status">처리 중… 웹 검색은 최대 2분 정도 걸릴 수 있어요.</p>}
+      {busy && <p role="status">처리 중… 웹 검색은 최대 5분 정도 걸릴 수 있어요.</p>}
       {data && <>
         <dl className="recruitment-stats">{Object.entries({ collected: '누적 수집', active: '활성 추천', eligible: '조건 충족', review: '검토 필요', new_today: '금일 신규', expired_today: '금일 마감' }).map(([key, title]) => <div key={key}><dt>{title}</dt><dd>{data.stats[key] ?? 0}</dd></div>)}</dl>
         <h3>업무 이력</h3><ul>{data.jobs.slice(0, 12).map(j => <li key={`${j.work_date}-${j.task}`}>{j.work_date} {j.task} · {STATE[j.state]} · {j.processed}건 · 시도 {j.attempts}회<br /><small>시작 {when(j.started_at)} / 종료 {when(j.finished_at)} {j.error && `· ${j.error}`}</small>{["FAILED", "UNAVAILABLE", "WORKING"].includes(j.state) && <button disabled={busy} onClick={() => { void run(j.task, j.work_date) }}>이 업무 재시도</button>}</li>)}</ul>

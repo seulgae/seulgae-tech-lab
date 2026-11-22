@@ -105,12 +105,16 @@ public class RecruitmentStore {
                     """).param("id",UUID.randomUUID()).param("key",companyKey).param("name",company).param("facts",p.path("facts").toString()).query(UUID.class).single();
                 // 이름 유사도만으로 다른 출처의 공고를 병합하지 않는다. 원본 연결이 우선이다.
                 String identity=p.path("source").asText()+":"+p.path("externalId").asText();
-                var existing=jdbc.sql("SELECT id,details::text,validation FROM lab.recruitment_posting WHERE identity_key=:key").param("key",identity)
-                    .query((rs,n)->List.of(rs.getObject(1,UUID.class),rs.getString(2),rs.getString(3))).optional();
+                var existing=jdbc.sql("SELECT id,details::text,validation,status FROM lab.recruitment_posting WHERE identity_key=:key").param("key",identity)
+                    .query((rs,n)->List.of(rs.getObject(1,UUID.class),rs.getString(2),rs.getString(3),rs.getString(4))).optional();
                 UUID pid=existing.map(e->(UUID)e.get(0)).orElseGet(UUID::randomUUID);
                 Instant deadline=RecruitmentRules.deadline(p);
                 String active=(deadline!=null && !deadline.isAfter(Instant.now())) ||
                     (RecruitmentRules.evidence(p.path("facts").path("accepting"),"accepting",Instant.now()) && p.path("facts").path("accepting").path("value").isBoolean() && !p.path("facts").path("accepting").path("value").asBoolean()) ? "EXPIRED":"ACTIVE";
+                boolean previousExpired=existing.isPresent() && existing.get().get(3).equals("EXPIRED");
+                var accepting=p.path("facts").path("accepting");
+                boolean confirmedOpen=RecruitmentRules.evidence(accepting,"accepting",Instant.now()) && accepting.path("value").isBoolean() && accepting.path("value").asBoolean();
+                if(previousExpired && active.equals("ACTIVE") && !confirmedOpen && deadline==null) active="EXPIRED";
                 jdbc.sql("""
                     INSERT INTO lab.recruitment_posting(id,company_id,identity_key,title,details,validation,status,deadline)
                     VALUES (:id,:company,:key,:title,CAST(:p AS jsonb),:v,:state,:deadline)
@@ -124,6 +128,8 @@ public class RecruitmentStore {
                     """).param("source",p.path("source").asText()).param("external",p.path("externalId").asText()).param("id",pid).param("url",p.path("url").asText()).update();
                 if(existing.isEmpty() || !node((String)existing.get().get(1)).equals(p) || !existing.get().get(2).equals(row.get(2)))
                     history(pid,existing.isEmpty()?"NEW":"UPDATED",p);
+                if(active.equals("EXPIRED") && !previousExpired) history(pid,"EXPIRED",p);
+                if(active.equals("ACTIVE") && previousExpired) history(pid,"REOPENED",p);
             }
             return rows.size();
         });
