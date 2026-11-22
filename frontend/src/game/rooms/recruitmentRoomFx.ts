@@ -32,7 +32,7 @@ export function recruitmentRoomFx(ctx: Context): RoomHandlers {
         const state = candidates.find(j => j.state === 'WORKING')?.state ?? candidates.find(j => j.state === 'FAILED' || j.state === 'UNAVAILABLE')?.state ?? candidates.at(-1)?.state ?? (status.enabled ? 'WAITING' : 'UNAVAILABLE')
         npc.setWorkState(state); label.setText(`${agent.name} · ${STATE[state] ?? state}`)
       }
-    } catch { if (!stopped) for (const { label } of employees) label.setText('상태 조회 실패') }
+    } catch { if (!stopped) for (const { agent, npc, label } of employees) { npc.setWorkState('UNKNOWN'); label.setText(`${agent.name} · 상태 조회 실패`) } }
   }
   void load()
   ctx.every(10000, 10000, () => { void load() })
