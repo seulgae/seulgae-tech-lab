@@ -31,6 +31,7 @@ export default class Npc {
   private nextMutterAt: number
   /** 놀람·웃음 표정을 보여 주는 동안(이때는 걷기 프레임으로 바꾸지 않는다) */
   private expressionUntil = 0
+  private workState: string | undefined
 
   constructor(scene: Phaser.Scene, def: NpcDef) {
     this.def = def
@@ -43,6 +44,15 @@ export default class Npc {
     this.bubble = new SpeechBubble(scene, def.mutter ? { fill: 0xfff4e0, line: 0xc98a4b, text: '#5a3a2a' } : { fill: 0xf4fff0, line: 0x4f8c61, text: '#24402a' })
     this.nextMutterAt = 4000 + Math.random() * 6000
     if (def.facesRight !== undefined) this.sprite.setFlipX(!def.facesRight)
+  }
+
+  /** 신규 업무 NPC의 클릭을 기존 픽셀 스프라이트에 연결한다. */
+  onClick(open: () => void) { this.sprite.setInteractive({ useHandCursor: true }).on('pointerdown', open) }
+
+  /** 실제 서버 상태만 색과 작업 프레임에 반영한다. */
+  setWorkState(state: string) {
+    this.workState = state
+    this.sprite.setTint(state === 'FAILED' ? 0xff9999 : state === 'COMPLETED' ? 0xaaffbb : state === 'WORKING' ? 0xffee99 : 0xffffff)
   }
 
   get position() { return { x: this.x, y: this.y } }
@@ -100,6 +110,7 @@ export default class Npc {
       // 제자리에서도 천천히 두 프레임을 번갈아(낚싯대 까딱)
       if (this.age - this.frameAt > 900) { this.frame = 1 - this.frame; this.frameAt = this.age }
     } else this.frame = 0
+    if (this.workState === 'WORKING') this.frame = Math.floor(this.age / 260) % 2
     if (this.age >= this.expressionUntil) this.sprite.setTexture(`npc-${this.def.kind}-${this.frame}`)
     this.sprite.setPosition(Math.round(this.x), Math.round(this.y - (this.frame && !this.def.idle ? 1 : 0))).setDepth(this.y)
     if (this.def.mutter && this.age >= this.nextMutterAt && !this.bubble.visible) {

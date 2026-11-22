@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { recruitmentRoomFx } from './recruitmentRoomFx'
 import { ROOMS, roomObjects } from '../maps/rooms'
 import type { RoomId, RoomInteraction } from '../maps/rooms'
 import type { TreatKind } from './roomEventLogic'
@@ -449,7 +450,8 @@ function officeFx(ctx: Context): RoomHandlers {
   const lamp = ctx.glow(400, 230, ROOM_THEMES[ctx.options.room ?? 'office-1'].light, 7, 4, 0.22, -30)
   ctx.scene.tweens.add({ targets: lamp, alpha: 0.14, duration: 2600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' })
   wallClock(ctx, 640, '#5f3d24', '#8c2f39')
-  return { destroy: () => ctx.stop() }
+  const recruitment = ctx.options.room === 'office-1' ? recruitmentRoomFx(ctx) : undefined
+  return { ...recruitment, destroy: () => { recruitment?.destroy?.(); ctx.stop() } }
 }
 
 /** 오락실(로비 왼쪽 아래): 벽의 네온 간판, 오락기마다 번갈아 깜빡이는 네온 빛, 가끔 터지는 반짝이 */

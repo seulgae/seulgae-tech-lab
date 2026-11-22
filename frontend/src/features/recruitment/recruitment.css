@@ -1,0 +1,13 @@
+.recruitment-panel { width: min(920px, calc(100vw - 24px)); color: #e4e9f0; background: #111d2b; }
+.recruitment-panel button, .recruitment-panel select { padding: 8px 12px; margin: 4px; }
+.recruitment-panel a { color: #8bd4ff; }
+.recruitment-actions { display: flex; flex-wrap: wrap; }
+.recruitment-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.recruitment-stats div, .recruitment-posting { padding: 12px; border: 1px solid #38516b; border-radius: 8px; }
+.recruitment-stats dd { margin: 4px 0; font-size: 24px; }
+.recruitment-posting { margin: 14px 0; overflow-wrap: anywhere; }
+.recruitment-posting dt { font-weight: bold; }
+.recruitment-posting dd { margin: 4px 0 12px; }
+.recruitment-posting q { display: block; color: #b8c7d8; }
+.recruitment-panel textarea { width: 100%; box-sizing: border-box; }
+@media (max-width: 480px) { .recruitment-stats { grid-template-columns: repeat(2, 1fr); } }

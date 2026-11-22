@@ -172,6 +172,13 @@ export default class LabLobbyScene extends Phaser.Scene {
     this.time.addEvent({ delay: 60_000, loop: true, callback: () => audio.enterRoom(this.activeRoom, skyPhase(new Date())) })
     this.footsteps.reset()
     this.fx = createRoomFx(this, this.activeRoom, {
+      openRecruitment: agent => {
+        if (this.panelOpen || this.transition) return
+        this.panelOpen = true
+        this.resetChatInput()
+        this.uiEvents.emit('recruitment:agent', agent)
+        this.uiEvents.emit(LAB_EVENTS.openPanel, 'recruitment')
+      },
       from: data.from, client: this.client, plants, player: () => this.player && { x: this.player.x, y: this.player.y },
     })
     // 처음엔 로비 가운데, 문으로 들어오면 그 방의 스폰(서버 없이 옮기므로 클라이언트가 정한다)
