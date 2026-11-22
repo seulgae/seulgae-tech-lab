@@ -253,12 +253,12 @@ def preflight():
         raise OpsError('Resolved Compose runtime/DB configuration is unsafe or inconsistent')
     version = schema_version()
     if version not in SUPPORTED_SCHEMAS:
-        raise OpsError(f'Expected existing Flyway V1-V10; found schema {version}. No migration performed.')
+        raise OpsError(f'Expected existing Flyway V1-V11; found schema {version}. No migration performed.')
     print(f'Prerequisites verified: PostgreSQL, network, credential files, runtime config and existing schema V{version}.')
 
 
 # Flyway versions this repository knows how to run against. Releases still declare their own range.
-SUPPORTED_SCHEMAS = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+SUPPORTED_SCHEMAS = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
 
 
 def schema_version():
