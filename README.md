@@ -157,7 +157,7 @@ cd frontend && npm ci && npm run dev
 
 백엔드가 기본 포트 8080이라 `LAB_DEV_BACKEND_URL`은 필요 없습니다. 정리할 때는 `docker rm -f stlab-pg`.
 
-> 카카오 로그인과 관리자 쿼리 콘솔까지 시험하려면 [카카오 로그인 설정](docs/kakao-login.md)의 키와 `LAB_AUTH_SESSION_SECRET`, http 로컬이면 `LAB_AUTH_COOKIE_SECURE=false`를 함께 넣습니다. 관리자는 `LAB_ADMIN_MEMBER_IDS`에 내 회원 id(`lab.members.id`)를 넣습니다.
+> 카카오 로그인과 관리자 쿼리 콘솔까지 시험하려면 [카카오 로그인 설정](docs/kakao-login.md)의 키와 `LAB_AUTH_SESSION_SECRET`, http 로컬이면 `LAB_AUTH_COOKIE_SECURE=false`를 함께 넣습니다. 관리자실은 회원 등급 3만 들어갑니다. 로컬 DB에서 `UPDATE lab.members SET level = 3 WHERE id = '내 회원 id';`로 올립니다.
 
 ---
 
@@ -192,7 +192,6 @@ python3 -m unittest discover -s deploy -p 'test_*.py'
 | `LAB_RESEARCH_WRITE_ENABLED` | 꺼짐 | `true`면 연구 기록 쓰기 API를 연다 |
 | `LAB_AUTH_KAKAO_CLIENT_ID`, `LAB_AUTH_KAKAO_CLIENT_SECRET`, `LAB_AUTH_KAKAO_REDIRECT_URI`, `LAB_AUTH_SESSION_SECRET` | 없음 | 카카오 로그인. 없으면 로그인이 꺼지고 비회원으로 동작 |
 | `LAB_AUTH_COOKIE_SECURE` | `true` | http 로컬 시험에서만 `false` |
-| `LAB_ADMIN_MEMBER_IDS` | 없음 | 관리자실(운영 DB 쿼리 콘솔)을 쓸 회원 id, 쉼표 구분 |
 | `LAB_MULTIPLAYER_ALLOWED_ORIGINS` | localhost 5173·5188 등 | WebSocket을 허용할 Origin |
 | `LAB_MULTIPLAYER_SINGLE_CONNECTION_PER_ADDRESS` | `false` | `true`면 한 IP에 회의실 연결 하나 |
 | `LAB_WRITE_CLIENT_CAPACITY` | `5` | 한 사람의 짧은 시간 글쓰기 허용량 |

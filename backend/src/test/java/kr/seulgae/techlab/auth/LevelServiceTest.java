@@ -30,7 +30,7 @@ class LevelServiceTest {
     }
 
     @Test void approvingRaisesTheLevelAndLevelThreeOpensTheAdminRoom() {
-        var access = new AdminAccess(null, store, "");
+        var access = new AdminAccess(null, store);
         assertFalse(access.isAdmin(me));
         var request = levels.apply(me, 3, "관리자실에 들어가고 싶어요");
         var approved = levels.decide(boss, request.id(), true);
@@ -42,13 +42,12 @@ class LevelServiceTest {
     }
 
     @Test void rejectedRequestsKeepTheLevelAndOperatorsAreNotAdmins() {
-        var access = new AdminAccess(null, store, "");
+        var access = new AdminAccess(null, store);
         var request = levels.apply(me, 2, "게시판 관리를 돕고 싶어요");
         levels.decide(boss, request.id(), false);
         assertEquals(1, levels.level(me));
         assertEquals("REJECTED", levels.mine(me).request().status());
         store.setLevel(me, 2);
         assertFalse(access.isAdmin(me), "운영자(2)는 관리자가 아니다");
-        assertTrue(new AdminAccess(null, store, me.toString()).isAdmin(me), "설정된 방장 id는 등급과 상관없이 관리자");
     }
 }

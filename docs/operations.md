@@ -250,7 +250,8 @@ V4와 같은 3단계다. 확장 PR의 릴리스는 `db_schema` **4..5**, 기능 
 
 게임 속 관리자실(`control-room`) 슈퍼컴퓨터에서 운영 DB에 SQL을 직접 실행한다.
 
-- **누가**: `compose.yml`의 `LAB_ADMIN_MEMBER_IDS`(쉼표 구분 `lab.members.id`)에 있는 로그인 회원만. 바꾸려면 값을 고쳐 배포한다.
+- **누가**: 회원 등급이 3(관리자, `lab.members.level`)인 로그인 회원만. 개발 연구실 관리자실 문 앞 작은 컴퓨터에서 신청하고, 관리자가 쿼리 콘솔 위 "등급 신청" 목록에서 승인한다. (2026-11-22부터 `LAB_ADMIN_MEMBER_IDS` 예외는 없다.)
+- **관리자가 아무도 없을 때**: 서버에서 `docker exec`로 DB에 들어가 `UPDATE lab.members SET level = 3 WHERE id = '…'`로 한 명을 올린다.
 - **권한**: 앱 DB 계정(`stlab_prod_app`) 권한 그대로다. 데이터 조회·변경·삭제는 되고, 테이블 소유자가 아니라 DDL은 거절된다.
 - **제한**: 한 문장, 5초(`statement_timeout`), 결과 200행·칸당 1,000자. 실패하면 rollback한다.
 - **감사**: 실행마다 백엔드 로그에 `[admin-sql] member=… ms=… rows=… updated=… sql=…`이 남는다. `docker logs seulgae-tech-lab-backend-1 | grep admin-sql`로 본다.
