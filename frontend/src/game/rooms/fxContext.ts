@@ -7,6 +7,7 @@ import { nextDelay } from './roomEventLogic'
 /** 방 연출 모듈(RoomFx와 방별 연출 파일)이 함께 쓰는 공통 도구 */
 export type Options = {
   /** 이 연출이 그리는 방(공용 연출이 방 테마를 고를 때 쓴다) */
+  openRecruitment?: (agent: string) => void
   room?: RoomId
   from?: RoomId; client: MultiplayerClient; plants?: Map<string, Phaser.GameObjects.Image>
   /** 먹고 마시기·책 꺼내기 연출이 따라갈 내 캐릭터 위치 */

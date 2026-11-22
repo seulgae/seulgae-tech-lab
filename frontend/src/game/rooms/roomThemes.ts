@@ -79,7 +79,7 @@ export const ROOM_THEMES: Record<RoomId, RoomTheme> = {
     door: { frame: '#5a3f2a', frameLight: '#c4a57a', panel: '#9c7a55', panelLight: '#b8936a', handle: '#e7d29a', sign: '#5a6f8c' },
     page: { background: '#1b1814', card: '#28221b', border: '#5c4d3b', accent: '#e8c48a', muted: '#c8b89f' },
     textures: { computer: 'dev-desk', chair: 'office-chair', rack: 'bookshelf', equipment: 'workbench', plant: 'tall-plant' },
-    notes: { title: '서비스 연구실', body: 'QA부터 운영까지\n한 방에서 이어져요.', missionTitle: 'QA → 유지보수 → 운영', mission: '왼쪽 컴퓨터에 QA를 등록하면 가운데 유지보수 컴퓨터로, 조치가 끝나면 오른쪽 운영업무 컴퓨터로 넘어가요. 글 하나에 동전 10원!' },
+    notes: { title: '서비스 연구실', body: 'QA부터 운영까지\n한 방에서 이어져요.', missionTitle: 'QA → 유지보수 → 운영', mission: '왼쪽 컴퓨터에 QA를 등록하면 가운데 유지보수 컴퓨터로, 조치가 끝나면 오른쪽 운영업무 컴퓨터로 넘어가요. 글 하나에 동전 10원! 아래쪽 컴퓨터의 서치·체크·로그를 클릭하면 채용 업무 현황을 볼 수 있어요.' },
   },
   'office-2': {
     mood: '무엇이 들어올지 아직 정하지 않은 하얀 빈 방',

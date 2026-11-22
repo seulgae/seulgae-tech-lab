@@ -47,6 +47,10 @@ services:
       LAB_AUTH_KAKAO_CLIENT_ID: 8e235c19470d153bef77ad4ddddc3f23
       LAB_AUTH_KAKAO_REDIRECT_URI: https://seulgae-home-server.tailac4b36.ts.net/api/auth/kakao/callback
       JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=65 -XX:ActiveProcessorCount=2
+    # 파일이 없어도 기존 앱은 정상 기동한다. 활성화·키 설정은 운영 가이드 참조.
+    env_file:
+      - path: ${STLAB_SECRETS_DIR:-/opt/homeserver/config/seulgae-tech-lab}/recruitment.env
+        required: false
     secrets:
       - source: prod_db_password
         target: DB_PASSWORD
