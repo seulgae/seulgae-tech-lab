@@ -297,3 +297,13 @@ docker inspect postgres-postgres-1 kafka-kafka-1 --format '{{.Name}} {{.Id}} {{.
 활성화 후 새 main CI 성공 이벤트가 있어야 자동 배포가 시작된다. 과거 성공 이벤트는 재발생하지 않는다. 이번 작업에서는 SSH 접속·수동 배포·운영 DB 변경·자동 배포 활성화·운영 검증을 수행하지 않는다.
 
 참고: [Compose 파일 secret의 bind mount와 권한](https://docs.docker.com/reference/compose-file/services/#secrets), [GitHub Actions 변수](https://docs.github.com/en/actions/concepts/workflows-and-actions/variables).
+
+
+### V12 마이그레이션 (독립 채용관리)
+
+1. V12 확장 PR을 병합하고 `db_schema` 11..12 릴리스의 배포 성공을 확인한다.
+2. 운영자가 서버에서 `python3 deploy/migrate-prod.py`를 실행한다. 백업 검증 후 V12를 적용한다.
+3. V12를 사용하는 채용 기능 PR을 Ready로 변경하고 병합한다.
+
+기존 테이블은 변경하지 않는다. 추가한 9개 recruitment 테이블은 기존 V11 앱에서 사용하지 않는다.
+운영 실행과 DB 변경은 사용자 담당이다. 앱 롤백은 DB를 되돌리지 않는다.
