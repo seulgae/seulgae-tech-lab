@@ -30,7 +30,7 @@ import MultiplayerClient from '../features/multiplayer/MultiplayerClient'
 import ChatPanel from '../features/multiplayer/components/ChatPanel'
 import MobileControls from './MobileControls'
 import { playSfx } from '../audio/AudioManager'
-import { useAuth } from '../features/auth/authStore'
+import { authStore, useAuth } from '../features/auth/authStore'
 import { MOBILE_INPUT } from '../game/input/mobileInput'
 import type { DirectionInput } from '../game/input/mobileInput'
 
@@ -118,7 +118,7 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
         setTradeNotice(tradeMessage(status.status, status.reason))
         if (status.status === 'accepted') { playSfx('success', { volume: 0.6 }); void inventoryStore.refresh() }
       },
-    })
+    }, { isAdmin: () => authStore.get().admin })
     clientRef.current = client
     eventRef.current = uiEvents
     const openResearch = () => setResearchOpen(true)
