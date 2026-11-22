@@ -8,7 +8,7 @@ const idle = { left: false, right: false, pointerX: null, launch: false }
 
 test('서비스 연구실은 좌우 두 열에 책상 셋씩(책상마다 의자, 줄 사이 파티션), 2번은 뭘 만들까(빈 방)·4번은 뭘만들지, 오락실은 로비에', () => {
   const objects = roomObjects('office-1')
-  assert.deepEqual([...new Set(objects.map(object => object.texture))].sort(), ['chair', 'computer', 'partition'], '화분·책장·입구 작업대는 치웠다')
+  assert.deepEqual([...new Set(objects.map(object => object.texture))].sort(), ['chair', 'computer', 'partition', 'plant', 'water-dispenser'], '책상과 구석 휴게 소품만 배치한다')
   const desks = objects.filter(object => object.texture === 'computer'), chairs = objects.filter(object => object.texture === 'chair')
   assert.equal(desks.length, 6); assert.equal(chairs.length, 6, '아래 줄 책상에도 의자')
   for (const desk of desks) assert.ok(chairs.some(chair => chair.x === desk.x && chair.bottom > desk.bottom && chair.bottom - desk.bottom < 60), `책상 (${desk.x}, ${desk.bottom}) 아래 의자`)

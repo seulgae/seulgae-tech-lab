@@ -20,7 +20,7 @@ import org.springframework.web.server.ResponseStatusException;
  * 로비 데스크 케이크(3원)는 HP +10, 커피(2원)는 피로도 +5. 모자라면 일·오락을 할 수 없다.
  *
  * @author seulgae
- * @version 1.0, 인벤토리(일지 #7)
+ * @version 1.1, 자판기 음료 구매와 서버 가격 검증
  * @see "None"
  */
 @Service
@@ -135,20 +135,30 @@ public class InventoryService {
     }
 
     /**
-     * 로비 데스크 간식. 케이크 3원 HP +10, 커피 2원 피로도 +5(최대치에서 멈춘다).
+     * 로비 간식·음료를 서버 가격으로 구매한다. 탄산음료 2원 피로도 +5, 물 1원 피로도 +2.
+     * 케이크 3원 HP +10, 커피 2원 피로도 +5이며 회복은 최대치에서 멈춘다.
      * 이미 가득이면 422(돈을 받지 않음), 동전이 모자라면 409.
+     * @param member 구매 회원
+     * @param kind 서버가 허용한 간식·음료 코드
+     * @return 구매 후 잔액과 회복 상태
      */
     @Transactional
     public View buySnack(UUID member, String kind) {
         boolean cake = CAKE.equals(kind);
-        if (!cake && !COFFEE.equals(kind)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown snack");
-        var vitals = store.vitals(member);
+        int price = switch (kind == null ? "" : kind) {
+            case CAKE -> CAKE_PRICE;
+            case COFFEE, "COLA", "CIDER", "FANTA" -> 2;
+            case "WATER" -> 1;
+            default -> 0;
+        };
+        if (price == 0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown snack");
+        var vitals = store.lockVitals(member);
         if (cake ? vitals.hp() >= vitals.hpMax() : vitals.fatigue() >= vitals.fatigueMax()) {
             throw new ResponseStatusException(ALREADY_FULL, "Already full");
         }
-        store.changeCoins(member, -(cake ? CAKE_PRICE : COFFEE_PRICE), kind)
+        store.changeCoins(member, -price, kind)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Not enough coins"));
-        store.changeVitals(member, cake ? CAKE_HP : 0, cake ? 0 : COFFEE_FATIGUE);
+        store.changeVitals(member, cake ? CAKE_HP : 0, cake ? 0 : ("WATER".equals(kind) ? 2 : COFFEE_FATIGUE));
         return view(member);
     }
 

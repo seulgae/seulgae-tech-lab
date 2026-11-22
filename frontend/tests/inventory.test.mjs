@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { COIN_EVENT, inventoryStore } from '../src/features/inventory/inventoryStore.ts'
+import { COIN_EVENT, DRINKS, inventoryStore } from '../src/features/inventory/inventoryStore.ts'
 import { parseServerMessage } from '../src/features/multiplayer/model/protocol.ts'
 
 const id = '00000000-0000-4000-8000-0000000000aa'
@@ -104,4 +104,28 @@ test('식물 행운: 당첨이면 받은 만큼 동전 이벤트를 보내고, �
     assert.equal(await inventoryStore.shakePlant(), 0, '비회원은 그냥 흔들기만')
     assert.deepEqual(amounts, [2], '꽝이면 동전 연출 없음')
   } finally { globalThis.fetch = original; globalThis.removeEventListener(COIN_EVENT, listener); delete globalThis.addEventListener; delete globalThis.removeEventListener; delete globalThis.dispatchEvent }
+})
+
+
+test('자판기 네 음료는 종류만 전송하고 실제 잔액·회복은 서버 응답을 따른다', async () => {
+  const original = globalThis.fetch
+  try {
+    for (const kind of Object.keys(DRINKS)) {
+      assert.equal(DRINKS[kind].price, kind === 'WATER' ? 1 : 2)
+      let sent
+      globalThis.fetch = async (url, options) => {
+        sent = [url, JSON.parse(options.body)]
+        return Response.json({ coins: 3, items: [], rewardsLeftToday: 0, hp: 47, hpMax: 50, fatigue: 49, fatigueMax: 50 })
+      }
+      assert.equal(await inventoryStore.buySnack(kind), 'bought')
+      assert.deepEqual(sent, ['/api/inventory/snack', { kind }])
+      assert.equal(inventoryStore.get().coins, 3)
+      assert.equal(inventoryStore.get().fatigue, 49)
+      for (const [status, result] of [[409, 'broke'], [422, 'full'], [500, 'error']]) {
+        globalThis.fetch = async () => new Response('', { status })
+        assert.equal(await inventoryStore.buySnack(kind), result)
+        assert.equal(inventoryStore.get().coins, 3)
+      }
+    }
+  } finally { globalThis.fetch = original }
 })

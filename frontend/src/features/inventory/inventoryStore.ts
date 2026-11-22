@@ -13,7 +13,15 @@ export const COIN_EVENT = 'lab:coin'
 export const VITALS_EVENT = 'lab:vitals'
 /** 일·오락 한 번에 드는 HP·피로도, 간식 가격과 회복량(서버 InventoryService와 같은 값) */
 export const WORK_COST = { hp: 3, fatigue: 5 }
-export const SNACKS = { CAKE: { price: 3, hp: 10, fatigue: 0, name: '케이크' }, COFFEE: { price: 2, hp: 0, fatigue: 5, name: '커피' } } as const
+/** 자판기 음료 가격과 피로도 회복량. 구매 즉시 마신다. */
+export const DRINKS = {
+  COLA: { price: 2, hp: 0, fatigue: 5, name: '콜라' },
+  CIDER: { price: 2, hp: 0, fatigue: 5, name: '사이다' },
+  FANTA: { price: 2, hp: 0, fatigue: 5, name: '환타' },
+  WATER: { price: 1, hp: 0, fatigue: 2, name: '물' },
+} as const
+export type DrinkKind = keyof typeof DRINKS
+export const SNACKS = { ...DRINKS, CAKE: { price: 3, hp: 10, fatigue: 0, name: '케이크' }, COFFEE: { price: 2, hp: 0, fatigue: 5, name: '커피' } } as const
 export type SnackKind = keyof typeof SNACKS
 /** HP·피로도가 모자라 일·오락을 할 수 없을 때 서버 응답(423)과 안내 */
 export const TIRED_STATUS = 423
@@ -113,7 +121,7 @@ export const inventoryStore = {
     } catch { return 0 }
   },
   /**
-   * 로비 데스크 간식을 산다(케이크 3원 HP +10, 커피 2원 피로도 +5).
+   * 로비 데스크 간식 또는 자판기 음료를 서버 가격으로 구매해 즉시 회복한다.
    * 'bought' 샀음, 'guest' 비회원(무료로 즐기기만), 'broke' 동전 부족, 'full' 이미 가득(돈을 내지 않음), 'error' 연결 문제
    */
   async buySnack(kind: SnackKind): Promise<'bought' | 'guest' | 'broke' | 'full' | 'error'> {

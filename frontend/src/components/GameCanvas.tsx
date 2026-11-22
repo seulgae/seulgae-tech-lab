@@ -20,6 +20,7 @@ import ArcadePanel from '../features/arcade/ArcadePanel'
 import PhonePanel from '../features/phone/PhonePanel'
 import { tradeMessage } from '../features/inventory/tradeMessages'
 import TradeOfferPanel from '../features/inventory/TradeOfferPanel'
+import VendingPanel from '../features/inventory/VendingPanel'
 import FoodCartPanel from '../features/inventory/FoodCartPanel'
 import { inventoryStore } from '../features/inventory/inventoryStore'
 import type { TradeOffer } from '../features/multiplayer/model/protocol'
@@ -39,7 +40,7 @@ import type { DirectionInput } from '../game/input/mobileInput'
  * Phaser 게임의 생성·정리와 연구 기록 패널의 이벤트 연결을 관리한다.
  *
  * @author seulgae
- * @version 1.0, 현재 방·채팅 패널과 기존 모바일 입력 잠금 연결
+ * @version 1.1, 로비 자판기 패널 연결
  * @see "None"
  * @returns 게임 캔버스와 조건부 연구 기록 패널
  */
@@ -209,6 +210,7 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
       {labPanel === 'arcade' && <ArcadePanel onClose={closeLabPanel} />}
       {labPanel === 'inventory' && <PhonePanel client={getClient} onClose={closeLabPanel} />}
       {labPanel === 'guestbook' && <GuestbookPanel onClose={closeLabPanel} />}
+      {labPanel === 'vending-machine' && <VendingPanel onClose={closeLabPanel} />}
       {labPanel === 'food-cart' && <FoodCartPanel onClose={closeLabPanel} />}
       {tradeOffer && <TradeOfferPanel offer={tradeOffer} onClose={closeTrade}
         onAnswer={itemId => { clientRef.current?.answerTrade(tradeOffer.tradeId, itemId); setTradeOffer(null) }} />}

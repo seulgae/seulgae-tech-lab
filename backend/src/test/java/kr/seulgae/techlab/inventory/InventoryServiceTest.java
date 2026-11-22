@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * 인벤토리: 물고기 보관, 버리기·줍기(한 명만 성공), 게시물 보상 10원(하루 10번), 오락실 1원.
  * @author seulgae
- * @version 1.0, 인벤토리(일지 #7)
+ * @version 1.1, 자판기 가격·회복·실패 시 잔액 검증
  * @see "None"
  */
 class InventoryServiceTest {
@@ -189,5 +189,25 @@ class InventoryServiceTest {
         assertEquals(404, assertThrows(ResponseStatusException.class, () -> service.sellFish(me, fish.id())).getStatusCode().value(), "두 번 팔 수 없다");
         var theirs = service.storeFish(friend, "붕어", 20);
         assertEquals(404, assertThrows(ResponseStatusException.class, () -> service.sellFish(me, theirs.id())).getStatusCode().value(), "남의 물고기는 팔 수 없다");
+    }
+    /** 네 음료의 가격·회복량과 부족·가득·잘못된 요청의 무차감을 검증한다. */
+    @Test void vendingDrinksUseServerPricesAndNeverChargeRejectedPurchases() {
+        for (String kind : new String[]{"COLA", "CIDER", "FANTA", "WATER"}) {
+            UUID member = UUID.randomUUID();
+            service.spendWork(member);
+            assertEquals(409, assertThrows(ResponseStatusException.class, () -> service.buySnack(member, kind)).getStatusCode().value());
+            assertEquals(45, service.view(member).fatigue());
+            service.rewardWorkPost(member);
+            var bought = service.buySnack(member, kind);
+            assertEquals("WATER".equals(kind) ? 9 : 8, bought.coins());
+            assertEquals("WATER".equals(kind) ? 47 : 50, bought.fatigue());
+            assertEquals(47, bought.hp());
+            if ("WATER".equals(kind)) { service.buySnack(member, kind); service.buySnack(member, kind); }
+            var full = service.view(member);
+            assertEquals(422, assertThrows(ResponseStatusException.class, () -> service.buySnack(member, kind)).getStatusCode().value());
+            assertEquals(full, service.view(member));
+            assertEquals(400, assertThrows(ResponseStatusException.class, () -> service.buySnack(member, null)).getStatusCode().value());
+            assertEquals(full, service.view(member));
+        }
     }
 }

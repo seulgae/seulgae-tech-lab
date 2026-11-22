@@ -51,7 +51,7 @@
     {
       "x": 168,
       "bottom": 222,
-      "texture": "rack",
+      "texture": "vending-machine",
       "body": {
         "y": 178,
         "x": 168,
@@ -127,6 +127,16 @@
           "width": 112,
           "height": 72,
           "range": 56
+        },
+        {
+          "id": "lobby-vending",
+          "kind": "vending-machine",
+          "label": "음료 자판기",
+          "x": 168,
+          "y": 178,
+          "width": 48,
+          "height": 88,
+          "range": 40
         }
       ],
       "doors": [
@@ -849,6 +859,16 @@
           "width": 112,
           "height": 72,
           "range": 40
+        },
+        {
+          "id": "office-water",
+          "kind": "water-dispenser",
+          "label": "정수기 · 물 마시기",
+          "x": 60,
+          "y": 178,
+          "width": 32,
+          "height": 44,
+          "range": 40
         }
       ],
       "spawn": {
@@ -1060,6 +1080,28 @@
             "y": 440,
             "width": 10,
             "height": 100
+          }
+        },
+        {
+          "x": 60,
+          "bottom": 200,
+          "texture": "water-dispenser",
+          "body": {
+            "x": 60,
+            "y": 178,
+            "width": 32,
+            "height": 44
+          }
+        },
+        {
+          "x": 740,
+          "bottom": 138,
+          "texture": "plant",
+          "body": {
+            "x": 740,
+            "y": 128,
+            "width": 24,
+            "height": 20
           }
         }
       ]
