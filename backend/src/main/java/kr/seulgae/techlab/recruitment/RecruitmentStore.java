@@ -141,12 +141,12 @@ public class RecruitmentStore {
     }
     private Map<String,Object> stats(LocalDate date) {
         return jdbc.sql("""
-            SELECT (SELECT count(*) FROM lab.recruitment_collection) AS collected,
+            SELECT (SELECT count(*) FROM lab.recruitment_intake) AS collected,
             count(*) FILTER(WHERE status='ACTIVE' AND validation='ELIGIBLE') AS active,
             count(*) FILTER(WHERE validation='ELIGIBLE') AS eligible,
             count(*) FILTER(WHERE validation='REVIEW') AS review,
-            (SELECT count(*) FROM lab.recruitment_posting_history WHERE kind='NEW' AND (created_at AT TIME ZONE 'Asia/Seoul')::date=:date) AS new_today,
-            (SELECT count(*) FROM lab.recruitment_posting_history WHERE kind='EXPIRED' AND (created_at AT TIME ZONE 'Asia/Seoul')::date=:date) AS expired_today
+            (SELECT count(*) FROM lab.recruitment_intake WHERE work_date=:date) AS new_today,
+            COALESCE((SELECT (summary->>'expired_today')::integer FROM lab.recruitment_daily_report WHERE work_date=:date),0) AS expired_today
             FROM lab.recruitment_posting
             """).param("date",date).query().singleRow();
     }

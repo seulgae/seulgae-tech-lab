@@ -135,7 +135,13 @@ public class RecruitmentInbox {
             }
             for(UUID id:ids) deleteCollection(id);
             store.jdbc.sql("DELETE FROM lab.recruitment_company WHERE id NOT IN (SELECT company_id FROM lab.recruitment_posting)").update();
-            return all.size()+ (int)ids.stream().filter(id->!deletedCollections.contains(id)).count();
+            int deleted=all.size()+ (int)ids.stream().filter(id->!deletedCollections.contains(id)).count();
+            if(deleted>0) store.jdbc.sql("""
+                INSERT INTO lab.recruitment_daily_report(work_date,summary) VALUES (:date,jsonb_build_object('expired_today',CAST(:count AS integer)))
+                ON CONFLICT(work_date) DO UPDATE SET summary=recruitment_daily_report.summary ||
+                jsonb_build_object('expired_today',COALESCE((recruitment_daily_report.summary->>'expired_today')::integer,0)+CAST(:count AS integer)),updated_at=now()
+                """).param("date",LocalDate.now(RecruitmentJobs.SEOUL)).param("count",deleted).update();
+            return deleted;
         }));
     }
     private void deleteCollection(UUID id) {
