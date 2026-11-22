@@ -70,7 +70,11 @@ public final class RecruitmentRules {
     /** 근거가 있는 마감일만 반환한다. 날짜만 있을 때는 해당 한국 날짜의 끝을 사용한다. */
     public static Instant deadline(JsonNode item) {
         JsonNode d = item.path("facts").path("deadline");
-        if (!evidence(d,"deadline",Instant.now())) return null;
+        // 마감일은 한 번 확인된 절대 날짜다. 30일이 지났다고 삭제 기준을 잃지 않는다.
+        try {
+            Instant checked=Instant.parse(d.path("checkedAt").asText());
+            if(checked.isAfter(Instant.now().plusSeconds(300)) || !evidence(d,"deadline",checked)) return null;
+        } catch(RuntimeException e) {return null;}
         try { return Instant.parse(d.path("value").asText()); }
         catch (RuntimeException e) {
             try { return LocalDate.parse(d.path("value").asText()).plusDays(1).atStartOfDay(ZoneId.of("Asia/Seoul")).toInstant(); }
