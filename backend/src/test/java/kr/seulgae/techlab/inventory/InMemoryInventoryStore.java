@@ -38,13 +38,33 @@ public class InMemoryInventoryStore implements InventoryStore {
         return Optional.of(next);
     }
 
-    @Override public synchronized Optional<Integer> changeCoins(UUID member, int amount, String reason) {
+    private final java.util.List<Object[]> events = new java.util.ArrayList<>();
+    private final Map<UUID, String> nicknames = new ConcurrentHashMap<>();
+
+    /** 테스트·로컬용 회원(송금 받을 사람) */
+    public void addMember(UUID id, String nickname) { nicknames.put(id, nickname); }
+
+    @Override public synchronized Optional<Integer> changeCoins(UUID member, int amount, String reason, UUID counterpart) {
         int next = coins(member) + amount;
         if (next < 0) return Optional.empty();
         coins.put(member, next);
         today.merge(member + reason, 1, Integer::sum);
+        events.add(new Object[]{UUID.randomUUID(), member, amount, reason, counterpart, base.plusSeconds(clock.incrementAndGet())});
         return Optional.of(next);
     }
+
+    @Override public synchronized List<CoinEvent> history(UUID member, int limit) {
+        return events.stream().filter(e -> member.equals(e[1])).sorted(Comparator.comparing((Object[] e) -> (OffsetDateTime) e[5]).reversed()).limit(limit)
+            .map(e -> new CoinEvent((UUID) e[0], (int) e[2], (String) e[3], (String) e[3], e[4] == null ? null : nicknames.get((UUID) e[4]), (OffsetDateTime) e[5]))
+            .toList();
+    }
+
+    @Override public List<Recipient> recipients(String query, UUID exclude, int limit) {
+        return nicknames.entrySet().stream().filter(e -> !e.getKey().equals(exclude) && e.getValue().toLowerCase().contains(query.toLowerCase()))
+            .map(e -> new Recipient(e.getKey(), e.getValue())).sorted(Comparator.comparing(Recipient::nickname)).limit(limit).toList();
+    }
+
+    @Override public Optional<String> nickname(UUID member) { return Optional.ofNullable(nicknames.get(member)); }
 
     @Override public int countToday(UUID member, String reason) { return today.getOrDefault(member + reason, 0); }
 

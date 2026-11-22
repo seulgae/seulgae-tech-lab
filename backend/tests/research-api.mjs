@@ -95,3 +95,12 @@ console.log('Disposable PostgreSQL HTTP integration checks passed: creation, rou
 assert.equal((await fetch(`${base}/api/level-requests/me`)).status, 401)
 assert.equal((await fetch(`${base}/api/level-requests`, json('POST', { level: 3, reason: '관리하고 싶어요' }))).status, 401)
 assert.equal((await fetch(`${base}/api/admin/level-requests`)).status, 401)
+// 폰 앱: 은행·할 일은 회원만, SNS는 읽기만 누구나
+assert.equal((await fetch(`${base}/api/bank`)).status, 401)
+assert.equal((await fetch(`${base}/api/bank/members?q=a`)).status, 401)
+assert.equal((await fetch(`${base}/api/bank/transfer`, json('POST', { to: '00000000-0000-4000-8000-000000000001', amount: 1 }))).status, 401)
+assert.equal((await fetch(`${base}/api/todos?month=2026-11`)).status, 401)
+assert.equal((await fetch(`${base}/api/todos`, json('POST', { date: '2026-11-22', title: '할 일' }))).status, 401)
+assert.equal((await fetch(`${base}/api/sns`)).status, 200)
+assert.deepEqual(await (await fetch(`${base}/api/sns`)).json(), [])
+assert.equal((await fetch(`${base}/api/sns`, json('POST', { content: '안녕' }))).status, 401)

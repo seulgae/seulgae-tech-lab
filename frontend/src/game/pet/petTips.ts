@@ -30,7 +30,7 @@ export const PET_TIPS: Record<RoomId, readonly string[]> = {
     'Enter로 채팅할 수 있어요',
     '의자에 앉으면 테이블 대화',
     '화이트보드에 회의 안건을 써요',
-    '가방에서 아이템을 교환해요',
+    '폰 보관함에서 물고기를 교환해요',
   ],
   'control-room': [
     '관리자 전용 쿼리 콘솔이에요',
@@ -38,7 +38,7 @@ export const PET_TIPS: Record<RoomId, readonly string[]> = {
   ],
   outdoor: [
     '데크 끝에서 E로 낚시해요',
-    '잡은 물고기는 가방에 쏙!',
+    '잡은 물고기는 폰 보관함에 쏙!',
     '다리로 강을 건널 수 있어요',
   ],
   'office-1': ['버그는 왼쪽 QA 컴퓨터에!', '가운데는 유지보수 컴퓨터', '오른쪽에서 운영 최종 승인!', '글 하나에 동전 10원이에요'],
@@ -49,7 +49,7 @@ export const PET_TIPS: Record<RoomId, readonly string[]> = {
 
 /** 어디서나 쓸 수 있는 팁 */
 export const COMMON_TIPS: readonly string[] = [
-  'I를 누르면 가방이 열려요',
+  'I를 누르면 폰이 열려요',
   '화분을 흔들면 가끔 동전이!',
   '날 누르면 다른 팁을 알려 줘요',
 ]

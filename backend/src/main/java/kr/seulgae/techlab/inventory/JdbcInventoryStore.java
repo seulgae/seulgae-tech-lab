@@ -44,15 +44,40 @@ public class JdbcInventoryStore implements InventoryStore {
         return new Vitals(rs.getInt("hp"), rs.getInt("hp_max"), rs.getInt("fatigue"), rs.getInt("fatigue_max"));
     }
 
-    @Override public Optional<Integer> changeCoins(UUID member, int amount, String reason) {
+    @Override public Optional<Integer> changeCoins(UUID member, int amount, String reason, UUID counterpart) {
         jdbc.sql("INSERT INTO lab.inventories (member_id, coins) VALUES (:m, 0) ON CONFLICT (member_id) DO NOTHING").param("m", member).update();
         var balance = jdbc.sql("""
             UPDATE lab.inventories SET coins = coins + :amount, updated_at = CURRENT_TIMESTAMP
             WHERE member_id = :m AND coins + :amount >= 0 RETURNING coins
             """).param("m", member).param("amount", amount).query(Integer.class).optional();
-        balance.ifPresent(ignored -> jdbc.sql("INSERT INTO lab.coin_events (id, member_id, amount, reason) VALUES (:id, :m, :amount, :reason)")
-            .param("id", UUID.randomUUID()).param("m", member).param("amount", amount).param("reason", reason).update());
+        balance.ifPresent(ignored -> jdbc.sql("INSERT INTO lab.coin_events (id, member_id, amount, reason, counterpart_id) VALUES (:id, :m, :amount, :reason, :other)")
+            .param("id", UUID.randomUUID()).param("m", member).param("amount", amount).param("reason", reason).param("other", counterpart).update());
         return balance;
+    }
+
+    @Override public List<CoinEvent> history(UUID member, int limit) {
+        return jdbc.sql("""
+            SELECT e.id, e.amount, e.reason, c.name, o.nickname, e.created_at
+            FROM lab.coin_events e
+            JOIN lab.common_codes c ON c.code_group = e.reason_group AND c.code = e.reason
+            LEFT JOIN lab.members o ON o.id = e.counterpart_id
+            WHERE e.member_id = :m ORDER BY e.created_at DESC, e.id DESC LIMIT :limit""")
+            .param("m", member).param("limit", limit)
+            .query((rs, row) -> new CoinEvent(rs.getObject(1, UUID.class), rs.getInt(2), rs.getString(3), rs.getString(4), rs.getString(5),
+                rs.getObject(6, OffsetDateTime.class))).list();
+    }
+
+    @Override public List<Recipient> recipients(String query, UUID exclude, int limit) {
+        String like = "%" + query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
+        return jdbc.sql("""
+            SELECT id, nickname FROM lab.members WHERE id <> :me AND nickname ILIKE :q ESCAPE '\\'
+            ORDER BY last_login_at DESC NULLS LAST, nickname LIMIT :limit""")
+            .param("me", exclude).param("q", like).param("limit", limit)
+            .query((rs, row) -> new Recipient(rs.getObject(1, UUID.class), rs.getString(2))).list();
+    }
+
+    @Override public Optional<String> nickname(UUID member) {
+        return jdbc.sql("SELECT nickname FROM lab.members WHERE id = :m").param("m", member).query(String.class).optional();
     }
 
     @Override public int countToday(UUID member, String reason) {

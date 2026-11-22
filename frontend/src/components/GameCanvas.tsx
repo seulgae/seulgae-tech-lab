@@ -16,7 +16,7 @@ import AdminApplyPanel from '../features/admin/AdminApplyPanel'
 import WorkBoardPanel from '../features/work/WorkBoardPanel'
 import { WORK_BOARDS } from '../features/work/workApi'
 import ArcadePanel from '../features/arcade/ArcadePanel'
-import InventoryPanel from '../features/inventory/InventoryPanel'
+import PhonePanel from '../features/phone/PhonePanel'
 import { tradeMessage } from '../features/inventory/tradeMessages'
 import TradeOfferPanel from '../features/inventory/TradeOfferPanel'
 import FoodCartPanel from '../features/inventory/FoodCartPanel'
@@ -203,7 +203,7 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
       {labPanel === 'admin-apply' && <AdminApplyPanel onClose={closeLabPanel} />}
       {labPanel === 'work-board' && WORK_BOARDS[workBoardId] && <WorkBoardPanel board={WORK_BOARDS[workBoardId]!} onClose={closeLabPanel} />}
       {labPanel === 'arcade' && <ArcadePanel onClose={closeLabPanel} />}
-      {labPanel === 'inventory' && <InventoryPanel client={getClient} onClose={closeLabPanel} />}
+      {labPanel === 'inventory' && <PhonePanel client={getClient} onClose={closeLabPanel} />}
       {labPanel === 'guestbook' && <GuestbookPanel onClose={closeLabPanel} />}
       {labPanel === 'food-cart' && <FoodCartPanel onClose={closeLabPanel} />}
       {tradeOffer && <TradeOfferPanel offer={tradeOffer} onClose={closeTrade}

@@ -7,6 +7,7 @@
 > - 회의실 문을 열 때 WebSocket에 연결하고, 서버가 회의실로 바로 입장시킨다(`welcome.roomId = "meeting-room"`). 회의실을 나가면 연결을 1000으로 끝낸다.
 > - 서버는 `room_change`를 `room_error`로 거절한다. 채팅창은 회의실에서만 보인다.
 > - 바닥 아이템은 REST(`/api/inventory/ground|drop|pick`), 관제실 CCTV는 REST(`/api/lobby/feeds`, 2초 간격)로 읽는다.
+- I 키 폰 앱은 REST로만 동작한다: 은행 `/api/bank`(잔액·내역, `/members` 검색, `/transfer` 송금), 캘린더 `/api/todos`, SNS `/api/sns`. 브라우저는 서버 없이 화면 안 가짜 사이트만 그린다.
 > - 아래 내용 중 `room_change`·`room_changed`로 방을 옮기는 부분은 이전 구조의 기록이다. 경위는 dev-log 28번에 있다.
 
 중앙 로비(`lobby`)를 허브로 개발 연구실(`development-lab`), 서버실(`server-room`), 회의실(`meeting-room`)을 연결한다. 기존 로비 가구와 연구 기록 컴퓨터는 유지하며 바닥·캐릭터·가구 에셋을 재사용한다. 서버 랙과 회의 테이블 등 가구에는 방별 충돌체가 있다. 새 외부 에셋·라이브러리는 추가하지 않았다.

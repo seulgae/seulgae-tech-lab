@@ -31,7 +31,7 @@ export default function FoodCartPanel({ onClose }: { onClose: () => void }) {
     setBusy(null)
     if (typeof result === 'number') { setMessage(`${name} 잘 받았어요! ${result}원 드릴게요~`); playSfx('coin', { volume: 0.7 }); return }
     playSfx('error', { volume: 0.5 })
-    setMessage(result === 'closed' ? '오늘 장사는 끝났어요. 내일 저녁 6시에 또 와요!' : result === 'login' ? '로그인한 연구원만 팔 수 있어요.' : '그 물고기는 벌써 없네요. 가방을 다시 볼까요?')
+    setMessage(result === 'closed' ? '오늘 장사는 끝났어요. 내일 저녁 6시에 또 와요!' : result === 'login' ? '로그인한 연구원만 팔 수 있어요.' : '그 물고기는 벌써 없네요. 물고기 보관함을 다시 볼까요?')
   }
 
   const fish = inventory.items.filter(item => item.kind === 'FISH')
@@ -52,7 +52,7 @@ export default function FoodCartPanel({ onClose }: { onClose: () => void }) {
       {inventory.available && (
         <>
           <p className="inventory-note">값은 어종과 크기로 정해요(한 마리 최대 {FISH_PRICE_MAX}원). 지금 내 동전: <strong>{inventory.coins}원</strong></p>
-          {fish.length === 0 && <p className="inventory-note">가방에 물고기가 없어요. 데크 끝에서 낚아 와요!</p>}
+          {fish.length === 0 && <p className="inventory-note">물고기 보관함이 비어 있어요. 데크 끝에서 낚아 와요!</p>}
           <ul className="inventory-grid">
             {fish.map(item => (
               <li key={item.id}>
