@@ -84,7 +84,7 @@ cd /opt/homeserver/apps/seulgae-tech-lab
 python3 deploy/ops.py check
 ```
 
-`check`는 Docker·Compose, PostgreSQL 상태와 네트워크, 두 비밀번호 파일과 권한, 해석된 Compose DB 설정, 기존 Flyway V1을 확인한다. SQL은 READ ONLY 트랜잭션으로 실행한다. 성공 이력의 스키마 버전 1 또는 2만 허용하며 실패 이력·미적용·다른 버전이면 중단한다. 배포할 릴리스와 맞는지는 `deploy`가 릴리스의 `db_schema` 범위로 다시 확인한다. 이미지 Pull, 앱 시작, 마이그레이션은 하지 않는다. 자체 ops 디렉터리와 잠금 파일은 만들 수 있다.
+`check`는 Docker·Compose, PostgreSQL 상태와 네트워크, 두 비밀번호 파일과 권한, 해석된 Compose DB 설정, 기존 Flyway 이력을 확인한다. SQL은 READ ONLY 트랜잭션으로 실행한다. 성공 이력의 스키마 버전 V1~V14만 허용하며 실패 이력·미적용·다른 버전이면 중단한다. 배포할 릴리스와 맞는지는 `deploy`가 릴리스의 `db_schema` 범위로 다시 확인한다. 이미지 Pull, 앱 시작, 마이그레이션은 하지 않는다. 자체 ops 디렉터리와 잠금 파일은 만들 수 있다.
 
 병합 후 main CI에서 이미지·manifest 게시가 끝났는지 GitHub Actions에서 사용자가 확인한 다음:
 
@@ -314,3 +314,10 @@ docker inspect postgres-postgres-1 kafka-kafka-1 --format '{{.Name}} {{.Id}} {{.
 확장 PR 병합 및 12..13 릴리스 배포 확인 → 운영자 `python3 deploy/migrate-prod.py` → V13 기능 PR 병합 순서다.
 새 원장·검토 테이블만 추가하며 V12 앱은 사용하지 않는다. 이 단계에서 기존 공고는 삭제하지 않는다.
 기능 PR은 기존 검색 수집을 외부 정형 입력으로 전환하고, 확인된 마감 공고의 원문을 삭제하므로 별도 변경 내용을 확인한다.
+
+
+### V14 적용 후 배포 사전 검사 실패 복구
+
+`Expected existing Flyway V1-V13; found schema 14`는 V14 마이그레이션 후에도 배포 사전 검사 허용 목록에 V13까지만 남아 있을 때 발생한다. V14를 허용하는 배포 스크립트 수정 릴리스를 main CI로 발행한 다음 배포를 다시 실행한다. 기존 `./deploy.sh`는 검증된 최신 릴리스를 선택하고 해당 릴리스의 배포 파일로 이어서 실행한다.
+
+이 오류 때문에 마이그레이션을 다시 하거나 DB·Flyway 이력을 되돌리지 않는다. 사전 검사에서 V14를 인식한 뒤에도 각 릴리스의 `db_schema` 호환 범위 검사는 유지한다. V13 전용 릴리스를 V14 DB에 배포하는 것은 계속 거절한다. `test_supported_schemas_match_versioned_migration_files`가 마이그레이션 파일과 사전 검사 지원 목록의 불일치를 검출한다.
