@@ -54,6 +54,8 @@ class RecruitmentDatabaseTest {
         inbox.transition(id,"READ",actor);inbox.transition(id,"CONFIRMED",actor);inbox.transition(id,"HOLD",actor);inbox.transition(id,"APPLIED",actor);
         store.jdbc.sql("UPDATE lab.recruitment_posting SET deadline=now()-interval '1 minute'").update();
         assertEquals(1,inbox.purgeExpired());assertEquals(0,inbox.purgeExpired());
+        store.report(LocalDate.now(RecruitmentJobs.SEOUL));
+        assertEquals(1,store.jdbc.sql("SELECT (summary->>'expired_today')::integer FROM lab.recruitment_daily_report").query(Integer.class).single(),"삭제 후에도 마감 통계는 남는다");
         assertEquals(0,store.jdbc.sql("SELECT count(*) FROM lab.recruitment_posting").query(Integer.class).single());
         assertEquals(0,store.jdbc.sql("SELECT count(*) FROM lab.recruitment_collection").query(Integer.class).single());
         assertEquals("APPLIED",store.jdbc.sql("SELECT state FROM lab.recruitment_review WHERE collection_id IS NULL").query(String.class).single());
