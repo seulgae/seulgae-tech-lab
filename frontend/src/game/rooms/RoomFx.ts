@@ -1,3 +1,4 @@
+import { officeLifeFx } from './officeLifeFx'
 import Phaser from 'phaser'
 import { recruitmentRoomFx } from './recruitmentRoomFx'
 import { ROOMS, roomObjects } from '../maps/rooms'
@@ -303,9 +304,9 @@ function plantShaker(scene: Phaser.Scene, plants: Map<string, Phaser.GameObjects
 }
 
 /** 창문 유리 뒤에 현재 시간대의 하늘을 깔고, 창으로 들어오는 빛 색도 맞춘다. 1분마다 갱신한다. */
-function skyWindows(ctx: Context, frame: 'lobby-window' | 'meeting-window') {
+function skyWindows(ctx: Context, frame: 'lobby-window' | 'meeting-window' | 'office-window', positions: readonly number[] = [150, 650]) {
   const { scene } = ctx
-  const views = [150, 650].map(x => ({
+  const views = positions.map(x => ({
     sky: scene.add.image(x, 32, 'sky-noon').setScale(2).setDepth(60.5),
     beam: (scene.add.image(x, 32, frame).setScale(2).setDepth(61), ctx.glow(x, 110, '#ffffff', 3, 4, 0.18, -40)),
   }))
@@ -447,11 +448,21 @@ function treatTable(ctx: Context) {
 
 /** 개인 사무실: 방 테마 색의 책상 조명과 벽시계(세부 연출은 추후) */
 function officeFx(ctx: Context): RoomHandlers {
+  if (ctx.options.room === 'office-1') {
+    skyWindows(ctx, 'office-window', [190, 610])
+    wallClock(ctx, 400, '#4c6270', '#4e879d')
+    const staff = officeLifeFx(ctx), recruitment = recruitmentRoomFx(ctx)
+    return {
+      targets: () => [...(staff.targets?.() ?? []), ...(recruitment.targets?.() ?? [])],
+      hint: target => recruitment.hint?.(target) ?? staff.hint?.(target),
+      intercept: target => recruitment.intercept?.(target) || staff.intercept?.(target) || false,
+      destroy: () => { staff.destroy?.(); recruitment.destroy?.(); ctx.stop() },
+    }
+  }
   const lamp = ctx.glow(400, 230, ROOM_THEMES[ctx.options.room ?? 'office-1'].light, 7, 4, 0.22, -30)
   ctx.scene.tweens.add({ targets: lamp, alpha: 0.14, duration: 2600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' })
   wallClock(ctx, 640, '#5f3d24', '#8c2f39')
-  const recruitment = ctx.options.room === 'office-1' ? recruitmentRoomFx(ctx) : undefined
-  return { ...recruitment, destroy: () => { recruitment?.destroy?.(); ctx.stop() } }
+  return { destroy: () => ctx.stop() }
 }
 
 /** 오락실(로비 왼쪽 아래): 벽의 네온 간판, 오락기마다 번갈아 깜빡이는 네온 빛, 가끔 터지는 반짝이 */

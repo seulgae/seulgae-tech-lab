@@ -1,52 +1,30 @@
 import Npc from '../npc/Npc'
 import type { Context } from './fxContext'
 import type { RoomHandlers } from './RoomFx'
-import { AGENTS, STATE, request } from '../../features/recruitment/recruitmentApi'
-import type { Job } from '../../features/recruitment/recruitmentApi'
-
-/** 상태 이름표: 오른쪽 벽 가까이 서 있어 글이 길어지면 화면(800px) 안으로 밀어 넣는다. */
-function setLabel(label: Phaser.GameObjects.Text, x: number, text: string) {
-  label.setText(text)
-  label.setX(Math.min(x, 794 - label.displayWidth / 2))
-}
+import { AGENTS } from '../../features/recruitment/recruitmentApi'
 
 /**
- * 서비스 연구실 오른쪽 열 의자에 업무 직원 셋(서치·체크·로그)을 앉히고 실제 서버 상태를 표시한다.
+ * 오른쪽 작업석에 가운 연구원 셋을 배치하고 E로 역할별 채용 화면을 연다.
+ * 사무실 장식은 서버 상태를 요청하지 않으며 담당 이름과 역할만 표시한다.
  * @author seulgae
- * @version 1.1, 앉아서 일하는 직원과 역할별 E 상호작용
+ * @version 1.2, 사무실 이름표와 실제 채용 상태 조회 분리
  * @see "None"
  */
 export function recruitmentRoomFx(ctx: Context): RoomHandlers {
-  let stopped = false
-  let controller: AbortController | undefined
+  const names = { SEARCH: '접수', CHECK: '검토', REGISTER: '지원 관리' }
   const employees = AGENTS.map(agent => {
     const npc = new Npc(ctx.scene, { id: `recruitment-${agent.id}`, kind: agent.kind, name: agent.name,
       path: [{ x: agent.x, y: agent.y }], fixed: true, seated: true, idle: true, speed: 0, pause: [600000, 600000], talk: [agent.role] })
-    const label = ctx.text(710, agent.y - 19, `${agent.name} · 조회 중`, 11, '#fff4cc', 600)
-    label.setBackgroundColor('#182434').setPadding(4, 2)
+    const label = ctx.text(710, agent.y - 19, `${agent.name} · ${names[agent.id]}`, 10, '#e2eef4', 600)
+    label.setBackgroundColor('#283e49').setPadding(4, 2)
     return { agent, npc, label }
   })
-  /** 폴링은 상태 표시만 담당한다. 브라우저에서 업무를 실행하지 않는다. */
-  const load = async () => {
-    controller?.abort(); controller = new AbortController()
-    try {
-      const status = await request<{ enabled: boolean; jobs: Job[] }>('/agents', 'GET', undefined, controller.signal)
-      if (stopped) return
-      for (const { agent, npc, label } of employees) {
-        const candidates = status.jobs.filter(j => j.task === agent.id || (agent.id === 'REGISTER' && j.task === 'REPORT'))
-        const state = candidates.find(j => j.state === 'WORKING')?.state ?? candidates.find(j => j.state === 'FAILED' || j.state === 'UNAVAILABLE')?.state ?? candidates.at(-1)?.state ?? (status.enabled ? 'WAITING' : 'UNAVAILABLE')
-        npc.setWorkState(state); setLabel(label, 710, `${agent.name} · ${STATE[state] ?? state}`)
-      }
-    } catch { if (!stopped) for (const { agent, npc, label } of employees) { npc.setWorkState('UNKNOWN'); setLabel(label, 710, `${agent.name} · 상태 조회 실패`) } }
-  }
-  void load()
-  ctx.every(10000, 10000, () => { void load() })
   const update = (_time: number, delta: number) => { for (const e of employees) e.npc.update(delta) }
   ctx.scene.events.on('update', update)
   return {
     targets: () => employees.map(e => e.npc.target()),
     hint: target => target.id.startsWith('recruitment-') ? 'E · 담당 공고 보기' : undefined,
     intercept: target => { const employee = employees.find(e => e.npc.def.id === target.id); if (!employee) return false; ctx.options.openRecruitment?.(employee.agent.id); return true },
-    destroy: () => { stopped = true; controller?.abort(); ctx.stop(); ctx.scene.events.off('update', update); for (const e of employees) { e.npc.destroy(); e.label.destroy() } },
+    destroy: () => { ctx.scene.events.off('update', update); for (const e of employees) { e.npc.destroy(); e.label.destroy() } },
   }
 }

@@ -824,8 +824,8 @@
           "id": "service-qa",
           "kind": "work-board",
           "label": "QA 게시판",
-          "x": 120,
-          "y": 136,
+          "x": 190,
+          "y": 150,
           "width": 112,
           "height": 72,
           "range": 40
@@ -834,8 +834,8 @@
           "id": "service-maintenance",
           "kind": "work-board",
           "label": "유지보수 게시판",
-          "x": 120,
-          "y": 306,
+          "x": 190,
+          "y": 300,
           "width": 112,
           "height": 72,
           "range": 40
@@ -844,8 +844,8 @@
           "id": "service-operation",
           "kind": "work-board",
           "label": "운영업무 게시판",
-          "x": 120,
-          "y": 476,
+          "x": 190,
+          "y": 450,
           "width": 112,
           "height": 72,
           "range": 40
@@ -866,198 +866,198 @@
       "objects": [
         {
           "texture": "computer",
-          "x": 120,
-          "bottom": 172,
+          "x": 190,
+          "bottom": 186,
           "body": {
-            "x": 120,
-            "y": 136,
+            "x": 190,
+            "y": 150,
             "width": 112,
             "height": 72
           }
         },
         {
           "texture": "computer",
-          "x": 120,
-          "bottom": 342,
+          "x": 190,
+          "bottom": 336,
           "body": {
-            "x": 120,
-            "y": 306,
+            "x": 190,
+            "y": 300,
             "width": 112,
             "height": 72
           }
         },
         {
           "texture": "computer",
-          "x": 120,
-          "bottom": 512,
+          "x": 190,
+          "bottom": 486,
           "body": {
-            "x": 120,
-            "y": 476,
+            "x": 190,
+            "y": 450,
             "width": 112,
             "height": 72
           }
         },
         {
           "texture": "computer",
-          "x": 600,
-          "bottom": 172,
+          "x": 610,
+          "bottom": 186,
           "body": {
-            "x": 600,
-            "y": 136,
+            "x": 610,
+            "y": 150,
             "width": 112,
             "height": 72
           }
         },
         {
           "texture": "computer",
-          "x": 600,
-          "bottom": 342,
+          "x": 610,
+          "bottom": 336,
           "body": {
-            "x": 600,
-            "y": 306,
+            "x": 610,
+            "y": 300,
             "width": 112,
             "height": 72
           }
         },
         {
           "texture": "computer",
-          "x": 600,
-          "bottom": 512,
+          "x": 610,
+          "bottom": 486,
           "body": {
-            "x": 600,
-            "y": 476,
+            "x": 610,
+            "y": 450,
             "width": 112,
             "height": 72
           }
         },
         {
           "texture": "chair",
-          "x": 120,
-          "bottom": 214,
+          "x": 190,
+          "bottom": 228,
           "body": {
-            "x": 120,
-            "y": 202,
+            "x": 190,
+            "y": 216,
             "width": 28,
             "height": 24
           }
         },
         {
           "texture": "chair",
-          "x": 120,
-          "bottom": 384,
+          "x": 190,
+          "bottom": 378,
           "body": {
-            "x": 120,
-            "y": 372,
+            "x": 190,
+            "y": 366,
             "width": 28,
             "height": 24
           }
         },
         {
           "texture": "chair",
-          "x": 120,
-          "bottom": 554,
+          "x": 190,
+          "bottom": 528,
           "body": {
-            "x": 120,
-            "y": 542,
+            "x": 190,
+            "y": 516,
             "width": 28,
             "height": 24
           }
         },
         {
           "texture": "chair",
-          "x": 600,
-          "bottom": 214,
+          "x": 610,
+          "bottom": 228,
           "body": {
-            "x": 600,
-            "y": 202,
+            "x": 610,
+            "y": 216,
             "width": 28,
             "height": 24
           }
         },
         {
           "texture": "chair",
-          "x": 600,
-          "bottom": 384,
+          "x": 610,
+          "bottom": 378,
           "body": {
-            "x": 600,
-            "y": 372,
+            "x": 610,
+            "y": 366,
             "width": 28,
             "height": 24
           }
         },
         {
           "texture": "chair",
-          "x": 600,
-          "bottom": 554,
+          "x": 610,
+          "bottom": 528,
           "body": {
-            "x": 600,
-            "y": 542,
+            "x": 610,
+            "y": 516,
             "width": 28,
             "height": 24
           }
         },
         {
           "texture": "partition",
-          "x": 196,
-          "bottom": 176,
+          "x": 266,
+          "bottom": 190,
           "body": {
-            "x": 196,
-            "y": 126,
+            "x": 266,
+            "y": 140,
             "width": 10,
             "height": 100
           }
         },
         {
           "texture": "partition",
-          "x": 196,
-          "bottom": 346,
+          "x": 266,
+          "bottom": 340,
           "body": {
-            "x": 196,
-            "y": 296,
+            "x": 266,
+            "y": 290,
             "width": 10,
             "height": 100
           }
         },
         {
           "texture": "partition",
-          "x": 196,
-          "bottom": 516,
+          "x": 266,
+          "bottom": 490,
           "body": {
-            "x": 196,
-            "y": 466,
+            "x": 266,
+            "y": 440,
             "width": 10,
             "height": 100
           }
         },
         {
           "texture": "partition",
-          "x": 528,
-          "bottom": 176,
+          "x": 534,
+          "bottom": 190,
           "body": {
-            "x": 528,
-            "y": 126,
+            "x": 534,
+            "y": 140,
             "width": 10,
             "height": 100
           }
         },
         {
           "texture": "partition",
-          "x": 528,
-          "bottom": 346,
+          "x": 534,
+          "bottom": 340,
           "body": {
-            "x": 528,
-            "y": 296,
+            "x": 534,
+            "y": 290,
             "width": 10,
             "height": 100
           }
         },
         {
           "texture": "partition",
-          "x": 528,
-          "bottom": 516,
+          "x": 534,
+          "bottom": 490,
           "body": {
-            "x": 528,
-            "y": 466,
+            "x": 534,
+            "y": 440,
             "width": 10,
             "height": 100
           }
