@@ -1,3 +1,4 @@
+import { BOARD_PAGE_SIZE } from '../../boards/pagination.ts'
 import type { ResearchPage, ResearchRecord } from '../model/researchTypes'
 
 async function getJson<T>(path: string, signal: AbortSignal): Promise<T> {
@@ -9,7 +10,7 @@ async function getJson<T>(path: string, signal: AbortSignal): Promise<T> {
 }
 
 export function fetchResearchPage(signal: AbortSignal, offset = 0) {
-  return getJson<ResearchPage>(`/api/research-records?limit=10&offset=${offset}`, signal)
+  return getJson<ResearchPage>(`/api/research-records?limit=${BOARD_PAGE_SIZE}&offset=${offset}`, signal)
 }
 
 export function fetchResearchRecord(id: string, signal: AbortSignal) {

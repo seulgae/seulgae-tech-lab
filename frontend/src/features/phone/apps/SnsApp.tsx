@@ -1,3 +1,4 @@
+import { PagedList } from '../../boards/BoardPagination'
 import { useEffect, useState } from 'react'
 import { playSfx } from '../../../audio/AudioManager'
 import { SNS_CONTENT_MAX, deleteSns, fetchSns, writeSns } from '../phoneApi'
@@ -18,7 +19,7 @@ export function agoText(createdAt: string, now = Date.now()) {
  * 폰 SNS 앱: 연구원들이 올린 짧은 글(140자)을 최근순으로 보고, 글을 올리거나 내 글을 지운다.
  *
  * @author seulgae
- * @version 1.0, 폰 앱(SNS)
+ * @version 1.1, SNS 게시물을 5건씩 이전·다음 페이지로 표시
  * @see "None"
  * @param props canWrite: 로그인 회원이면 글쓰기 칸을 보여 준다
  * @returns SNS 화면
@@ -26,6 +27,7 @@ export function agoText(createdAt: string, now = Date.now()) {
 export default function SnsApp({ canWrite }: { canWrite: boolean }) {
   const [posts, setPosts] = useState<SnsPost[] | null>(null)
   const [content, setContent] = useState('')
+  const [posted, setPosted] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -36,7 +38,7 @@ export default function SnsApp({ canWrite }: { canWrite: boolean }) {
     setBusy(true)
     try {
       const post = await writeSns(content)
-      setPosts(list => [post, ...(list ?? [])])
+      setPosts(list => [post, ...(list ?? [])]); setPosted(value => value + 1)
       setContent(''); setError(null)
       playSfx('chat', { volume: 0.5 })
     } catch (cause) { setError(errorText(cause)) } finally { setBusy(false) }
@@ -60,15 +62,15 @@ export default function SnsApp({ canWrite }: { canWrite: boolean }) {
       )}
       {error && <p className="phone-error" role="alert">{error}</p>}
       {posts && posts.length === 0 && <p className="phone-muted">아직 글이 없어요. 첫 글을 남겨 봐요!</p>}
-      <ul className="sns-feed">
-        {posts?.map(post => (
+      <PagedList key={posted} items={posts ?? []} label="SNS 게시물">{visible => <ul className="sns-feed">
+        {visible.map(post => (
           <li key={post.id} className={post.mine ? 'mine' : ''}>
             <header><strong>{post.nickname}</strong><small>{agoText(post.createdAt)}</small>
               {post.mine && <button type="button" aria-label="내 글 지우기" onClick={() => void remove(post)}>지우기</button>}</header>
             <p>{post.content}</p>
           </li>
         ))}
-      </ul>
+      </ul>}</PagedList>
     </div>
   )
 }

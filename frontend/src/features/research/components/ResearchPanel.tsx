@@ -1,3 +1,5 @@
+import { BoardPagination } from '../../boards/BoardPagination'
+import { BOARD_PAGE_SIZE } from '../../boards/pagination'
 import { useEffect, useRef, useState } from 'react'
 import { fetchResearchPage, fetchResearchRecord } from '../api/researchApi'
 import type { ResearchPage, ResearchRecord } from '../model/researchTypes'
@@ -14,7 +16,7 @@ type Form = { kind: 'create'; title: string } | { kind: 'edit'; record: Research
  * 일지 제목은 다음 번호("연구 아이디어 일지 #N")로 미리 채우고 내용은 130자까지 받는다.
  *
  * @author seulgae
- * @version 1.2, 제목만 보이는 목록, 카카오 로그인 글쓰기와 내 글 관리
+ * @version 1.3, 연구 기록을 5건씩 이전·다음 페이지로 표시
  * @see "None"
  * @param props 패널 속성
  * @param props.onClose 패널 종료와 게임 입력 복구를 수행하는 콜백
@@ -45,7 +47,7 @@ export default function ResearchPanel({ onClose }: ResearchPanelProps) {
   useEffect(() => {
     const controller = new AbortController()
     fetchResearchPage(controller.signal, offset)
-      .then((data) => { if (!controller.signal.aborted) setPage(data) })
+      .then((data) => { if (!controller.signal.aborted) { if (data.items.length === 0 && offset > 0) { setOffset(Math.max(0, offset - BOARD_PAGE_SIZE)); return }; setPage(data) } })
       .catch(() => { if (!controller.signal.aborted) setError(true) })
       .finally(() => { if (!controller.signal.aborted) setLoading(false) })
     return () => controller.abort()
@@ -171,12 +173,8 @@ export default function ResearchPanel({ onClose }: ResearchPanelProps) {
                 {mine(record.id) && <span className="board-mine">내 일지</span>}</h3>
             </article>
           ))}
-          {!loading && !error && (offset > 0 || page.hasMore) && (
-            <nav className="research-pagination" aria-label="연구 기록 페이지">
-              <button type="button" disabled={offset === 0} onClick={() => changeOffset(Math.max(0, offset - 10))}>이전</button>
-              <button type="button" disabled={!page.hasMore || offset >= 10000} onClick={() => changeOffset(offset + 10)}>다음</button>
-            </nav>
-          )}
+          <BoardPagination label="연구 기록" page={offset / BOARD_PAGE_SIZE} hasNext={page.hasMore && offset < 10000} disabled={loading || error}
+            onChange={next => changeOffset(next * BOARD_PAGE_SIZE)} />
         </section>
       )}
       <p className="research-footer">ESC 또는 닫기 버튼으로 개발 연구실로 돌아갑니다. 목록의 제목을 누르면 내용을 볼 수 있어요.</p>
