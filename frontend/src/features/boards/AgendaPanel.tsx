@@ -1,3 +1,5 @@
+import { BoardPagination } from './BoardPagination'
+import { BOARD_PAGE_SIZE } from './pagination'
 import { useEffect, useRef, useState } from 'react'
 import EntryForm from './EntryForm'
 import {
@@ -13,7 +15,7 @@ type Mode = { kind: 'list' } | { kind: 'view'; agenda: Agenda } | { kind: 'creat
  * 회의실 화이트보드 안건 목록과 작성·수정·삭제. 제목은 칠판 한 줄에 맞춰 8자, 내용은 130자까지다.
  *
  * @author seulgae
- * @version 1.1, 제목만 보이는 목록·상세 보기, 카카오 로그인 글쓰기
+ * @version 1.2, 안건을 5건씩 이전·다음 페이지로 표시
  * @see "None"
  * @param props 닫기 콜백
  * @returns 안건 모달
@@ -22,7 +24,7 @@ export default function AgendaPanel({ onClose }: { onClose: () => void }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [items, setItems] = useState<Agenda[]>([])
   const [hasMore, setHasMore] = useState(false)
-  const [limit, setLimit] = useState(10)
+  const [offset, setOffset] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [mode, setMode] = useState<Mode>({ kind: 'list' })
@@ -37,15 +39,15 @@ export default function AgendaPanel({ onClose }: { onClose: () => void }) {
 
   useEffect(() => {
     const controller = new AbortController()
-    fetchAgendas(controller.signal, limit)
-      .then(page => { if (!controller.signal.aborted) { setItems(page.items); setHasMore(page.hasMore); setError(null) } })
+    fetchAgendas(controller.signal, BOARD_PAGE_SIZE, offset)
+      .then(page => { if (!controller.signal.aborted) { if (page.items.length === 0 && offset > 0) { setOffset(Math.max(0, offset - BOARD_PAGE_SIZE)); return }; setItems(page.items); setHasMore(page.hasMore); setError(null) } })
       .catch(() => { if (!controller.signal.aborted) setError('안건을 불러오지 못했어요.') })
       .finally(() => { if (!controller.signal.aborted) setLoading(false) })
     return () => controller.abort()
-  }, [limit, reload])
+  }, [offset, reload])
 
   /** 저장 후 목록·칠판을 함께 갱신한다. */
-  const changed = () => { setMode({ kind: 'list' }); setReload(n => n + 1); window.dispatchEvent(new Event(AGENDAS_CHANGED)); void authStore.refreshOwned() }
+  const changed = () => { setMode({ kind: 'list' }); setOffset(0); setLoading(true); setReload(n => n + 1); window.dispatchEvent(new Event(AGENDAS_CHANGED)); void authStore.refreshOwned() }
   const remove = async (agenda: Agenda) => {
     if (!window.confirm(`"${agenda.title}" 안건을 삭제할까요? 되돌릴 수 없어요.`)) return
     try { await deleteAgenda(agenda.id); changed() }
@@ -71,17 +73,18 @@ export default function AgendaPanel({ onClose }: { onClose: () => void }) {
               : <span className="board-login">글쓰기는 로그인 후 <a className="auth-kakao" href={LOGIN_URL}>카카오 로그인</a></span>}
           </div>
           {loading && <p role="status">안건을 불러오는 중…</p>}
-          {error && <p role="alert" className="board-error">{error}</p>}
+          {error && <p role="alert" className="board-error">{error} <button type="button" onClick={() => { setLoading(true); setError(null); setReload(n => n + 1) }}>다시 시도</button></p>}
           {!loading && !error && items.length === 0 && <p>아직 안건이 없어요. 첫 안건을 적어 보세요.</p>}
           {/* 목록에는 제목만 보이고, 누르면 내용을 연다. */}
-          {items.map(agenda => (
+          {!loading && !error && items.map(agenda => (
             <article className="research-entry" key={agenda.id}>
               <span className="research-status">{new Date(agenda.createdAt).toLocaleString('ko-KR')}{agenda.updatedAt ? ' · 수정됨' : ''}</span>
               <h3><button type="button" className="research-title" onClick={() => setMode({ kind: 'view', agenda })}>{agenda.title}</button>
                 {isMine(auth, 'agenda', agenda.id) && <span className="board-mine">내 안건</span>}</h3>
             </article>
           ))}
-          {hasMore && <nav className="research-pagination"><button type="button" onClick={() => setLimit(value => Math.min(50, value + 10))}>더 보기</button></nav>}
+          <BoardPagination label="회의 안건" page={offset / BOARD_PAGE_SIZE} hasNext={hasMore && offset < 10000} disabled={loading || !!error}
+            onChange={page => { setLoading(true); setError(null); setOffset(page * BOARD_PAGE_SIZE) }} />
         </section>
       ) : mode.kind === 'view' ? (
         <section>

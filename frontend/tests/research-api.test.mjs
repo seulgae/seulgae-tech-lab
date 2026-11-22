@@ -7,7 +7,7 @@ test('research API builds list/detail URLs, propagates abort signal and rejects 
   const signal = new AbortController().signal
   try {
     globalThis.fetch = async (url, options) => {
-      assert.equal(url, '/api/research-records?limit=10&offset=20')
+      assert.equal(url, '/api/research-records?limit=5&offset=20')
       assert.equal(options.signal, signal)
       return new Response(JSON.stringify({ items: [], hasMore: false }), { headers: { 'Content-Type': 'application/json' } })
     }

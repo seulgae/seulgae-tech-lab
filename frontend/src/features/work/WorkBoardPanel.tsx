@@ -1,3 +1,4 @@
+import { PagedList } from '../boards/BoardPagination'
 import { useEffect, useRef, useState } from 'react'
 import { BoardError } from '../boards/boardsApi'
 import { LOGIN_URL, canWrite, useAuth } from '../auth/authStore'
@@ -20,7 +21,7 @@ const date = (value: string) => new Date(value).toLocaleString('ko-KR', { month:
  * "처리할 차례인 QA 티켓"으로 나눠 보여 준다.
  *
  * @author seulgae
- * @version 1.0, 사무실 업무 게시판
+ * @version 1.1, 처리 대기와 업무 기록을 각각 5건씩 표시
  * @see "None"
  * @param props 게시판 종류와 닫기 콜백
  * @returns 업무 게시판 모달
@@ -140,26 +141,26 @@ export default function WorkBoardPanel({ board, onClose }: { board: WorkBoard; o
             <section aria-label={text.inbox}>
               <h3 className="work-heading">{text.inbox} <span>{view?.inbox.length ?? 0}</span></h3>
               {view && view.inbox.length === 0 && <p className="work-empty">처리할 티켓이 없어요.</p>}
-              <ul className="work-list">
-                {view?.inbox.map(item => (
+              <PagedList key={`${board}-${reload}-inbox`} items={view?.inbox ?? []} label={text.inbox}>{visible => <ul className="work-list">
+                {visible.map(item => (
                   <li key={item.id}><button type="button" onClick={() => void open(item.id)}>
                     <span className="work-badge">{status(item)}</span> {item.title} <small>{date(item.createdAt)}</small>
                   </button></li>
                 ))}
-              </ul>
+              </ul>}</PagedList>
             </section>
           )}
           <section aria-label={text.entries}>
             <h3 className="work-heading">{text.entries} <span>{view?.entries.length ?? 0}</span></h3>
             {!view && !error && <p role="status">불러오는 중…</p>}
             {view && view.entries.length === 0 && <p className="work-empty">아직 기록이 없어요.</p>}
-            <ul className="work-list">
-              {view?.entries.map(item => (
+            <PagedList key={`${board}-${reload}-entries`} items={view?.entries ?? []} label={text.entries}>{visible => <ul className="work-list">
+              {visible.map(item => (
                 <li key={item.id}><button type="button" onClick={() => void open(item.id)}>
                   <span className="work-badge">{status(item)}</span> {item.title} <small>{date(item.createdAt)}</small>
                 </button></li>
               ))}
-            </ul>
+            </ul>}</PagedList>
           </section>
         </>
       )}

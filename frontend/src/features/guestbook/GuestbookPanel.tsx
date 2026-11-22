@@ -1,3 +1,4 @@
+import { PagedList } from '../boards/BoardPagination'
 import { useEffect, useRef, useState } from 'react'
 import { BoardError } from '../boards/boardsApi'
 import { LOGIN_URL, canWrite, useAuth } from '../auth/authStore'
@@ -13,7 +14,7 @@ const date = (value: string) => new Date(value).toLocaleString('ko-KR', { month:
  * 로비 컴퓨터의 방명록. 들어오는 사람이 짧은 인사(제목 8자, 내용 130자)를 남긴다.
  *
  * @author seulgae
- * @version 1.0, 로비 방명록
+ * @version 1.1, 방명록을 5건씩 이전·다음 페이지로 표시
  * @see "None"
  * @param props 닫기 콜백
  * @returns 방명록 모달
@@ -77,15 +78,15 @@ export default function GuestbookPanel({ onClose }: { onClose: () => void }) {
       <section aria-label="방명록 목록">
         {!entries && !message && <p role="status">불러오는 중…</p>}
         {entries && entries.length === 0 && <p className="guestbook-empty">아직 인사가 없어요. 첫 인사를 남겨 주세요.</p>}
-        <ul className="guestbook-list">
-          {entries?.map(entry => (
+        <PagedList key={reload} items={entries ?? []} label="방명록">{visible => <ul className="guestbook-list">
+          {visible.map(entry => (
             <li key={entry.id}>
               <strong>{entry.title}</strong>
               <p>{entry.content}</p>
               <small>{entry.author ?? '손님'} · {date(entry.createdAt)}</small>
             </li>
           ))}
-        </ul>
+        </ul>}</PagedList>
       </section>
       <p className="research-footer">ESC 또는 닫기 버튼으로 돌아갑니다. 연구 아이디어는 개발 연구실 슈퍼컴퓨터에서 볼 수 있어요.</p>
     </dialog>

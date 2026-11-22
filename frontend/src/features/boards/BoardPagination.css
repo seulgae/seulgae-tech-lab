@@ -1,0 +1,2 @@
+.board-pagination { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 16px; }
+.board-pagination > span { white-space: nowrap; font-size: 13px; }
