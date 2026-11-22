@@ -234,7 +234,7 @@ test('터치 E는 범위 밖에서 예약되지 않고 패널 동안 재실행�
 })
 
 test('모든 방에 스폰과 겹치지 않는 상호작용이 있고 위치별로 하나만 고른다', () => {
-  const kinds = new Set(['research', 'guestbook', 'build-info', 'server-status', 'table-talk', 'agenda', 'admin-console', 'admin-apply', 'fishing', 'work-board', 'arcade'])
+  const kinds = new Set(['vending-machine', 'water-dispenser', 'research', 'guestbook', 'build-info', 'server-status', 'table-talk', 'agenda', 'admin-console', 'admin-apply', 'fishing', 'work-board', 'arcade'])
   for (const [id, room] of Object.entries(ROOMS)) {
     // 2·4번은 아직 빈 사무실이라 상호작용이 없다.
     if (id !== 'office-2' && id !== 'office-4') assert.ok(room.interactions.length > 0, id)
@@ -423,7 +423,7 @@ test('책장 E는 책이 날아오는 연출 뒤 책 읽기 창을 연다', () =
   const { scene, uiEvents, key, state, runDelayed } = createScene('lobby')
   const opened = []
   uiEvents.on(LAB_EVENTS.openPanel, value => opened.push(value))
-  scene.player.x = 168; scene.player.y = 245
+  scene.player.x = 632; scene.player.y = 230
   scene.update()
   assert.equal(scene.interactionHint.text, 'E · 책 꺼내 보기')
   key._justDown = true; scene.update()
@@ -565,4 +565,24 @@ test('관리자실 문: 관리자가 아니면 열지 않고 안내만 하며, �
   scene.time.now += 3000
   key._justDown = true; scene.update()
   assert.deepEqual(changes, [door.id])
+})
+
+
+test('왼쪽 자판기는 E로 구매 창을 열고 사무실 정수기는 방 연출에 전달된다', () => {
+  const lobby = createScene('lobby'), opened = []
+  lobby.uiEvents.on(LAB_EVENTS.openPanel, value => opened.push(value))
+  lobby.scene.player.x = 168; lobby.scene.player.y = 245
+  lobby.scene.update()
+  assert.equal(lobby.scene.interactionHint.text, 'E · 음료 자판기')
+  lobby.key._justDown = true; lobby.scene.update()
+  assert.deepEqual(opened, ['vending-machine'])
+  assert.equal(lobby.scene.player.movementEnabled, false)
+  const office = createScene('office-1')
+  office.state.fx.intercepting = true
+  office.scene.player.x = 60; office.scene.player.y = 225
+  office.scene.update()
+  assert.equal(office.scene.interactionHint.text, 'E · 정수기 · 물 마시기')
+  office.key._justDown = true; office.scene.update()
+  assert.deepEqual(office.state.fx.calls.at(-1), ['intercept', 'water-dispenser'])
+  assert.equal(office.scene.player.movementEnabled, true)
 })

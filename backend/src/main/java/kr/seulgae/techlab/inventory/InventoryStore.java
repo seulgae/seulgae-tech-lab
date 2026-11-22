@@ -9,7 +9,7 @@ import java.util.UUID;
  * 인벤토리 저장소(V5 lab.inventories, lab.coin_events, lab.items). 운영은 PostgreSQL, 로컬·테스트는 메모리 구현을 쓴다.
  *
  * @author seulgae
- * @version 1.0, 인벤토리(일지 #7)
+ * @version 1.1, 구매 시 회복 상태 잠금
  * @see "None"
  */
 public interface InventoryStore {
@@ -24,6 +24,11 @@ public interface InventoryStore {
 
     int coins(UUID member);
     Vitals vitals(UUID member);
+    /** 구매 트랜잭션이 끝날 때까지 회복 상태를 잠근다. 메모리 구현은 단일 테스트용이다.
+     * @param member 구매 회원
+     * @return 잠금 후 최신 회복 상태
+     */
+    default Vitals lockVitals(UUID member) { return vitals(member); }
     /**
      * HP·피로도를 더하거나 뺀다. 더할 때는 최대치에서 멈추고, 빼서 0보다 작아지면 빈 값을 돌려준다(아무것도 바꾸지 않음).
      */

@@ -84,3 +84,13 @@ test('포장마차 자리는 NPC가 지나가지 않고, 낚시꾼은 데크 낚
   const dx = Math.max(Math.abs(612 - reach.x) - reach.width / 2, 0), dy = Math.max(Math.abs(470 - reach.y) - reach.height / 2, 0)
   assert.ok(Math.hypot(dx, dy) > 22)
 })
+
+
+test('로비 경비는 입구 안쪽을 순찰하며 방명록을 안내하고 이동 직원은 더 빠르게 걷는다', async () => {
+  const guard=LOBBY_NPCS.find(npc=>npc.kind==='guard')
+  assert.ok(guard && guard.fixed && guard.path.length >= 4)
+  assert.ok(guard.talk.some(line=>line.includes('방명록')) && guard.mutter.some(line=>line.includes('방명록')))
+  assert.ok(LOBBY_NPCS.every(npc=>npc.speed >= 50))
+  const { OFFICE_STAFF }=await import('../src/game/rooms/officeStaffData.ts')
+  assert.ok(OFFICE_STAFF.every(npc=>npc.speed >= 50))
+})

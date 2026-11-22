@@ -108,20 +108,21 @@ function lobbyFx(ctx: Context): RoomHandlers {
     }
     known = new Set(players.map(player => player.id))
   } })
+  ctx.text(168, 85, '음료 자판기', 10, '#ffdfad', 224, true)
   const treats = treatTable(ctx)
-  // 로비를 오가며 청소하고 궁시렁거리는 아주머니
-  const cleaner = townsfolk(ctx, LOBBY_NPCS)
+  // 로비를 청소하는 직원과 방명록 작성을 안내하며 순찰하는 경비 아저씨
+  const staff = townsfolk(ctx, LOBBY_NPCS)
   return {
-    targets: cleaner.targets,
-    hint: cleaner.hint,
+    targets: staff.targets,
+    hint: staff.hint,
     intercept: target => {
-      if (cleaner.intercept(target)) return true
+      if (staff.intercept(target)) return true
       if (target.kind === 'coffee' || target.kind === 'cake') { treats.buy(target.kind); return true }
       // 책장은 책이 날아오는 연출만 하고, 책 읽기 창은 Scene이 연다.
       if (target.kind === 'bookshelf') treats.pullBook(target)
       return false
     },
-    destroy: () => { ctx.stop(); unsubscribe(); cleaner.destroy() },
+    destroy: () => { ctx.stop(); unsubscribe(); staff.destroy() },
   }
 }
 
@@ -449,13 +450,25 @@ function treatTable(ctx: Context) {
 /** 개인 사무실: 방 테마 색의 책상 조명과 벽시계(세부 연출은 추후) */
 function officeFx(ctx: Context): RoomHandlers {
   if (ctx.options.room === 'office-1') {
+    let lastDrink = -Infinity
+    /** 정수기는 무료 휴식 연출만 제공하며 동전·회복 수치를 바꾸지 않는다. */
+    const drinkWater = (target: RoomInteraction) => {
+      if (target.kind !== 'water-dispenser') return false
+      if (ctx.scene.time.now - lastDrink < 1800) return true
+      lastDrink = ctx.scene.time.now
+      playSfx('notify', { volume: 0.3 })
+      ctx.banner.show('정수기에서 시원한 물 한 잔! · 무료', '#a9d8ff')
+      const cup = ctx.text(target.x + 24, target.y - 30, '물 한 잔', 10, '#a9d8ff', 950, true)
+      ctx.scene.tweens.add({ targets: cup, y: cup.y - 20, alpha: 0, duration: 1500, onComplete: () => cup.destroy() })
+      return true
+    }
     skyWindows(ctx, 'office-window', [190, 610])
     wallClock(ctx, 400, '#4c6270', '#4e879d')
     const staff = officeLifeFx(ctx), recruitment = recruitmentRoomFx(ctx)
     return {
       targets: () => [...(staff.targets?.() ?? []), ...(recruitment.targets?.() ?? [])],
       hint: target => recruitment.hint?.(target) ?? staff.hint?.(target),
-      intercept: target => recruitment.intercept?.(target) || staff.intercept?.(target) || false,
+      intercept: target => drinkWater(target) || recruitment.intercept?.(target) || staff.intercept?.(target) || false,
       destroy: () => { staff.destroy?.(); recruitment.destroy?.(); ctx.stop() },
     }
   }

@@ -2,7 +2,7 @@
  * 화면에만 사는 NPC들. 정해진 길(장애물을 피해 그린 순환 경로)을 천천히 오가며, E로 말을 걸면 한마디 한다.
  * 바깥 시민 셋은 지친 직장인을 위로하고, 로비 청소 아주머니는 돌아다니며 궁시렁거린다.
  */
-export type NpcKind = 'woman' | 'man' | 'elder' | 'cleaner' | 'kid-boy' | 'kid-girl' | 'fisher' | 'professor' | 'researcher-woman' | 'researcher-man' | 'researcher-silver' | 'researcher-curly' | 'researcher-bob' | 'researcher-red'
+export type NpcKind = 'woman' | 'man' | 'elder' | 'cleaner' | 'guard' | 'kid-boy' | 'kid-girl' | 'fisher' | 'professor' | 'researcher-woman' | 'researcher-man' | 'researcher-silver' | 'researcher-curly' | 'researcher-bob' | 'researcher-red'
 /** 연구원 픽셀 외형: 기존 시민·박사 외형과 독립된 가운 직원 변형이다. */
 export const RESEARCHER_STYLES = [
   { kind: 'researcher-woman', hair: '#8a5a3c', skin: '#f3c9a8', shirt: '#f7d4dd', badge: '#e05a6c', style: 'long', glasses: false },
@@ -119,7 +119,7 @@ export const LOBBY_NPCS: readonly NpcDef[] = [
   {
     id: 'npc-cleaner', kind: 'cleaner', name: '청소 아주머니',
     path: [{ x: 240, y: 300 }, { x: 400, y: 280 }, { x: 520, y: 300 }, { x: 520, y: 460 }, { x: 400, y: 480 }, { x: 250, y: 460 }],
-    speed: 30, pause: [2500, 5500],
+    speed: 50, pause: [1200, 2600],
     talk: [
       '어머 연구원님, 오늘도 수고 많아요~',
       '바닥 미끄러우니까 조심해요!',
@@ -135,6 +135,24 @@ export const LOBBY_NPCS: readonly NpcDef[] = [
       '궁시렁궁시렁… 아무도 안 듣지?',
     ],
   },
+  {
+    id: 'npc-lobby-guard', kind: 'guard', name: '경비 아저씨', fixed: true,
+    // 출입문과 방명록 컴퓨터는 비우고 입구 안쪽을 순찰한다.
+    path: [{ x: 300, y: 420 }, { x: 470, y: 420 }, { x: 470, y: 500 }, { x: 300, y: 500 }],
+    speed: 58, pause: [1200, 2200],
+    talk: [
+      '왔으면 방명록 좀 작성해 주세요!!',
+      '오른쪽 컴퓨터가 방명록이에요. 이름 남기셨죠?',
+      '뛰지 말고요! 방명록은 꼭 쓰고 가세요.',
+    ],
+    mutter: [
+      '왔으면 방명록 좀 작성해 주세요!!',
+      '방명록 안 쓰고 슬쩍 들어가면 다 보여요~',
+      '연구원님, 방문 기록은 남기고 가셔야죠!',
+      '오른쪽 컴퓨터에서 방명록 작성 부탁해요!',
+    ],
+  },
+
 ]
 
 export const DEV_LAB_NPCS: readonly NpcDef[] = [

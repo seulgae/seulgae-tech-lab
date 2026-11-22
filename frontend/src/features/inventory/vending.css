@@ -1,0 +1,10 @@
+.vending-panel { max-width: 480px; }
+.vending-drinks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 8px 20px 20px; }
+.vending-drink { --drink-color: #a8323f; display: flex; align-items: center; flex-direction: column; gap: 8px; padding: 18px 8px; border: 1px solid #476377; border-radius: 12px; background: #142333; color: #f3f7fa; cursor: pointer; font: inherit; }
+.vending-drink:hover:enabled, .vending-drink:focus-visible { outline: 2px solid #a8d4d1; outline-offset: 2px; background: #20374b; }
+.vending-drink:disabled { opacity: .55; cursor: default; }
+.vending-cider { --drink-color: #268c67; }
+.vending-fanta { --drink-color: #d97b29; }
+.vending-water { --drink-color: #397db6; }
+.vending-can { display: grid; place-items: center; width: 32px; height: 45px; border-top: 4px solid #c8d8dd; border-bottom: 4px solid #c8d8dd; border-radius: 6px; background: var(--drink-color); color: white; font-size: 11px; font-weight: bold; }
+.vending-drink small { color: #b9d8e3; }

@@ -13,7 +13,7 @@ import org.springframework.stereotype.Repository;
  * PostgreSQL 인벤토리 저장소. 잔액 변경은 "잔액 + 변동 ≥ 0"을 조건으로 한 번의 UPDATE로 처리해 동시 요청에도 음수가 되지 않는다.
  *
  * @author seulgae
- * @version 1.0, 인벤토리(일지 #7)
+ * @version 1.1, 구매 행 잠금으로 동시 중복 차감 방지
  * @see "None"
  */
 @Repository
@@ -30,6 +30,16 @@ public class JdbcInventoryStore implements InventoryStore {
     @Override public Vitals vitals(UUID member) {
         return jdbc.sql("SELECT hp, hp_max, fatigue, fatigue_max FROM lab.inventories WHERE member_id = :m").param("m", member)
             .query((rs, row) -> vitals(rs)).optional().orElse(new Vitals(50, 50, 50, 50));
+    }
+
+    /** 구매 전 회원 행을 잠가 동시에 가득 찬 음료를 결제하지 않도록 한다.
+     * @param member 구매 회원
+     * @return 잠금 후 최신 회복 상태
+     */
+    @Override public Vitals lockVitals(UUID member) {
+        jdbc.sql("INSERT INTO lab.inventories (member_id, coins) VALUES (:m, 0) ON CONFLICT (member_id) DO NOTHING").param("m", member).update();
+        return jdbc.sql("SELECT hp, hp_max, fatigue, fatigue_max FROM lab.inventories WHERE member_id = :m FOR UPDATE")
+            .param("m", member).query((rs, row) -> vitals(rs)).single();
     }
 
     @Override public Optional<Vitals> changeVitals(UUID member, int hp, int fatigue) {

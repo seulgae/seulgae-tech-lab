@@ -74,6 +74,29 @@ export function createPixelAssets(scene: Phaser.Scene) {
     }
     p('#17292f', 5, 54, 22, 2)
   })
+  // 책장과 같은 크기의 자판기. 진열창의 네 색으로 음료 종류를 구분한다.
+  texture(scene, 'vending-machine', 32, 64, p => {
+    p('#9b9989', 2, 60, 28, 3); p(ink, 1, 0, 30, 60)
+    p('#963e48', 3, 2, 26, 56); p('#d46b66', 4, 3, 24, 3)
+    p('#d7e8d5', 5, 8, 22, 6); p('#263e48', 5, 17, 16, 28)
+    p('#456873', 6, 18, 14, 25)
+    const colors = ['#d05257', '#55b687', '#f2a544', '#7fc9ed']
+    colors.forEach((color, i) => {
+      const x = 7 + i % 2 * 7, y = 20 + Math.floor(i / 2) * 12
+      p('#d8e2de', x, y, 5, 1); p(color, x, y + 1, 5, 7); p('#f2ecd4', x + 1, y + 3, 3, 2)
+      p('#c3d2c8', 22, y + i % 2 * 4, 3, 2)
+    })
+    p('#e1c37d', 23, 42, 2, 3); p(ink, 6, 49, 19, 7); p('#4b5860', 8, 50, 15, 3)
+    p(ink, 4, 59, 4, 3); p(ink, 24, 59, 4, 3)
+  })
+  texture(scene, 'water-dispenser', 24, 48, p => {
+    p('#83bed7', 6, 1, 12, 16); p('#b9e5e7', 8, 2, 5, 13)
+    p('#527b9b', 8, 16, 8, 3); p(ink, 3, 19, 18, 27)
+    p('#e0e7e3', 4, 20, 16, 24); p('#b5c8ce', 16, 21, 3, 21)
+    p('#486374', 6, 24, 12, 11); p('#6ab6dd', 7, 25, 3, 3); p('#dd8379', 14, 25, 3, 3)
+    p('#e6f0e6', 10, 29, 4, 5); p('#819aa3', 6, 36, 12, 2)
+    p(ink, 5, 45, 3, 2); p(ink, 16, 45, 3, 2)
+  })
   texture(scene, 'equipment', 56, 48, (p) => {
     p('#aaa18c', 3, 44, 50, 3); p(ink, 1, 20, 54, 24)
     p('#68978e', 3, 23, 50, 20); p('#94bbb0', 2, 20, 52, 4)
@@ -106,6 +129,7 @@ export function createPixelAssets(scene: Phaser.Scene) {
   professor(scene)
   labStaff(scene)
   seatedStaff(scene)
+  securityGuard(scene)
   // 관리자실 앞 작은 관리자 신청 컴퓨터(10×8, 2배로 그린다)
   texture(scene, 'mini-terminal', 10, 8, (p) => {
     p(ink, 0, 0, 10, 6); p('#1f3a3f', 1, 1, 8, 4); p('#39e6b4', 2, 2, 4, 1); p('#e7c66f', 2, 3, 6, 1)
@@ -302,6 +326,28 @@ function seatedStaff(scene: Phaser.Scene) {
         if (professor) { p(hair, 2, 3, 2, 4); p(hair, 12, 3, 2, 4); p(hair, 3, 1, 3, 2); p(hair, 10, 1, 3, 2) }
       })
     }
+  }
+}
+
+/** 남색 제복·챙모자·금빛 명찰을 착용한 로비 경비 아저씨, 걷기 두 프레임. */
+function securityGuard(scene: Phaser.Scene) {
+  for (const frame of [0, 1]) {
+    texture(scene, `npc-guard-${frame}`, 16, 24, p => {
+      const left = frame ? 1 : 0, right = frame ? 0 : 1
+      p('#182b46', 5, 16, 2, 6 - left); p('#182b46', 9, 16, 2, 6 - right)
+      p('#111820', 4, 22 - left, 3, 2); p('#111820', 9, 22 - right, 3, 2)
+      p(ink, 3, 9, 10, 8); p('#243e66', 4, 9, 8, 7)
+      p('#304e7a', 2, 10 + left, 2, 4); p('#304e7a', 12, 10 + right, 2, 4)
+      p('#d9ad8c', 2, 14 + left, 2, 1); p('#d9ad8c', 12, 14 + right, 2, 1)
+      p('#99aec9', 4, 9, 3, 1); p('#99aec9', 9, 9, 3, 1)
+      p('#142238', 7, 10, 2, 5); p('#e4c16e', 10, 11, 2, 2)
+      p('#111820', 4, 16, 8, 1); p('#bfaa72', 7, 16, 2, 1)
+      p(ink, 4, 2, 8, 8); p('#e1b795', 5, 3, 6, 6)
+      p('#9aa4ab', 4, 4, 1, 3); p('#9aa4ab', 11, 4, 1, 3)
+      p(ink, 6, 6, 1, 1); p(ink, 9, 6, 1, 1); p('#665048', 6, 8, 4, 1)
+      p('#142b4b', 3, 1, 10, 3); p('#304e7a', 4, 0, 8, 2)
+      p('#101f35', 3, 4, 11, 1); p('#e4c16e', 7, 2, 2, 1)
+    })
   }
 }
 
