@@ -246,6 +246,13 @@ V4와 같은 3단계다. 확장 PR의 릴리스는 `db_schema` **4..5**, 기능 
 - `lab.members.level`(1 일반, 2 운영자, 3 관리자, 기본 1) 열과 `lab.level_requests`(등급 신청) 테이블, 공통코드 `REQUEST_STATUS`를 추가한다.
 - 상수 기본값 열 추가라 기존 회원 행은 다시 쓰지 않는다(모두 1).
 
+### V11 마이그레이션 (폰 앱: 할 일·SNS·송금, 2026-11-22)
+
+같은 3단계다. 확장 PR의 릴리스는 `db_schema` **10..11**, 기능 PR은 **11..11**이다.
+- 새 테이블 `lab.todos`(캘린더 할 일), `lab.sns_posts`(SNS 글, 140자)를 만든다.
+- `lab.coin_events`에 `counterpart_id`(송금 상대, 기본값 없는 nullable 열)와 최근순 인덱스를 추가하고, 공통코드 `COIN_REASON/TRANSFER_OUT·TRANSFER_IN`을 넣는다.
+- 기존 행은 다시 쓰지 않는다. V10 앱은 새 열·테이블을 쓰지 않는다.
+
 ## 관리자실 쿼리 콘솔 (2026-11-18)
 
 게임 속 관리자실(`control-room`) 슈퍼컴퓨터에서 운영 DB에 SQL을 직접 실행한다.
