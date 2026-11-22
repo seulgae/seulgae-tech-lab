@@ -72,14 +72,14 @@ export const ROOM_THEMES: Record<RoomId, RoomTheme> = {
     notes: { title: '관리자만\n들어올 수 있어요.', body: '운영 DB를 직접\n살피는 곳입니다.', missionTitle: '쿼리 콘솔', mission: '가운데 슈퍼컴퓨터에서 E를 누르면 쿼리 콘솔이 열려요. 왼쪽 테이블 이름을 누르면 조회 쿼리가 들어가고, 바꾸는 쿼리는 실행 전에 한 번 더 확인해요.' },
   },
   'office-1': {
-    mood: '가운데 카펫 통로 양옆으로 파티션을 나눈 책상 여섯 개가 늘어선 서비스 연구실',
-    camera: '#1d1914', light: '#ffe9c4',
-    floor: { base: '#c9a77c', baseLine: '#b08d63', alt: '#d2b088', altLine: '#b8966c', accent: '#5a6f8c', accentLine: '#4b5f7a', accentDetail: '#8fa6c4' },
-    wall: { upper: '#efe8dc', upperLight: '#faf5ec', lower: '#7a5a3e', lowerDark: '#5a3f2a', trim: '#c4a57a', detail: '#9c7a55', side: '#7a5a3e', bottom: '#5a3f2a' },
+    mood: '창문과 회색 사무용 타일, 좌우 대칭 책상 사이로 연구원들이 오가는 사무실',
+    camera: '#333d45', light: '#edf5ff',
+    floor: { base: '#c0c7cc', baseLine: '#aab3ba', alt: '#c7cdd1', altLine: '#b0b9bf', accent: '#c0c7cc', accentLine: '#aab3ba', accentDetail: '#c7cdd1' },
+    wall: { upper: '#e4eaed', upperLight: '#f6f8fa', lower: '#73828c', lowerDark: '#52616b', trim: '#a5b6bf', detail: '#879da9', side: '#73828c', bottom: '#52616b' },
     door: { frame: '#5a3f2a', frameLight: '#c4a57a', panel: '#9c7a55', panelLight: '#b8936a', handle: '#e7d29a', sign: '#5a6f8c' },
     page: { background: '#1b1814', card: '#28221b', border: '#5c4d3b', accent: '#e8c48a', muted: '#c8b89f' },
-    textures: { computer: 'dev-desk', chair: 'office-chair', rack: 'bookshelf', equipment: 'workbench', plant: 'tall-plant' },
-    notes: { title: '서비스 연구실', body: 'QA부터 운영까지\n한 방에서 이어져요.', missionTitle: 'QA → 유지보수 → 운영', mission: '왼쪽 열 맨 위 컴퓨터에 QA를 등록하면 가운데 유지보수 컴퓨터로, 조치가 끝나면 맨 아래 운영업무 컴퓨터로 넘어가요. 글 하나에 동전 10원! 오른쪽 열의 서치·체크·로그를 클릭하면 채용 업무 현황을 볼 수 있어요.' },
+    textures: { computer: 'office-desk', chair: 'office-chair', rack: 'bookshelf', equipment: 'workbench', plant: 'tall-plant' },
+    notes: { title: '서비스 연구실', body: 'QA부터 운영까지\n한 방에서 이어져요.', missionTitle: 'QA → 유지보수 → 운영', mission: '왼쪽 열 맨 위 컴퓨터에 QA를 등록하면 가운데 유지보수 컴퓨터로, 조치가 끝나면 맨 아래 운영업무 컴퓨터로 넘어가요. 글 하나에 동전 10원! 오른쪽 열의 서치·체크·로그 가까이에서 E를 누르면 각자의 채용 업무 화면을 볼 수 있어요. 통로의 연구원에게 E로 말을 걸어 보세요.' },
   },
   'office-2': {
     mood: '무엇이 들어올지 아직 정하지 않은 하얀 빈 방',
@@ -159,9 +159,8 @@ export function floorData(roomId: RoomId): number[][] {
       return (row * 7 + column * 3) % 5 === 0 ? 1 : 0
     }
     if (roomId === 'office-1') {
-      // 서비스 연구실: 양쪽 책상 열 사이(문까지) 이어지는 파란 카펫 통로
-      if (column >= 6 && column <= 16 && row >= 2 && row <= 16) return 2
-      return (column + (row >> 1)) % 2
+      // 카펫 없이 같은 계열의 회색 사무용 타일을 엇갈려 깐다.
+      return (row + column) % 5 === 0 ? 1 : 0
     }
     // 회의실: 테이블 주변 카펫과 엇갈린 원목 마루
     if (row >= 4 && row <= 14 && column >= 8 && column <= 16) return 2

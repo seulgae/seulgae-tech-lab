@@ -13,16 +13,16 @@ test('서비스 연구실은 좌우 두 열에 책상 셋씩(책상마다 의자
   assert.equal(desks.length, 6); assert.equal(chairs.length, 6, '아래 줄 책상에도 의자')
   for (const desk of desks) assert.ok(chairs.some(chair => chair.x === desk.x && chair.bottom > desk.bottom && chair.bottom - desk.bottom < 60), `책상 (${desk.x}, ${desk.bottom}) 아래 의자`)
   assert.ok(objects.every(object => object.body.y + object.body.height / 2 <= 576), '아래 벽(576) 안쪽')
-  // 카펫(x 192~544) 안쪽 통로는 비워 둔다: 파티션은 카펫 가장자리에 붙어 선다.
-  assert.ok(objects.every(object => object.body.x + object.body.width / 2 <= 202 || object.body.x - object.body.width / 2 >= 522), '가운데 카펫 통로(문 앞)는 비워 둔다')
+  // 좌우 작업석 사이 중앙 통로(x 280~520)는 비워 둔다.
+  assert.ok(objects.every(object => object.body.x + object.body.width / 2 <= 280 || object.body.x - object.body.width / 2 >= 520), '가운데 직원 통로와 문 앞은 비워 둔다')
   const partitions = objects.filter(object => object.texture === 'partition')
   assert.equal(partitions.length, 6, '책상마다 통로 쪽 파티션')
   for (const partition of partitions) assert.ok(chairs.every(chair => partition.body.y + partition.body.height / 2 < chair.body.y - chair.body.height / 2 || partition.body.y - partition.body.height / 2 > chair.body.y + chair.body.height / 2 || Math.abs(partition.x - chair.x) > 40), '의자 줄은 통로에서 들어갈 수 있게 열어 둔다')
   assert.equal(ROOMS['office-1'].name, '서비스 연구실')
   assert.deepEqual(WORK_BOARDS, { 'service-qa': 'QA', 'service-maintenance': 'MAINTENANCE', 'service-operation': 'OPERATION' })
   // 왼쪽 열 위에서부터 QA·유지보수·운영(책상 바로 아래 의자 옆에 서면 잡힌다)
-  for (const [y, id] of [[200, 'service-qa'], [370, 'service-maintenance'], [540, 'service-operation']]) {
-    const target = nearestInteraction('office-1', 160, y)
+  for (const [y, id] of [[210, 'service-qa'], [360, 'service-maintenance'], [510, 'service-operation']]) {
+    const target = nearestInteraction('office-1', 145, y)
     assert.equal(target?.kind, 'work-board'); assert.equal(target?.id, id, '컴퓨터마다 자기 게시판')
   }
   assert.equal(ROOMS['office-2'].name, '뭘 만들까')

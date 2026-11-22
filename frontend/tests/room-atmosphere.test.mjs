@@ -25,7 +25,8 @@ test('방별 바닥은 25×19로 화면을 덮고, 강조 타일이 각 방의 �
     const data = floorData(id)
     assert.equal(data.length, 19)
     for (const row of data) { assert.equal(row.length, 25); assert.ok(row.every(i => i >= 0 && i < 3)) }
-    assert.ok(data.flat().includes(2), `${id}: 강조 타일`)
+    if (id === 'office-1') assert.equal(data.flat().includes(2), false, '사무실에는 카펫을 깔지 않는다')
+    else assert.ok(data.flat().includes(2), `${id}: 강조 타일`)
   }
   // 로비 레드 카펫은 정문(아래 중앙)부터 안내 데스크 앞까지 이어진다.
   const lobby = floorData('lobby')

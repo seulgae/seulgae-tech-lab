@@ -1,3 +1,4 @@
+import { RESEARCHER_STYLES } from '../npc/npcData.ts'
 import type Phaser from 'phaser'
 
 export type Paint = (color: string, x: number, y: number, width: number, height: number) => void
@@ -242,9 +243,9 @@ function professor(scene: Phaser.Scene) {
  * 둘 다 흰 가운과 짙은 바지, 16×24, 걷기 두 프레임
  */
 function labStaff(scene: Phaser.Scene) {
-  for (const kind of ['researcher-woman', 'researcher-man'] as const) {
-    const woman = kind === 'researcher-woman'
-    const skin = woman ? '#f3c9a8' : '#e8b98f', hair = woman ? '#8a5a3c' : '#1f1a18'
+  for (const appearance of RESEARCHER_STYLES) {
+    const { kind, skin, hair } = appearance
+    const woman = appearance.style === 'long' || appearance.style === 'bob'
     for (const frame of [0, 1]) {
       texture(scene, `npc-${kind}-${frame}`, 16, 24, (p) => {
         const left = frame ? 1 : 0, right = frame ? 0 : 1
@@ -253,8 +254,8 @@ function labStaff(scene: Phaser.Scene) {
         p('#1b1b1b', 5, 22 - left, 2, 2); p('#1b1b1b', 9, 22 - right, 2, 2)
         // 흰 가운(안쪽 셔츠가 보이게 앞섶을 연다), 사원증
         p(ink, 3, 9, 10, 9); p('#f4f6f8', 4, 9, 8, 8); p('#dfe4ea', 4, 15, 8, 1)
-        p(woman ? '#f7d4dd' : '#7fb89a', 7, 9, 2, 6)
-        p(woman ? '#f29bb5' : '#5b8fd1', 6, 9, 1, 3); p(woman ? '#f29bb5' : '#5b8fd1', 9, 9, 1, 3); p('#ffffff', 7, 12, 2, 2); p(woman ? '#e05a6c' : '#2f6fed', 7, 13, 2, 1)
+        p(appearance.shirt, 7, 9, 2, 6)
+        p(woman ? '#f29bb5' : '#5b8fd1', 6, 9, 1, 3); p(woman ? '#f29bb5' : '#5b8fd1', 9, 9, 1, 3); p('#ffffff', 7, 12, 2, 2); p(appearance.badge, 7, 13, 2, 1)
         p('#f4f6f8', 2, 10, 1, 5); p('#f4f6f8', 13, 10, 1, 5); p(skin, 2, 15, 1, 1); p(skin, 13, 15, 1, 1)
         // 얼굴
         p(ink, 4, 3, 8, 7); p(skin, 5, 4, 6, 5)
@@ -262,7 +263,7 @@ function labStaff(scene: Phaser.Scene) {
           p(ink, 6, 6, 1, 1); p(ink, 9, 6, 1, 1); p('#ff9bb3', 5, 7, 1, 1); p('#ff9bb3', 10, 7, 1, 1)
           // 긴 갈색 머리: 앞머리와 어깨 아래까지 내려오는 옆머리
           p(hair, 4, 1, 8, 3); p(hair, 5, 3, 2, 1); p(hair, 9, 3, 2, 1)
-          p(hair, 3, 2, 2, 10); p(hair, 11, 2, 2, 10); p('#a8714c', 4, 1, 3, 1)
+          p(hair, 3, 2, 2, appearance.style === 'bob' ? 7 : 10); p(hair, 11, 2, 2, appearance.style === 'bob' ? 7 : 10); p('#a8714c', 4, 1, 3, 1)
         } else {
           // 안경(검은 테), 짧은 검은 머리
           // 위 테와 코받침은 회색, 렌즈는 밝게(눈은 렌즈 안쪽)
@@ -271,6 +272,8 @@ function labStaff(scene: Phaser.Scene) {
           p(hair, 4, 1, 8, 3); p(hair, 4, 3, 1, 2); p(hair, 11, 3, 1, 2); p(hair, 6, 3, 3, 1)
           p('#c0504d', 7, 9, 2, 1)
         }
+        if (appearance.glasses) { p('#4a4f57', 4, 5, 8, 1); p('#cfe8ff', 5, 6, 1, 1); p('#cfe8ff', 10, 6, 1, 1) }
+        if (appearance.style === 'curly') for (const x of [3, 6, 9, 12]) p(hair, x, 0, 2, 3)
       })
     }
   }
@@ -278,9 +281,10 @@ function labStaff(scene: Phaser.Scene) {
 
 /** 컴퓨터를 향한 뒷모습: 기존 의자 위에 가운·팔·짧게 접힌 다리를 그린다. */
 function seatedStaff(scene: Phaser.Scene) {
-  for (const kind of ['researcher-woman', 'researcher-man', 'professor'] as const) {
-    const woman = kind === 'researcher-woman', professor = kind === 'professor'
-    const hair = professor ? '#edf0f1' : woman ? '#8a5a3c' : '#252b35'
+  for (const kind of [...RESEARCHER_STYLES.map(style => style.kind), 'professor'] as const) {
+    const appearance = RESEARCHER_STYLES.find(style => style.kind === kind)
+    const woman = appearance?.style === 'long' || appearance?.style === 'bob', professor = kind === 'professor'
+    const hair = professor ? '#edf0f1' : appearance!.hair
     for (const frame of [0, 1]) {
       texture(scene, `npc-${kind}-seated-${frame}`, 16, 24, p => {
         // 발은 의자 아래, 가운 등판은 등받이 위로 보인다.
@@ -294,6 +298,7 @@ function seatedStaff(scene: Phaser.Scene) {
         p(ink, 4, 2, 8, 8); p(hair, 4, 2, 8, 7)
         p(professor ? '#c9d5da' : '#563b30', 5, 8, 6, 1)
         if (woman) { p(hair, 3, 3, 2, 9); p(hair, 11, 3, 2, 9); p('#b17a55', 4, 3, 2, 5) }
+        if (appearance?.style === 'curly') for (const x of [3, 6, 9, 12]) p(hair, x, 0, 2, 3)
         if (professor) { p(hair, 2, 3, 2, 4); p(hair, 12, 3, 2, 4); p(hair, 3, 1, 3, 2); p(hair, 10, 1, 3, 2) }
       })
     }

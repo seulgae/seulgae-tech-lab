@@ -2,7 +2,17 @@
  * 화면에만 사는 NPC들. 정해진 길(장애물을 피해 그린 순환 경로)을 천천히 오가며, E로 말을 걸면 한마디 한다.
  * 바깥 시민 셋은 지친 직장인을 위로하고, 로비 청소 아주머니는 돌아다니며 궁시렁거린다.
  */
-export type NpcKind = 'woman' | 'man' | 'elder' | 'cleaner' | 'kid-boy' | 'kid-girl' | 'fisher' | 'professor' | 'researcher-woman' | 'researcher-man'
+export type NpcKind = 'woman' | 'man' | 'elder' | 'cleaner' | 'kid-boy' | 'kid-girl' | 'fisher' | 'professor' | 'researcher-woman' | 'researcher-man' | 'researcher-silver' | 'researcher-curly' | 'researcher-bob' | 'researcher-red'
+/** 연구원 픽셀 외형: 기존 시민·박사 외형과 독립된 가운 직원 변형이다. */
+export const RESEARCHER_STYLES = [
+  { kind: 'researcher-woman', hair: '#8a5a3c', skin: '#f3c9a8', shirt: '#f7d4dd', badge: '#e05a6c', style: 'long', glasses: false },
+  { kind: 'researcher-man', hair: '#1f1a18', skin: '#e8b98f', shirt: '#7fb89a', badge: '#2f6fed', style: 'short', glasses: true },
+  { kind: 'researcher-silver', hair: '#bac6d1', skin: '#c58c67', shirt: '#80a6ce', badge: '#c596e0', style: 'short', glasses: true },
+  { kind: 'researcher-curly', hair: '#b3783b', skin: '#eac29f', shirt: '#efbc72', badge: '#d37848', style: 'curly', glasses: false },
+  { kind: 'researcher-bob', hair: '#463b62', skin: '#edb6a0', shirt: '#ae96cf', badge: '#5baeb1', style: 'bob', glasses: true },
+  { kind: 'researcher-red', hair: '#9e4e45', skin: '#d59e76', shirt: '#8db6aa', badge: '#a984ce', style: 'long', glasses: false },
+] as const
+
 export type NpcDef = {
   id: string
   kind: NpcKind

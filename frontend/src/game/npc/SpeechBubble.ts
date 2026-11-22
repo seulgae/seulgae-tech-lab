@@ -5,7 +5,7 @@ import { UI_FONT, crispText } from '../render/renderScale.ts'
  * NPC 머리 위 말풍선. 정해진 시간 뒤 서서히 사라진다.
  *
  * @author seulgae
- * @version 1.0, 바깥 시민·청소 아주머니 NPC
+ * @version 1.1, 이동 직원의 말풍선을 화면 안쪽으로 보정
  * @see "None"
  */
 export default class SpeechBubble {
@@ -35,7 +35,7 @@ export default class SpeechBubble {
   update(x: number, top: number, now: number) {
     if (!this.container.visible) return
     const remaining = this.hideAt - now
-    this.container.setPosition(Math.round(x - this.label.width / 2), Math.round(top - 10 - this.label.height)).setAlpha(Math.max(0, Math.min(1, remaining / 400)))
+    this.container.setPosition(Math.round(Math.max(8, Math.min(x - this.label.width / 2, 792 - this.label.width))), Math.round(Math.max(70, top - 10 - this.label.height))).setAlpha(Math.max(0, Math.min(1, remaining / 400)))
     if (remaining <= 0) this.container.setVisible(false)
   }
 
