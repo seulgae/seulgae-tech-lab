@@ -20,7 +20,7 @@ class RecruitmentRulesTest {
         var facts=new LinkedHashMap<String,Object>();
         Map<String,Object> values=Map.of("javaBackend",true,"companyType","SME","employees",100,"rating",2.5,"probationMonths",3,"accepting",true);
         values.forEach((k,v)->facts.put(k,Map.of("value",v,"url",k.equals("rating")?"https://www.jobplanet.co.kr/companies/1":"https://www.saramin.co.kr/jobs/1","quote","테스트 전용 확인 근거","checkedAt",Instant.now().toString())));
-        return (ObjectNode)JSON.valueToTree(Map.of("source","SARAMIN","externalId","test-1","company","테스트 회사","title","Java 백엔드","url","https://www.saramin.co.kr/jobs/1","facts",facts));
+        return (ObjectNode)JSON.valueToTree(Map.of("source","SARAMIN","externalId","1","company","테스트 회사","title","Java 백엔드","url","https://www.saramin.co.kr/zf_user/jobs/relay/view?rec_idx=1","facts",facts));
     }
     private String state(JsonNode p) {return (String)RecruitmentRules.validate(p,Instant.now()).get("state");}
     @Test void boundariesAndMissingInformation() {

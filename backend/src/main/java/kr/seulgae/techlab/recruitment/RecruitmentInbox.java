@@ -78,6 +78,8 @@ public class RecruitmentInbox {
         if(!host.equals(domain) && !host.endsWith("."+domain)) throw bad("출처와 원본 주소가 다릅니다");
         for(String f:List.of("summary","content","stack","career","region"))
             if(p.hasNonNull(f) && !p.path(f).isTextual()) throw bad("문자열 항목: "+f);
+        var sourceId=java.util.regex.Pattern.compile(domain.equals("saramin.co.kr")?"[?&]rec_idx=(\\d+)":"(?i)/Recruit/GI_Read/(\\d+)").matcher(p.path("url").asText());
+        if(!sourceId.find() || !sourceId.group(1).equals(p.path("externalId").asText())) throw bad("원본 주소의 공고 ID와 externalId가 다릅니다");
         if(!p.path("facts").isObject()) throw bad("facts 객체가 필요합니다. 미확인 값은 생략하세요");
         for(String f:List.of("javaBackend","companyType","employees","rating","probationMonths","accepting","deadline")) {
             var fact=p.path("facts").path(f);
