@@ -104,6 +104,7 @@ export function createPixelAssets(scene: Phaser.Scene) {
   kidsAndFisher(scene)
   professor(scene)
   labStaff(scene)
+  seatedStaff(scene)
   // 관리자실 앞 작은 관리자 신청 컴퓨터(10×8, 2배로 그린다)
   texture(scene, 'mini-terminal', 10, 8, (p) => {
     p(ink, 0, 0, 10, 6); p('#1f3a3f', 1, 1, 8, 4); p('#39e6b4', 2, 2, 4, 1); p('#e7c66f', 2, 3, 6, 1)
@@ -270,6 +271,30 @@ function labStaff(scene: Phaser.Scene) {
           p(hair, 4, 1, 8, 3); p(hair, 4, 3, 1, 2); p(hair, 11, 3, 1, 2); p(hair, 6, 3, 3, 1)
           p('#c0504d', 7, 9, 2, 1)
         }
+      })
+    }
+  }
+}
+
+/** 컴퓨터를 향한 뒷모습: 기존 의자 위에 가운·팔·짧게 접힌 다리를 그린다. */
+function seatedStaff(scene: Phaser.Scene) {
+  for (const kind of ['researcher-woman', 'researcher-man', 'professor'] as const) {
+    const woman = kind === 'researcher-woman', professor = kind === 'professor'
+    const hair = professor ? '#edf0f1' : woman ? '#8a5a3c' : '#252b35'
+    for (const frame of [0, 1]) {
+      texture(scene, `npc-${kind}-seated-${frame}`, 16, 24, p => {
+        // 발은 의자 아래, 가운 등판은 등받이 위로 보인다.
+        p('#263345', 4, 18, 3, 3); p('#263345', 9, 18, 3, 3)
+        p(ink, 3, 21, 4, 2); p(ink, 9, 21, 4, 2)
+        p(ink, 3, 9, 10, 10); p('#eef3f5', 4, 9, 8, 9)
+        p('#bdcdd3', 7, 11, 1, 6); p('#cdd9dd', 4, 17, 8, 1)
+        // 팔과 손끝만 번갈아 움직여 키보드를 두드린다.
+        p('#dfe9ed', 1, 10 + frame, 3, 4); p('#dfe9ed', 12, 11 - frame, 3, 4)
+        p('#efc5a2', 1, 9 + frame, 2, 2); p('#efc5a2', 13, 10 - frame, 2, 2)
+        p(ink, 4, 2, 8, 8); p(hair, 4, 2, 8, 7)
+        p(professor ? '#c9d5da' : '#563b30', 5, 8, 6, 1)
+        if (woman) { p(hair, 3, 3, 2, 9); p(hair, 11, 3, 2, 9); p('#b17a55', 4, 3, 2, 5) }
+        if (professor) { p(hair, 2, 3, 2, 4); p(hair, 12, 3, 2, 4); p(hair, 3, 1, 3, 2); p(hair, 10, 1, 3, 2) }
       })
     }
   }

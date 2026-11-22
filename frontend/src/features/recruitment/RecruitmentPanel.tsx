@@ -1,110 +1,225 @@
-import { PagedList } from '../boards/BoardPagination'
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../auth/authStore'
+import { PagedList } from '../boards/BoardPagination'
 import { AGENTS, STATE, REVIEW_STATE, request, safeLink } from './recruitmentApi'
-import type { Dashboard, Posting } from './recruitmentApi'
+import type { Dashboard, Fact, Job, Posting, Review } from './recruitmentApi'
 import '../research/components/ResearchPanel.css'
 import './recruitment.css'
 
-const when = (value?: string | Date) => value ? new Date(value).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) : '미실행'
-const fields: Record<string, string> = { javaBackend: 'Java 백엔드', companyType: '기업 유형', employees: '직원 수', rating: '잡플래닛 평점', probationMonths: '수습 개월', accepting: '접수 중', deadline: '마감일' }
+const when = (value?: string | Date) => value ? new Date(value).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) : '기록 없음'
+const fields: Record<string, string> = { javaBackend: 'Java 백엔드', companyType: '기업 유형', employees: '직원 수', rating: '잡플래닛 평점', probationMonths: '수습 기간', accepting: '접수 여부', deadline: '마감일' }
+const validations: Record<string, string> = { ELIGIBLE: '조건 충족', REVIEW: '검토 필요', REJECTED: '조건 제외' }
+const desks = {
+  SEARCH: { title: '새 공고 접수함', help: '들어온 공고와 중복 여부를 살펴봐요.', step: '01', tasks: ['SEARCH'], action: '접수 현황 확인' },
+  CHECK: { title: '공고 검토실', help: '조건과 출처를 확인하고 빠진 근거를 채워요.', step: '02', tasks: ['CHECK'], action: '조건 다시 검토' },
+  REGISTER: { title: '지원 관리실', help: '읽고 확인한 공고를 지원 또는 보류로 정리해요.', step: '03', tasks: ['REGISTER', 'REPORT'], action: '검토 결과 반영' },
+} as const
 
 /**
- * 실제 채용 업무 이력·공고 근거와 관리자 수동 실행·보완 입력을 제공한다.
+ * 서치·체크·로그의 역할에 맞는 접수함, 근거 검토, 지원 관리 화면을 제공한다.
  * @author seulgae
- * @version 1.1, 채용 공고와 검토·업무 목록을 각각 5건씩 표시
+ * @version 1.2, 역할별 업무 공간과 5건 목록·선택 상세
  * @see "None"
+ * @param props 담당 직원과 닫기 콜백
  * @returns 채용 업무 모달
  */
 export default function RecruitmentPanel({ agent, onClose }: { agent: string; onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null)
   const [data, setData] = useState<Dashboard | null>(null)
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
-  const [selected, setSelected] = useState<Posting | null>(null)
-  const [evidence, setEvidence] = useState('')
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [editing, setEditing] = useState(false)
+  const [evidence, setEvidence] = useState<Record<string, Fact>>({})
   const [imports, setImports] = useState('')
-  const [reviewFilter, setReviewFilter] = useState('NEW')
   const [filter, setFilter] = useState('ALL')
+  const [retry, setRetry] = useState(0)
   const auth = useAuth()
   const current = AGENTS.find(a => a.id === agent) ?? AGENTS[0]
+  const desk = desks[current.id]
+  const isLog = current.id === 'REGISTER', isCheck = current.id === 'CHECK'
+  const selectedPosting = data?.postings.find(p => p.id === selectedId)
+  const selectedReview = data?.reviews.find(r => r.id === selectedId)
+  const details = isLog ? selectedReview?.snapshot : selectedPosting?.details
+  const selected = isLog ? selectedReview : selectedPosting
+  const jobs = data?.jobs.filter(j => (desk.tasks as readonly string[]).includes(j.task)) ?? []
+
   useEffect(() => { const modal = dialog.current; modal?.showModal(); return () => modal?.close() }, [])
   useEffect(() => {
     if (!auth.admin) return
     const controller = new AbortController()
-    const load = () => { request<Dashboard>('', 'GET', undefined, controller.signal).then(value => { setData(value); setError('') }).catch(e => { if (!controller.signal.aborted) setError(String(e.message)) }) }
-    load(); const timer = setInterval(load, 10000)
+    const load = async () => {
+      try { const value = await request<Dashboard>('', 'GET', undefined, controller.signal); if (!controller.signal.aborted) { setData(value); setError('') } }
+      catch (cause) { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : '공고를 불러오지 못했어요.') }
+    }
+    void load(); const timer = setInterval(() => { void load() }, 10000)
     return () => { controller.abort(); clearInterval(timer) }
-  }, [auth.admin])
-  /** 중복 조작을 막고 서버에서도 권한과 선행 업무를 재검증한다. */
+  }, [auth.admin, retry])
+
+  /** 선택을 해제해 모바일 목록과 상세를 오갈 수 있게 한다. */
+  const clearSelection = () => { setSelectedId(null); setEditing(false) }
+  /** 목록에서 고른 공고만 상세에 표시하며 읽음 상태는 임의로 바꾸지 않는다. */
+  const select = (id: string) => { setSelectedId(id); setEditing(false); setError(''); setNotice('') }
+  /** 현재 담당자에게 속한 업무만 수동 실행한다. */
   const run = async (task: string, date?: string) => {
-    if (busy) return
-    setBusy(true); setError('')
-    try { setData(await request<Dashboard>(`/jobs/${task}${date ? `?date=${date}` : ""}`, 'POST')) } catch (e) { setError(e instanceof Error ? e.message : '실행 실패') } finally { setBusy(false) }
+    if (busy || !(desk.tasks as readonly string[]).includes(task)) return
+    setBusy(true); setError(''); setNotice('')
+    try { setData(await request<Dashboard>(`/jobs/${task}${date ? `?date=${date}` : ''}`, 'POST')); setNotice('업무 결과를 갱신했어요.') }
+    catch (cause) { setError(cause instanceof Error ? cause.message : '실행하지 못했어요.') }
+    finally { setBusy(false) }
   }
-  /** 근거 입력을 사용자용 필드에 연결하고 확인 시각을 함께 기록한다. */
+  /** 검토자가 확인한 값과 원문을 입력할 때만 확인 시각을 갱신한다. */
   const editFact = (field: string, part: string, value: unknown) => {
-    const facts = JSON.parse(evidence || '{}')
-    facts[field] = { value: null, url: '', quote: '', ...facts[field], [part]: value, checkedAt: new Date().toISOString() }
-    setEvidence(JSON.stringify(facts))
+    setEvidence(facts => ({ ...facts, [field]: { ...(facts[field] ?? { value: null, url: '', quote: '' }), [part]: value, checkedAt: new Date().toISOString() } }))
   }
-  /** 관리자가 직접 확인한 사실만 명시적으로 저장한다. */
+  /** 체크 담당 화면에서 확인한 근거를 저장하고 서버에서 재검증한다. */
   const save = async () => {
-    if (!selected || busy) return
-    setBusy(true)
-    try { setData(await request<Dashboard>(`/collections/${selected.id}/evidence`, 'PUT', Object.fromEntries(Object.entries(JSON.parse(evidence)).filter(([, f]) => (f as { value: unknown }).value != null)))); setSelected(null); setError('') } catch (e) { setError(e instanceof Error ? e.message : '저장 실패') } finally { setBusy(false) }
+    if (!selectedPosting || busy || !isCheck) return
+    setBusy(true); setError('')
+    try { setData(await request<Dashboard>(`/collections/${selectedPosting.id}/evidence`, 'PUT', Object.fromEntries(Object.entries(evidence).filter(([, fact]) => fact.value != null)))); setEditing(false); setNotice('근거를 저장하고 검토 결과를 갱신했어요.') }
+    catch (cause) { setError(cause instanceof Error ? cause.message : '저장하지 못했어요.') }
+    finally { setBusy(false) }
   }
-  /** 사용자가 실제로 확인하거나 지원한 상태만 기록한다. 외부 지원서는 제출하지 않는다. */
+  /** 로그 담당 화면에서 사용자가 직접 고른 읽음·확인·지원·보류 상태만 저장한다. */
   const changeReview = async (id: string, state: string) => {
-    if (busy) return
+    if (busy || !isLog) return
     setBusy(true); setError('')
-    try { setData(await request<Dashboard>(`/reviews/${id}`, 'PATCH', { state })) } catch (e) { setError(e instanceof Error ? e.message : '변경 실패') } finally { setBusy(false) }
+    try { setData(await request<Dashboard>(`/reviews/${id}`, 'PATCH', { state })); setNotice(`${REVIEW_STATE[state]} 상태로 기록했어요.`) }
+    catch (cause) { setError(cause instanceof Error ? cause.message : '변경하지 못했어요.') }
+    finally { setBusy(false) }
   }
-  /** 채팅에서 받은 정형 공고를 서버의 한도·중복 검사를 거쳐 접수한다. */
+  /** 서치 담당 화면에서 분석된 공고를 한도·중복 검사를 거쳐 접수한다. */
   const importBatch = async () => {
-    if (busy) return
-    setBusy(true); setError('')
-    try { const result = await request<{ registered: number; remaining: number }>('/imports', 'POST', JSON.parse(imports)); setImports(''); setData(await request<Dashboard>()); setError(`${result.registered}건 접수 · 오늘 추가 가능 ${result.remaining}건`) } catch (e) { setError(e instanceof Error ? e.message : '접수 실패') } finally { setBusy(false) }
+    if (busy || current.id !== 'SEARCH') return
+    setBusy(true); setError(''); setNotice('')
+    try { const result = await request<{ registered: number; remaining: number }>('/imports', 'POST', JSON.parse(imports)); setImports(''); setData(await request<Dashboard>()); clearSelection(); setNotice(`${result.registered}건 접수 · 오늘 추가 가능 ${result.remaining}건`) }
+    catch (cause) { setError(cause instanceof Error ? cause.message : '공고를 접수하지 못했어요.') }
+    finally { setBusy(false) }
   }
-  return <dialog ref={dialog} className="research-panel recruitment-panel" aria-labelledby="recruitment-title" onCancel={e => { e.preventDefault(); onClose() }}>
-    <header className="research-panel-header"><div><p className="research-eyebrow">SERVICE LAB / RECRUITMENT</p><h2 id="recruitment-title">{current.name} · {current.role}</h2><p>매분 수신 공고 처리·마감일 확인 · 한국 시간 기준 하루 최대 10건</p></div><button onClick={onClose}>닫기</button></header>
-    {error && <p role="alert">{error}</p>}
-    {!auth.admin ? <p>공고와 상세 업무 기록은 관리자 로그인 후 확인할 수 있어요.</p> : <>
-      <p>채팅에서 분석·정형화한 공고를 접수합니다. 검색 API 토큰은 필요하지 않습니다. 마감된 공고는 삭제하고 지원·보류 기록은 별도로 보존합니다.</p>
-      <details><summary>정형 공고 접수 · 하루 최대 10개 기업</summary><p>채팅에서 받은 공고 배열을 붙여 넣으세요. 미확인 사실은 생략하고 원본 링크와 근거를 포함해야 합니다.</p><textarea aria-label="정형 공고 배열" rows={6} value={imports} onChange={e => setImports(e.target.value)} /><button disabled={busy || !imports.trim()} onClick={() => { void importBatch() }}>공고 접수</button></details>
-      <section className="recruitment-actions" aria-label="수동 업무 실행">{['SEARCH', 'CHECK', 'REGISTER', 'REPORT'].map((task, i) => <button key={task} disabled={busy} onClick={() => { void run(task) }}>{['서치 · 접수 확인', '체크 · 정제', '로그 · 반영', '로그 · 마감 정리·보고'][i]}</button>)}</section>
-      {busy && <p role="status">접수한 공고와 업무 상태를 처리하고 있어요.</p>}
-      {data && <>
-        <dl className="recruitment-stats">{Object.entries({ collected: '누적 접수', active: '활성 추천', eligible: '조건 충족', review: '검토 필요', new_today: '금일 신규', expired_today: '금일 마감' }).map(([key, title]) => <div key={key}><dt>{title}</dt><dd>{data.stats[key] ?? 0}</dd></div>)}</dl>
-        <h3>업무 이력</h3><PagedList items={data.jobs} label="채용 업무 이력">{visible => <ul>{visible.map(j => <li key={`${j.work_date}-${j.task}`}>{j.work_date} {j.task} · {STATE[j.state]} · {j.processed}건 · 시도 {j.attempts}회<br /><small>시작 {when(j.started_at)} / 종료 {when(j.finished_at)} {j.error && `· ${j.error}`}</small>{["FAILED", "UNAVAILABLE", "WORKING"].includes(j.state) && <button disabled={busy} onClick={() => { void run(j.task, j.work_date) }}>이 업무 재시도</button>}</li>)}</ul>}</PagedList>
-        <h3>검토·지원 관리</h3><label>분류 <select value={reviewFilter} onChange={e => setReviewFilter(e.target.value)}><option value="ALL">전체</option>{Object.entries(REVIEW_STATE).map(([value, name]) => <option key={value} value={value}>{name}</option>)}</select></label>
-        <PagedList key={`reviews-${reviewFilter}`} items={data.reviews.filter(r => reviewFilter === 'ALL' || r.state === reviewFilter)} label="검토·지원 관리">{visible => visible.map(r => <article className="recruitment-posting" key={r.id}><h4>{r.company} · {r.title}</h4><p>{REVIEW_STATE[r.state]} · {when(r.updated_at)}{r.collection_id == null && ' · 원본 공고 마감 삭제됨'}</p><p>{r.snapshot.stack ?? '기술 미확인'} · {r.snapshot.career ?? '경력 미확인'}</p>
-          {r.snapshot.summary && <p>{r.snapshot.summary}</p>}{r.snapshot.content && <details><summary>정리된 공고 내용 읽기</summary><p style={{ whiteSpace: 'pre-wrap' }}>{r.snapshot.content}</p></details>}
-          {r.collection_id != null && safeLink(r.snapshot.url) && <a href={r.snapshot.url} target="_blank" rel="noopener noreferrer">공고 읽기</a>}
-          {r.collection_id != null && <>{r.state === 'NEW' && <button disabled={busy} onClick={() => { void changeReview(r.id, 'READ') }}>읽음 처리</button>}{r.state === 'READ' && <button disabled={busy} onClick={() => { void changeReview(r.id, 'CONFIRMED') }}>내용 확인 완료</button>}{['CONFIRMED', 'HOLD'].includes(r.state) && <button disabled={busy} onClick={() => { void changeReview(r.id, 'APPLIED') }}>지원 완료로 기록</button>}{r.state === 'CONFIRMED' && <button disabled={busy} onClick={() => { void changeReview(r.id, 'HOLD') }}>지원 보류</button>}</>}
-          <small>지원 완료는 직접 지원한 사실을 기록하며 지원서를 자동 제출하지 않습니다.</small>
-        </article>)}</PagedList>
-        <h3>공고</h3><label>표시 범위 <select value={filter} onChange={e => setFilter(e.target.value)}><option value="ALL">전체 후보</option><option value="ELIGIBLE">확정 추천 · 활성</option><option value="REVIEW">검토 필요</option><option value="REJECTED">제외</option><option value="EXPIRED">마감 이력</option></select></label>
-        <PagedList key={`postings-${filter}`} items={data.postings.filter(p => filter === 'ALL' || (filter === 'EXPIRED' ? p.status === 'EXPIRED' : p.validation === filter && (filter !== 'ELIGIBLE' || p.status === 'ACTIVE')))} label="채용 공고">{visible => visible.map(p => <article key={p.id} className="recruitment-posting"><h4>{p.details.company} · {p.details.title}</h4><p>{p.validation} / {p.status ?? '등록 전'}</p><p>{p.details.stack ?? '기술 미확인'} · {p.details.career ?? '경력 미확인'} · {p.details.region ?? '지역 미확인'}</p>
-          <dl>{Object.entries(fields).map(([key, title]) => { const f = p.details.facts?.[key]; return <div key={key}><dt>{title}</dt><dd>{f?.value == null ? '미확인' : String(f.value)} {f && safeLink(f.url) && <><a href={f.url} target="_blank" rel="noopener noreferrer">근거</a> <small>{when(f.checkedAt)}</small><q>{f.quote}</q></>}</dd></div> })}</dl>
-          {p.details.snippet && <p>검색 발췌 · {p.details.snippet}</p>}
-          {p.details.companyClues?.map(clue => safeLink(clue.url) && <p key={clue.url}><a href={clue.url} target="_blank" rel="noopener noreferrer">기업정보 확인 단서</a> · {clue.text}</p>)}
-          <p>{p.reasons.join(' · ')}</p>{safeLink(p.details.url) && <a href={p.details.url} target="_blank" rel="noopener noreferrer">원본 공고</a>} <button disabled={busy} onClick={() => { setSelected(p); setEvidence(JSON.stringify(p.details.facts ?? {}, null, 2)) }}>확인한 근거 보완</button>
-        </article>)}</PagedList>
-        {data.postings.length === 0 && <p>접수된 공고가 없습니다. 채팅에서 분석한 정형 공고를 등록하세요.</p>}
-        {selected && <section><h3>{selected.details.company} · 수동 근거 보완</h3><p>원문을 확인한 항목만 값·출처 주소·근거 문구를 입력하세요. 평점은 잡플래닛 출처만 허용합니다.</p>
-          {Object.entries(fields).map(([field, title]) => {
-            const f = JSON.parse(evidence || '{}')[field] ?? { value: null, url: '', quote: '' }
-            return <fieldset key={field}><legend>{title}</legend>
-              {['javaBackend', 'accepting', 'companyType'].includes(field) ? <select aria-label={`${title} 값`} value={f.value == null ? '' : String(f.value)} onChange={e => editFact(field, 'value', e.target.value === '' ? null : field === 'companyType' ? e.target.value : e.target.value === 'true')}>
-                <option value="">미확인</option>{field === 'companyType' ? <><option value="SME">중소기업</option><option value="MID">중견기업</option><option value="LARGE">대기업</option><option value="OTHER">기타</option></> : <><option value="true">예</option><option value="false">아니요</option></>}
-              </select> : <input aria-label={`${title} 값`} type={field === 'deadline' ? 'date' : 'number'} step={field === 'rating' ? '0.1' : '1'} value={f.value ?? ''} onChange={e => editFact(field, 'value', !e.target.value ? null : field === 'deadline' ? e.target.value : Number(e.target.value))} />}
-              <label>출처 주소<input type="url" value={f.url} onChange={e => editFact(field, 'url', e.target.value)} /></label>
-              <label>확인한 원문<textarea rows={2} maxLength={1000} value={f.quote} onChange={e => editFact(field, 'quote', e.target.value)} /></label>
-            </fieldset>
-          })}<button disabled={busy} onClick={() => { void save() }}>근거 저장·재검증</button><button onClick={() => setSelected(null)}>취소</button></section>}
-        <h3>일일 보고서</h3><PagedList items={data.reports} label="채용 일일 보고서">{visible => visible.map(r => <p key={r.work_date}>{r.work_date} · 수집 {r.summary.collected} / 활성 추천 {r.summary.active} / 신규 {r.summary.new_today} / 마감 {r.summary.expired_today}</p>)}</PagedList>
+  const postings = data?.postings.filter(p => filter === 'ALL' || p.validation === filter) ?? []
+  const reviews = data?.reviews.filter(r => filter === 'ALL' || r.state === filter) ?? []
+  const options = isLog ? REVIEW_STATE : validations
+  const stats = isLog
+    ? [['지원 완료', data?.reviews.filter(r => r.state === 'APPLIED').length ?? 0], ['보류 중', data?.reviews.filter(r => r.state === 'HOLD').length ?? 0], ['확인 대기', data?.reviews.filter(r => ['NEW', 'READ'].includes(r.state)).length ?? 0]]
+    : isCheck ? [['검토 필요', data?.stats.review ?? 0], ['조건 충족', data?.stats.eligible ?? 0], ['전체 공고', data?.postings.length ?? 0]]
+      : [['접수 공고', data?.stats.collected ?? 0], ['오늘 반영', data?.stats.new_today ?? 0], ['하루 접수 한도', 10]]
+
+  return <dialog ref={dialog} className="research-panel recruitment-panel" data-desk={current.id} aria-labelledby="recruitment-title"
+    onCancel={event => { event.preventDefault(); if (editing) setEditing(false); else if (selectedId) clearSelection(); else onClose() }}>
+    <header className="recruitment-header">
+      <div className="recruitment-avatar" aria-hidden="true">{desk.step}</div>
+      <div><p className="research-eyebrow">{current.name}의 업무 공간</p><h2 id="recruitment-title">{desk.title}</h2><p>{desk.help}</p></div>
+      <button type="button" className="research-close" onClick={onClose}>닫기</button>
+    </header>
+    <ol className="recruitment-steps" aria-label="채용 업무 분담">{AGENTS.map(a => <li key={a.id} aria-current={current.id === a.id ? 'step' : undefined}><span>{desks[a.id].step}</span> {a.name} · {a.id === 'SEARCH' ? '접수' : a.id === 'CHECK' ? '검토' : '지원 관리'}</li>)}</ol>
+    <div className="recruitment-body">
+      {!auth.admin ? <div className="recruitment-empty">관리자 로그인 후 담당 공고를 확인할 수 있어요.</div> : <>
+        <dl className="recruitment-stats">{stats.map(([name, value]) => <div key={name}><dt>{name}</dt><dd>{value}<small>건</small></dd></div>)}</dl>
+        <div className="recruitment-feedback" aria-live="polite">{notice && <p className="recruitment-notice" role="status">{notice}</p>}{error && <p className="recruitment-error" role="alert">{error} <button type="button" disabled={busy} onClick={() => setRetry(n => n + 1)}>다시 불러오기</button></p>}{busy && <p role="status">처리하고 있어요…</p>}</div>
+        {!data ? !error && <p role="status">담당 공고를 불러오는 중…</p> : <>
+          <div className="recruitment-toolbar"><h3>{isLog ? '지원할 공고와 내역' : isCheck ? '검토할 공고' : '접수된 공고'}</h3>
+            {current.id !== 'SEARCH' && <label>분류 <select aria-label="공고 분류" value={filter} onChange={e => { setFilter(e.target.value); clearSelection() }}><option value="ALL">전체</option>{Object.entries(options).map(([value, name]) => <option key={value} value={value}>{name}</option>)}</select></label>}
+            <button type="button" disabled={busy} onClick={() => { void run(desk.tasks[0]) }}>{desk.action}</button>
+          </div>
+          <div className={`recruitment-workspace${selected && details ? ' has-selection' : ''}`}>
+            <section className="recruitment-list" aria-label={desk.title}>
+              <p className="recruitment-list-caption">{isLog ? reviews.length : postings.length}건 · 한 페이지에 5건</p>
+              {isLog ? <PagedList key={`reviews-${filter}`} items={reviews} label="지원 관리">{visible => <ul>{visible.map(r => <li key={r.id}><PostingCard details={r.snapshot} selected={selectedId === r.id} badge={REVIEW_STATE[r.state] ?? '상태 확인 필요'} onSelect={() => select(r.id)} /></li>)}</ul>}</PagedList>
+                : <PagedList key={`postings-${filter}`} items={postings} label="채용 공고">{visible => <ul>{visible.map(p => <li key={p.id}><PostingCard details={p.details} selected={selectedId === p.id} badge={validations[p.validation] ?? '검토 대기'} onSelect={() => select(p.id)} /></li>)}</ul>}</PagedList>}
+              {(isLog ? reviews.length : postings.length) === 0 && <p className="recruitment-empty">이 분류에 해당하는 공고가 없어요.</p>}
+            </section>
+            <section className="recruitment-detail" aria-label="선택한 공고 상세">
+              {!selected || !details ? <div className="recruitment-empty"><span aria-hidden="true">↗</span><h3>공고를 선택해 주세요</h3><p>{isCheck ? '조건과 확인 근거를 나란히 살펴볼 수 있어요.' : isLog ? '내용을 읽고 다음 단계를 직접 선택할 수 있어요.' : '기업과 모집 내용을 확인할 수 있어요.'}</p></div> : <>
+                <button type="button" className="recruitment-back" onClick={clearSelection}>← 목록으로</button>
+                <p className="recruitment-company">{details.company}</p><h3>{details.title}</h3>
+                <div className="recruitment-meta"><span>{details.region ?? '지역 미확인'}</span><span>{details.career ?? '경력 미확인'}</span><span>{details.stack ?? '기술 미확인'}</span></div>
+                {details.summary && <p className="recruitment-summary">{details.summary}</p>}
+                {details.content && <details className="recruitment-disclosure"><summary>정리된 공고 내용</summary><p className="recruitment-content">{details.content}</p></details>}
+                {safeLink(details.url) && <a className="recruitment-source" href={details.url} target="_blank" rel="noopener noreferrer">원본 공고 열기 ↗</a>}
+                {isLog && selectedReview && <ReviewActions review={selectedReview} busy={busy} onChange={state => { void changeReview(selectedReview.id, state) }} />}
+                {isCheck && selectedPosting && <>
+                  <div className="recruitment-section-title"><h4>조건과 확인 근거</h4><span className="recruitment-badge">{validations[selectedPosting.validation] ?? '검토 대기'}</span></div>
+                  {selectedPosting.reasons.length > 0 && <p className="recruitment-reasons">{selectedPosting.reasons.map(reason => { const [field] = reason.split(':'); return reason.replace(field, fields[field] ?? field) }).join(' · ')}</p>}
+                  {!editing ? <><FactsView facts={details.facts ?? {}} /><button type="button" disabled={busy} onClick={() => { setEvidence(structuredClone(details.facts ?? {})); setEditing(true) }}>확인한 근거 수정</button></>
+                    : <form className="recruitment-evidence" onSubmit={event => { event.preventDefault(); void save() }}><p>확인한 항목만 입력하세요. 빈 값은 미확인으로 남아요.</p>{Object.entries(fields).map(([field, name]) => {
+                      const f = evidence[field] ?? { value: null, url: '', quote: '' }
+                      return <fieldset key={field}><legend>{name}</legend>
+                        <label>값{['javaBackend', 'accepting', 'companyType'].includes(field) ? <select aria-label={`${name} 값`} value={f.value == null ? '' : String(f.value)} onChange={e => editFact(field, 'value', e.target.value === '' ? null : field === 'companyType' ? e.target.value : e.target.value === 'true')}>
+                          <option value="">미확인</option>{field === 'companyType' ? <><option value="SME">중소기업</option><option value="MID">중견기업</option><option value="LARGE">대기업</option><option value="OTHER">기타</option></> : <><option value="true">예</option><option value="false">아니요</option></>}
+                        </select> : <input aria-label={`${name} 값`} type={field === 'deadline' ? 'date' : 'number'} min="0" step={field === 'rating' ? '0.1' : '1'} value={f.value == null ? '' : String(f.value)} onChange={e => editFact(field, 'value', !e.target.value ? null : field === 'deadline' ? e.target.value : Number(e.target.value))} />}</label>
+                        <label>출처 주소<input type="url" value={f.url} onChange={e => editFact(field, 'url', e.target.value)} /></label><label>확인한 원문<textarea rows={2} maxLength={1000} value={f.quote} onChange={e => editFact(field, 'quote', e.target.value)} /></label>
+                      </fieldset>
+                    })}<div className="recruitment-actions"><button type="submit" disabled={busy}>저장하고 재검토</button><button type="button" disabled={busy} onClick={() => setEditing(false)}>취소</button></div></form>}
+                </>}
+              </>}
+            </section>
+          </div>
+          {current.id === 'SEARCH' && <details className="recruitment-disclosure"><summary>분석한 공고 일괄 접수</summary><p>하루 최대 10개 기업을 접수해요. 채팅에서 정리한 공고 배열을 붙여 넣으세요.</p><label>정형 공고 배열<textarea aria-label="정형 공고 배열" rows={5} value={imports} onChange={e => setImports(e.target.value)} /></label><button type="button" disabled={busy || !imports.trim()} onClick={() => { void importBatch() }}>공고 접수</button></details>}
+          {isLog && <details className="recruitment-disclosure"><summary>마감 정리와 일일 보고</summary><p>마감된 원문은 정리하고 지원·보류 기록은 남겨요.</p><button type="button" disabled={busy} onClick={() => { void run('REPORT') }}>마감 정리·보고 갱신</button><PagedList items={data.reports} label="일일 보고서">{visible => <ul className="recruitment-reports">{visible.map(r => <li key={r.work_date}><strong>{r.work_date}</strong><span>신규 {r.summary.new_today ?? 0} · 활성 {r.summary.active ?? 0} · 마감 {r.summary.expired_today ?? 0}</span></li>)}</ul>}</PagedList></details>}
+          <details className="recruitment-disclosure"><summary>{current.name} 업무 이력 <span>{jobs.length}건</span></summary><JobHistory jobs={jobs} busy={busy} onRetry={(task, date) => { void run(task, date) }} /></details>
+        </>}
       </>}
-    </>}
+    </div>
+    <footer className="recruitment-footer">{current.name} 담당 · 공고는 10초마다 갱신돼요. 읽음·지원 기록은 직접 선택할 때만 바뀌어요.</footer>
   </dialog>
+}
+
+/**
+ * 공고 목록의 기업·제목·요약 정보만 표시한다.
+ * @author seulgae
+ * @version 1.0, 선택 가능한 공고 목록 카드
+ * @see "None"
+ * @param props 공고와 선택 상태·콜백
+ * @returns 공고 선택 버튼
+ */
+function PostingCard({ details, selected, badge, onSelect }: { details: Posting['details']; selected: boolean; badge: string; onSelect: () => void }) {
+  return <button type="button" className="recruitment-card" aria-pressed={selected} onClick={onSelect}><span className="recruitment-card-top"><span>{details.company}</span><small className="recruitment-badge">{badge}</small></span><strong>{details.title}</strong><span className="recruitment-card-meta">{details.region ?? '지역 미확인'} · {details.career ?? '경력 미확인'}</span></button>
+}
+
+/**
+ * 체크가 확인할 조건 값과 출처를 접어서 표시한다.
+ * @author seulgae
+ * @version 1.0, 조건별 요약과 확인 근거
+ * @see "None"
+ * @param props 확인된 조건
+ * @returns 조건 표와 원문 근거
+ */
+function FactsView({ facts }: { facts: Record<string, Fact> }) {
+  return <dl className="recruitment-facts">{Object.entries(fields).map(([key, name]) => {
+    const f = facts[key], value = f?.value
+    const text = value == null ? '미확인' : typeof value === 'boolean' ? value ? '예' : '아니요' : key === 'companyType' ? ({ SME: '중소기업', MID: '중견기업', LARGE: '대기업', OTHER: '기타' }[String(value)] ?? String(value)) : `${value}${key === 'employees' ? '명' : key === 'probationMonths' ? '개월' : key === 'rating' ? '점' : ''}`
+    return <div key={key} className={value == null ? 'is-unknown' : ''}><dt>{name}</dt><dd>{text}{f && <details><summary>확인 근거</summary>{safeLink(f.url) && <a href={f.url} target="_blank" rel="noopener noreferrer">출처 열기 ↗</a>}<blockquote>{f.quote}</blockquote><small>{when(f.checkedAt)}</small></details>}</dd></div>
+  })}</dl>
+}
+
+/**
+ * 로그가 기록하는 읽음·확인·지원·보류 단계를 순서대로 안내한다.
+ * @author seulgae
+ * @version 1.0, 사용자가 선택하는 지원 관리 단계
+ * @see "None"
+ * @param props 검토 기록과 처리 상태·변경 콜백
+ * @returns 현재 상태와 가능한 다음 단계
+ */
+function ReviewActions({ review, busy, onChange }: { review: Review; busy: boolean; onChange: (state: string) => void }) {
+  return <section className="recruitment-review-actions" aria-label="지원 상태 관리"><h4>{REVIEW_STATE[review.state] ?? '상태 확인 필요'}</h4><p>마지막 기록 · {when(review.updated_at)}</p>
+    {review.collection_id == null ? <p>마감된 공고의 보존 기록이에요.</p> : <div className="recruitment-actions">
+      {review.state === 'NEW' && <button type="button" disabled={busy} onClick={() => onChange('READ')}>읽었어요</button>}
+      {review.state === 'READ' && <button type="button" disabled={busy} onClick={() => onChange('CONFIRMED')}>내용 확인 완료</button>}
+      {['CONFIRMED', 'HOLD'].includes(review.state) && <button type="button" disabled={busy} onClick={() => onChange('APPLIED')}>지원 완료로 기록</button>}
+      {review.state === 'CONFIRMED' && <button type="button" disabled={busy} onClick={() => onChange('HOLD')}>지원 보류</button>}
+    </div>}<small>지원 완료는 직접 입사지원한 사실을 남기는 기록이에요.</small>
+  </section>
+}
+
+/**
+ * 현재 담당자 업무만 최근 기록과 재시도 버튼으로 표시한다.
+ * @author seulgae
+ * @version 1.0, 담당자별 업무 이력
+ * @see "None"
+ * @param props 담당 업무 기록과 재시도 콜백
+ * @returns 5건씩 나눈 업무 이력
+ */
+function JobHistory({ jobs, busy, onRetry }: { jobs: Job[]; busy: boolean; onRetry: (task: string, date?: string) => void }) {
+  return <PagedList items={jobs} label="담당 업무 이력">{visible => <ul className="recruitment-history">{visible.map(j => <li key={`${j.work_date}-${j.task}`}><div><strong>{j.task === 'SEARCH' ? '접수 확인' : j.task === 'CHECK' ? '조건 검토' : j.task === 'REGISTER' ? '공고 반영' : '마감 정리·보고'}</strong><span>{STATE[j.state] ?? '상태 확인 필요'} · {j.processed}건</span></div><small>{when(j.finished_at ?? j.started_at)}</small>{['FAILED', 'UNAVAILABLE', 'WORKING'].includes(j.state) && <button type="button" disabled={busy} onClick={() => onRetry(j.task, j.work_date)}>다시 실행</button>}</li>)}{jobs.length === 0 && <li>아직 실행 기록이 없어요.</li>}</ul>}</PagedList>
 }
