@@ -21,6 +21,8 @@ export type NpcDef = {
   idle?: boolean
   /** 처음 자리를 경로의 첫 지점으로 고정(제자리 NPC) */
   fixed?: boolean
+  /** 의자에 앉아 컴퓨터를 향해 일하는 고정 자세 */
+  seated?: boolean
   /** 바라보는 방향(제자리 NPC): true면 오른쪽 */
   facesRight?: boolean
   /** 개발 연구실 빌드 결과에 따른 반응(실패하면 놀라고, 성공하면 웃는다) */
