@@ -2,7 +2,7 @@
  * 화면에만 사는 NPC들. 정해진 길(장애물을 피해 그린 순환 경로)을 천천히 오가며, E로 말을 걸면 한마디 한다.
  * 바깥 시민 셋은 지친 직장인을 위로하고, 로비 청소 아주머니는 돌아다니며 궁시렁거린다.
  */
-export type NpcKind = 'woman' | 'man' | 'elder' | 'cleaner' | 'kid-boy' | 'kid-girl' | 'fisher' | 'professor'
+export type NpcKind = 'woman' | 'man' | 'elder' | 'cleaner' | 'kid-boy' | 'kid-girl' | 'fisher' | 'professor' | 'researcher-woman' | 'researcher-man'
 export type NpcDef = {
   id: string
   kind: NpcKind
