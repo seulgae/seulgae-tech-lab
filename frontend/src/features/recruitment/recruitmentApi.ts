@@ -1,7 +1,8 @@
 export const AGENTS = [
-  { id: 'SEARCH', name: '서치', role: '정형 공고 접수·중복 확인', hours: [9], kind: 'man', x: 200 },
-  { id: 'CHECK', name: '체크', role: '공고 정제·검토 상태 관리', hours: [13], kind: 'woman', x: 400 },
-  { id: 'REGISTER', name: '로그', role: '지원·보류 기록과 마감 정리', hours: [15, 17], kind: 'professor', x: 600 },
+  // 서비스 연구실 오른쪽 열 책상 옆(위에서부터 서치·체크·로그)에 선다.
+  { id: 'SEARCH', name: '서치', role: '정형 공고 접수·중복 확인', hours: [9], kind: 'researcher-woman', x: 712, y: 132 },
+  { id: 'CHECK', name: '체크', role: '공고 정제·검토 상태 관리', hours: [13], kind: 'researcher-man', x: 712, y: 302 },
+  { id: 'REGISTER', name: '로그', role: '지원·보류 기록과 마감 정리', hours: [15, 17], kind: 'professor', x: 712, y: 472 },
 ] as const
 export const STATE: Record<string, string> = { IDLE: '대기', WAITING: '선행 업무 대기', WORKING: '작업 중', COMPLETED: '완료', FAILED: '실패', UNAVAILABLE: '연동 대기', UNKNOWN: '조회 실패' }
 export type Job = { task: string; state: string; processed: number; work_date?: string; started_at?: string; finished_at?: string; error?: string; attempts?: number }
