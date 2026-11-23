@@ -54,7 +54,7 @@ class SeatTest {
         assertTrue(world.seats("lobby").isEmpty(), "로비 의자는 모두 치웠다");
         assertEquals(List.of("control-room-chair-0", "control-room-chair-1"), world.seats("control-room").stream().map(LobbyWorld.Seat::id).toList());
         assertEquals(6, world.seats("meeting-room").size(), "세로 테이블 양옆 3개씩");
-        assertEquals(2, world.seats("development-lab").size());
+        assertTrue(world.seats("development-lab").isEmpty(), "개발 연구실 슈퍼컴퓨터 앞 의자는 치웠다");
         assertTrue(world.seats("server-room").isEmpty());
     }
 

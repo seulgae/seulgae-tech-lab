@@ -260,28 +260,6 @@
           }
         },
         {
-          "texture": "chair",
-          "x": 320,
-          "bottom": 315,
-          "body": {
-            "x": 320,
-            "y": 303,
-            "width": 28,
-            "height": 24
-          }
-        },
-        {
-          "texture": "chair",
-          "x": 480,
-          "bottom": 315,
-          "body": {
-            "x": 480,
-            "y": 303,
-            "width": 28,
-            "height": 24
-          }
-        },
-        {
           "texture": "equipment",
           "x": 400,
           "bottom": 420,
