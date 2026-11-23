@@ -1,0 +1,50 @@
+package kr.seulgae.techlab.auth.repository.impl;
+
+import kr.seulgae.techlab.auth.entity.*;
+import kr.seulgae.techlab.auth.repository.*;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.stereotype.Repository;
+
+/**
+ * 회원 저장소와 회원이 쓴 글 ID 조회(내 글 표시용)이다.
+ *
+ * @author seulgae
+ * @version 1.0, lab.tb_lab_member 접근
+ * @see "None"
+ */
+@Repository
+public class JdbcMemberRepository implements MemberRepository {
+    private final JdbcClient jdbc;
+    public JdbcMemberRepository(JdbcClient jdbc) { this.jdbc = jdbc; }
+
+    public Optional<Member> findById(UUID id) {
+        return jdbc.sql("SELECT id, kakao_id, nickname FROM lab.tb_lab_member WHERE id = :id").param("id", id)
+            .query((rs, row) -> new Member(rs.getObject("id", UUID.class), rs.getLong("kakao_id"), rs.getString("nickname"))).optional();
+    }
+
+    /** 이미 있는 회원이면 마지막 로그인 시각만 갱신한다. */
+    public Optional<Member> loginByKakaoId(long kakaoId) {
+        return jdbc.sql("UPDATE lab.tb_lab_member SET last_login_at = CURRENT_TIMESTAMP WHERE kakao_id = :kakaoId RETURNING id, kakao_id, nickname")
+            .param("kakaoId", kakaoId)
+            .query((rs, row) -> new Member(rs.getObject("id", UUID.class), rs.getLong("kakao_id"), rs.getString("nickname"))).optional();
+    }
+
+    public Member create(UUID id, long kakaoId, String nickname) {
+        jdbc.sql("INSERT INTO lab.tb_lab_member (id, kakao_id, nickname) VALUES (:id, :kakaoId, :nickname)")
+            .param("id", id).param("kakaoId", kakaoId).param("nickname", nickname).update();
+        return new Member(id, kakaoId, nickname);
+    }
+
+    public void updateNickname(UUID id, String nickname) {
+        jdbc.sql("UPDATE lab.tb_lab_member SET nickname = :nickname WHERE id = :id").param("id", id).param("nickname", nickname).update();
+    }
+
+    /** 최근에 쓴 회의 안건 ID(최대 200개). 화면에서 "내 글"과 수정·삭제 버튼을 표시하는 데 쓴다. */
+    public List<UUID> recentAgendaIds(UUID memberId) {
+        return jdbc.sql("SELECT id FROM lab.tb_lab_meeting_agenda WHERE author_id = :id ORDER BY created_at DESC LIMIT 200")
+            .param("id", memberId).query(UUID.class).list();
+    }
+}

@@ -6,7 +6,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import kr.seulgae.techlab.common.web.ClientAddress;
 import kr.seulgae.techlab.multiplayer.lobby.websocket.LobbySocketHandler;
-import kr.seulgae.techlab.auth.AuthService;
+import kr.seulgae.techlab.auth.service.AuthService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

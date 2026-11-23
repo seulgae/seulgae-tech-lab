@@ -1,5 +1,41 @@
 package kr.seulgae.techlab.multiplayer.lobby;
 
+import kr.seulgae.techlab.admin.service.impl.*;
+import kr.seulgae.techlab.auth.client.*;
+import kr.seulgae.techlab.auth.config.*;
+import kr.seulgae.techlab.auth.controller.*;
+import kr.seulgae.techlab.auth.entity.*;
+import kr.seulgae.techlab.auth.repository.impl.*;
+import kr.seulgae.techlab.auth.repository.*;
+import kr.seulgae.techlab.auth.service.impl.*;
+import kr.seulgae.techlab.inventory.controller.*;
+import kr.seulgae.techlab.inventory.repository.impl.*;
+import kr.seulgae.techlab.inventory.repository.*;
+import kr.seulgae.techlab.inventory.service.impl.*;
+import kr.seulgae.techlab.lab.capacity.client.*;
+import kr.seulgae.techlab.lab.capacity.controller.*;
+import kr.seulgae.techlab.lab.capacity.service.impl.*;
+import kr.seulgae.techlab.lab.pulls.controller.*;
+import kr.seulgae.techlab.lab.pulls.service.impl.*;
+import kr.seulgae.techlab.lab.status.controller.*;
+import kr.seulgae.techlab.lobby.guestbook.controller.*;
+import kr.seulgae.techlab.lobby.guestbook.repository.*;
+import kr.seulgae.techlab.lobby.guestbook.repository.impl.*;
+import kr.seulgae.techlab.lobby.guestbook.service.impl.*;
+import kr.seulgae.techlab.meeting.agendas.controller.*;
+import kr.seulgae.techlab.meeting.agendas.entity.*;
+import kr.seulgae.techlab.meeting.agendas.repository.*;
+import kr.seulgae.techlab.meeting.agendas.service.impl.*;
+import kr.seulgae.techlab.multiplayer.lobby.config.*;
+import kr.seulgae.techlab.multiplayer.lobby.domain.*;
+import kr.seulgae.techlab.office.work.controller.*;
+import kr.seulgae.techlab.office.work.repository.impl.*;
+import kr.seulgae.techlab.office.work.repository.*;
+import kr.seulgae.techlab.office.work.service.impl.*;
+import kr.seulgae.techlab.phone.controller.*;
+import kr.seulgae.techlab.phone.repository.impl.*;
+import kr.seulgae.techlab.phone.repository.*;
+import kr.seulgae.techlab.phone.service.impl.*;
 import java.time.OffsetDateTime;
 import java.util.Comparator;
 import java.util.List;
@@ -7,31 +43,26 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import kr.seulgae.techlab.auth.AuthController;
-import kr.seulgae.techlab.auth.AuthService;
-import kr.seulgae.techlab.auth.AuthSettings;
-import kr.seulgae.techlab.auth.KakaoClient;
-import kr.seulgae.techlab.auth.Member;
-import kr.seulgae.techlab.auth.MemberRepository;
+import kr.seulgae.techlab.auth.controller.AuthController;
+import kr.seulgae.techlab.auth.config.AuthSettings;
+import kr.seulgae.techlab.auth.client.KakaoClient;
+import kr.seulgae.techlab.auth.entity.Member;
+import kr.seulgae.techlab.auth.repository.MemberRepository;
 import kr.seulgae.techlab.common.write.Ownership;
 import kr.seulgae.techlab.common.write.WriteRateLimiter;
-import kr.seulgae.techlab.lab.status.LabStatusController;
-import kr.seulgae.techlab.inventory.InMemoryInventoryStore;
-import kr.seulgae.techlab.lobby.guestbook.GuestbookController;
-import kr.seulgae.techlab.lobby.guestbook.GuestbookService;
-import kr.seulgae.techlab.lobby.guestbook.GuestbookStore;
-import kr.seulgae.techlab.lobby.guestbook.InMemoryGuestbookStore;
-import kr.seulgae.techlab.inventory.InventoryController;
-import kr.seulgae.techlab.inventory.InventoryService;
-import kr.seulgae.techlab.inventory.InventoryStore;
-import kr.seulgae.techlab.office.work.InMemoryWorkStore;
-import kr.seulgae.techlab.office.work.WorkItemController;
-import kr.seulgae.techlab.office.work.WorkItemService;
-import kr.seulgae.techlab.office.work.WorkStore;
-import kr.seulgae.techlab.meeting.agendas.MeetingAgenda;
-import kr.seulgae.techlab.meeting.agendas.MeetingAgendaController;
-import kr.seulgae.techlab.meeting.agendas.MeetingAgendaRepository;
-import kr.seulgae.techlab.meeting.agendas.MeetingAgendaService;
+import kr.seulgae.techlab.lab.status.controller.LabStatusController;
+import kr.seulgae.techlab.inventory.repository.impl.InMemoryInventoryRepository;
+import kr.seulgae.techlab.lobby.guestbook.controller.GuestbookController;
+import kr.seulgae.techlab.lobby.guestbook.repository.GuestbookRepository;
+import kr.seulgae.techlab.lobby.guestbook.repository.impl.InMemoryGuestbookRepository;
+import kr.seulgae.techlab.inventory.controller.InventoryController;
+import kr.seulgae.techlab.inventory.repository.InventoryRepository;
+import kr.seulgae.techlab.office.work.repository.impl.InMemoryWorkItemRepository;
+import kr.seulgae.techlab.office.work.controller.WorkItemController;
+import kr.seulgae.techlab.office.work.repository.WorkItemRepository;
+import kr.seulgae.techlab.meeting.agendas.entity.MeetingAgenda;
+import kr.seulgae.techlab.meeting.agendas.controller.MeetingAgendaController;
+import kr.seulgae.techlab.meeting.agendas.repository.MeetingAgendaRepository;
 import kr.seulgae.techlab.multiplayer.lobby.config.LobbyWebSocketConfig;
 import kr.seulgae.techlab.multiplayer.lobby.domain.LobbyRoom;
 import kr.seulgae.techlab.multiplayer.lobby.domain.LobbyChat;
@@ -55,15 +86,15 @@ import org.springframework.context.annotation.Import;
 @Configuration(proxyBeanMethods = false)
 @EnableAutoConfiguration(excludeName = "org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration")
 @Import({LobbyWebSocketConfig.class, LobbySocketHandler.class, LobbyRoom.class, LobbyWorld.class, LobbyChat.class,
-    ApiExceptionHandler.class, LabStatusController.class, MeetingAgendaController.class, MeetingAgendaService.class, WriteRateLimiter.class,
-    AuthSettings.class, AuthService.class, AuthController.class, KakaoClient.class, WorkItemController.class, WorkItemService.class,
-    InventoryController.class, InventoryService.class, GuestbookController.class, GuestbookService.class, kr.seulgae.techlab.admin.AdminAccess.class,
-    kr.seulgae.techlab.auth.LevelService.class, kr.seulgae.techlab.auth.LevelController.class,
-    kr.seulgae.techlab.inventory.BankService.class, kr.seulgae.techlab.inventory.BankController.class,
-    kr.seulgae.techlab.phone.TodoService.class, kr.seulgae.techlab.phone.TodoController.class,
-    kr.seulgae.techlab.phone.SnsService.class, kr.seulgae.techlab.phone.SnsController.class,
-    kr.seulgae.techlab.lab.capacity.SshProbe.class, kr.seulgae.techlab.lab.capacity.ServerCapacityService.class, kr.seulgae.techlab.lab.capacity.ServerCapacityController.class,
-    kr.seulgae.techlab.lab.pulls.GithubPullsService.class, kr.seulgae.techlab.lab.pulls.GithubPullsController.class})
+    ApiExceptionHandler.class, LabStatusController.class, MeetingAgendaController.class, MeetingAgendaServiceImpl.class, WriteRateLimiter.class,
+    AuthSettings.class, AuthServiceImpl.class, AuthController.class, KakaoClient.class, WorkItemController.class, WorkItemServiceImpl.class,
+    InventoryController.class, InventoryServiceImpl.class, GuestbookController.class, GuestbookServiceImpl.class, kr.seulgae.techlab.admin.service.impl.AdminAccessImpl.class,
+    kr.seulgae.techlab.auth.service.impl.LevelServiceImpl.class, kr.seulgae.techlab.auth.controller.LevelController.class,
+    kr.seulgae.techlab.inventory.service.impl.BankServiceImpl.class, kr.seulgae.techlab.inventory.controller.BankController.class,
+    kr.seulgae.techlab.phone.service.impl.TodoServiceImpl.class, kr.seulgae.techlab.phone.controller.TodoController.class,
+    kr.seulgae.techlab.phone.service.impl.SnsServiceImpl.class, kr.seulgae.techlab.phone.controller.SnsController.class,
+    kr.seulgae.techlab.lab.capacity.client.SshProbe.class, kr.seulgae.techlab.lab.capacity.service.impl.ServerCapacityServiceImpl.class, kr.seulgae.techlab.lab.capacity.controller.ServerCapacityController.class,
+    kr.seulgae.techlab.lab.pulls.service.impl.GithubPullsServiceImpl.class, kr.seulgae.techlab.lab.pulls.controller.GithubPullsController.class})
 public class LocalLobbyTestApplication {
     private static final OffsetDateTime CREATED_AT = OffsetDateTime.parse("2026-11-15T12:00:00+09:00");
 
@@ -72,29 +103,29 @@ public class LocalLobbyTestApplication {
 
     /** 사무실 업무 게시판(DB 없는 로컬 실행) */
     @Bean
-    WorkStore fixtureWorkStore() { return new InMemoryWorkStore(); }
+    WorkItemRepository fixtureWorkStore() { return new InMemoryWorkItemRepository(); }
 
     /** 인벤토리(DB 없는 로컬 실행) */
     @Bean
-    InventoryStore fixtureInventoryStore() { return new InMemoryInventoryStore(); }
+    InventoryRepository fixtureInventoryStore() { return new InMemoryInventoryRepository(); }
 
     /** 폰 캘린더 할 일(DB 없는 로컬 실행) */
     @Bean
-    kr.seulgae.techlab.phone.TodoStore fixtureTodoStore() { return new kr.seulgae.techlab.phone.InMemoryPhoneStores.Todos(); }
+    kr.seulgae.techlab.phone.repository.TodoRepository fixtureTodoStore() { return new kr.seulgae.techlab.phone.repository.impl.InMemoryPhoneRepositories.Todos(); }
 
     /** 폰 SNS(DB 없는 로컬 실행) */
     @Bean
-    kr.seulgae.techlab.phone.SnsStore fixtureSnsStore() { return new kr.seulgae.techlab.phone.InMemoryPhoneStores.Sns(); }
+    kr.seulgae.techlab.phone.repository.SnsRepository fixtureSnsStore() { return new kr.seulgae.techlab.phone.repository.impl.InMemoryPhoneRepositories.Sns(); }
 
     /** 로비 방명록(DB 없는 로컬 실행) */
     @Bean
-    GuestbookStore fixtureGuestbookStore() { return new InMemoryGuestbookStore(); }
+    GuestbookRepository fixtureGuestbookStore() { return new InMemoryGuestbookRepository(); }
 
     @Bean
     MeetingAgendaRepository fixtureAgendaRepository() {
         Map<UUID, MeetingAgenda> agendas = new ConcurrentHashMap<>();
         Map<UUID, String> hashes = new ConcurrentHashMap<>();
-        return new MeetingAgendaRepository(null) {
+        return new MeetingAgendaRepository() {
             @Override public List<MeetingAgenda> list(int limit, int offset) {
                 return agendas.values().stream().sorted(Comparator.comparing(MeetingAgenda::createdAt).reversed()).skip(offset).limit(limit).toList();
             }
@@ -115,12 +146,12 @@ public class LocalLobbyTestApplication {
 
     /** 회원 등급·등급 신청(DB 없는 로컬 실행) */
     @Bean
-    kr.seulgae.techlab.auth.LevelRequestStore fixtureLevelRequestStore() { return new kr.seulgae.techlab.auth.InMemoryLevelRequestStore(); }
+    kr.seulgae.techlab.auth.repository.LevelRequestRepository fixtureLevelRequestStore() { return new kr.seulgae.techlab.auth.repository.impl.InMemoryLevelRequestRepository(); }
 
     @Bean
     MemberRepository fixtureMemberRepository() {
         Map<UUID, Member> members = new ConcurrentHashMap<>();
-        return new MemberRepository(null) {
+        return new MemberRepository() {
             @Override public Optional<Member> findById(UUID id) { return Optional.ofNullable(members.get(id)); }
             @Override public Optional<Member> loginByKakaoId(long kakaoId) { return members.values().stream().filter(m -> m.kakaoId() == kakaoId).findFirst(); }
             @Override public Member create(UUID id, long kakaoId, String nickname) { var m = new Member(id, kakaoId, nickname); members.put(id, m); return m; }

@@ -1,5 +1,6 @@
 package kr.seulgae.techlab.multiplayer.lobby;
 
+import kr.seulgae.techlab.multiplayer.lobby.domain.*;
 import java.time.Instant;
 import kr.seulgae.techlab.multiplayer.lobby.domain.LobbyChat;
 import kr.seulgae.techlab.multiplayer.lobby.domain.LobbyRoom;
