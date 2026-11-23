@@ -267,13 +267,13 @@ class PreflightTests(unittest.TestCase):
         with self.assertRaisesRegex(ops.OpsError, 'kakao-client-secret'):
             ops.preflight()
 
-    def test_existing_v2_to_v18_schemas_are_accepted_but_unknown_versions_are_not(self):
-        for version in (2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18):
+    def test_existing_v2_to_v19_schemas_are_accepted_but_unknown_versions_are_not(self):
+        for version in (2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19):
             self.schema.return_value = version
             ops.preflight()
-        for version in (0, 19):
+        for version in (0, 20):
             self.schema.return_value = version
-            with self.assertRaisesRegex(ops.OpsError, 'V1-V18'):
+            with self.assertRaisesRegex(ops.OpsError, 'V1-V19'):
                 ops.preflight()
 
     def test_missing_empty_or_private_app_password_is_rejected(self):
@@ -322,8 +322,8 @@ class PreflightTests(unittest.TestCase):
         self.schema.assert_not_called()
 
     def test_existing_schema_zero_or_unknown_is_rejected_without_migration(self):
-        # V1~V18은 지원 범위에 들어가므로, 빈 DB와 아직 모르는 V19은 거부한다.
-        for version in (0, 19):
+        # V1~V19은 지원 범위에 들어가므로, 빈 DB와 아직 모르는 V20은 거부한다.
+        for version in (0, 20):
             self.schema.return_value = version
             with self.assertRaisesRegex(ops.OpsError, 'No migration'):
                 ops.preflight()
