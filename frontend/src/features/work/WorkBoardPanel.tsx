@@ -6,7 +6,7 @@ import { addMaintenance, addOperation, codeName, createQa, fetchBoard, fetchThre
 import type { BoardView, Thread, WorkBoard, WorkItem } from './workApi'
 import { playSfx } from '../../audio/AudioManager'
 import { TIRED_MESSAGE, TIRED_STATUS, inventoryStore } from '../inventory/inventoryStore'
-import '../research/components/ResearchPanel.css'
+import '../../components/panel.css'
 import './work.css'
 
 const TITLES: Record<WorkBoard, { eyebrow: string; title: string; inbox: string; entries: string; help: string }> = {

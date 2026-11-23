@@ -11,7 +11,7 @@ import BankApp from './apps/BankApp'
 import CalendarApp from './apps/CalendarApp'
 import BrowserApp from './apps/BrowserApp'
 import SnsApp from './apps/SnsApp'
-import '../research/components/ResearchPanel.css'
+import '../../components/panel.css'
 import '../inventory/inventory.css'
 import './phone.css'
 

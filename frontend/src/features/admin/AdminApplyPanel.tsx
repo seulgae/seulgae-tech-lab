@@ -3,7 +3,7 @@ import { LOGIN_URL, useAuth } from '../auth/authStore'
 import { LEVEL_NAMES, REASON_MAX, REQUEST_STATUS_NAMES, applyLevel, fetchMyLevel } from './levelApi'
 import type { MyLevel } from './levelApi'
 import { playSfx } from '../../audio/AudioManager'
-import '../research/components/ResearchPanel.css'
+import '../../components/panel.css'
 import './sqlConsole.css'
 
 /**

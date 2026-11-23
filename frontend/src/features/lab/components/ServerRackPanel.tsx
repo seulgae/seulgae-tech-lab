@@ -3,7 +3,7 @@ import { fetchCapacity } from '../api/labApi'
 import { formatUptime } from '../model/labTypes'
 import { PROBE_STATES, RACKS, formatMb, sparkline } from '../model/capacity'
 import type { Capacity, Point, RackId } from '../model/capacity'
-import '../../research/components/ResearchPanel.css'
+import '../../../components/panel.css'
 import './LabInfoPanel.css'
 
 const POLL_MS = 5000

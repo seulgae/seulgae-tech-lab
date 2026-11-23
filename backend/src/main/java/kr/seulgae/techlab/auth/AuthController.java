@@ -82,8 +82,8 @@ public class AuthController {
     /** 로그인한 회원이 쓴 최근 글 ID. 화면이 "내 글" 표시와 수정·삭제 버튼에 쓴다. */
     @GetMapping("/me/owned")
     public Map<String, List<UUID>> owned(HttpServletRequest request) {
-        return auth.current(request).map(member -> Map.of("recordIds", members.recentRecordIds(member.id()), "agendaIds", members.recentAgendaIds(member.id())))
-            .orElse(Map.of("recordIds", List.of(), "agendaIds", List.of()));
+        return auth.current(request).map(member -> Map.of("agendaIds", members.recentAgendaIds(member.id())))
+            .orElse(Map.of("agendaIds", List.of()));
     }
 
     @PutMapping("/me/nickname")

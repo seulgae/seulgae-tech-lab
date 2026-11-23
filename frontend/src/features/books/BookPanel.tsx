@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { TECH_BOOKS } from './techBooks'
-import '../research/components/ResearchPanel.css'
+import '../../components/panel.css'
 import './books.css'
 
 /**

@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import Player from '../Player'
 import createLobbyMap from '../LobbyMap'
-import { RESEARCH_EVENTS } from '../../features/research/researchEvents'
+import { PULLS_EVENTS } from '../../features/pulls/pullsApi'
 import { LAB_EVENTS } from '../../features/lab/labEvents'
 import { hasTextInputFocus, isNearObject } from '../interaction'
 import { createPixelAssets } from '../assets/pixelAssets'
@@ -31,7 +31,7 @@ import { FISH_COLORS } from '../rooms/fishingLogic'
 
 /** 패널을 열 때 함께 나는 장비 소리(컴퓨터 타이핑, 키오스크, 화이트보드 마커 등) */
 const PANEL_SOUNDS: Partial<Record<string, EffectKey>> = {
-  research: 'kiosk', 'build-info': 'typing', 'server-status': 'beep', agenda: 'marker', bookshelf: 'page', 'admin-console': 'typing', 'admin-apply': 'kiosk',
+  'pull-requests': 'kiosk', 'build-info': 'typing', 'server-status': 'beep', agenda: 'marker', bookshelf: 'page', 'admin-console': 'typing', 'admin-apply': 'kiosk',
   'work-board': 'typing', arcade: 'success', guestbook: 'kiosk', 'food-cart': 'coin',
 }
 
@@ -228,7 +228,7 @@ export default class LabLobbyScene extends Phaser.Scene {
     applyRenderZoom(this)
     this.scale.on('resize', this.resizeRender)
 
-    this.uiEvents.on(RESEARCH_EVENTS.closeResearch, this.closePanel)
+    this.uiEvents.on(PULLS_EVENTS.closePulls, this.closePanel)
     this.uiEvents.on(LAB_EVENTS.closePanel, this.closePanel)
     this.uiEvents.on('chat:focus', this.resetChatInput)
     this.uiEvents.on(MOBILE_INPUT.move, this.moveTouch)
@@ -261,7 +261,7 @@ export default class LabLobbyScene extends Phaser.Scene {
       this.fx = undefined
       this.scale.off('resize', this.resizeRender)
       this.uiEvents.off(MULTIPLAYER_EVENTS.dispose, this.stopMultiplayer)
-      this.uiEvents.off(RESEARCH_EVENTS.closeResearch, this.closePanel)
+      this.uiEvents.off(PULLS_EVENTS.closePulls, this.closePanel)
       this.uiEvents.off(LAB_EVENTS.closePanel, this.closePanel)
       this.uiEvents.off('chat:focus', this.resetChatInput)
     })
@@ -345,7 +345,7 @@ export default class LabLobbyScene extends Phaser.Scene {
     playSfx('panel-open', { volume: 0.6 })
     const panelSound = PANEL_SOUNDS[target.kind]
     if (panelSound) playSfx(panelSound, { volume: 0.7 })
-    if (target.kind === 'research') this.uiEvents.emit(RESEARCH_EVENTS.openResearch)
+    if (target.kind === 'pull-requests') this.uiEvents.emit(PULLS_EVENTS.openPulls)
     // 책장은 책이 날아오는 연출(RoomFx)이 끝난 뒤 책 읽기 창을 연다.
     else if (target.kind === 'bookshelf') this.time.delayedCall(450, () => { if (this.panelOpen) this.uiEvents.emit(LAB_EVENTS.openPanel, 'bookshelf') })
     else {

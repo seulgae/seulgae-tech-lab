@@ -182,8 +182,8 @@
       "interactions": [
         {
           "id": "development-supercomputer",
-          "kind": "research",
-          "label": "연구 기록",
+          "kind": "pull-requests",
+          "label": "GitHub PR 목록",
           "x": 400,
           "y": 232,
           "width": 240,

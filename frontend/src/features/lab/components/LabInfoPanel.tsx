@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { fetchBuildInfo, fetchLabStatus } from '../api/labApi'
 import { formatUptime } from '../model/labTypes'
 import type { BuildInfo, LabPanelKind, LabStatus } from '../model/labTypes'
-import '../../research/components/ResearchPanel.css'
+import '../../../components/panel.css'
 import './LabInfoPanel.css'
 
 type Props = { kind: LabPanelKind; onClose: () => void }

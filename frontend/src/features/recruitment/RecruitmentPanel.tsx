@@ -3,7 +3,7 @@ import { useAuth } from '../auth/authStore'
 import { PagedList } from '../boards/BoardPagination'
 import { AGENTS, STATE, REVIEW_STATE, request, safeLink } from './recruitmentApi'
 import type { Dashboard, Fact, Job, Posting, Review } from './recruitmentApi'
-import '../research/components/ResearchPanel.css'
+import '../../components/panel.css'
 import './recruitment.css'
 
 const when = (value?: string | Date) => value ? new Date(value).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) : '기록 없음'

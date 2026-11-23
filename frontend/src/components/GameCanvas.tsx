@@ -5,8 +5,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Phaser from 'phaser'
 import LabLobbyScene from '../game/scenes/LabLobbyScene'
 import { RENDER_ZOOM_KEY, canvasSizeFor, renderZoomFor } from '../game/render/renderScale'
-import { RESEARCH_EVENTS } from '../features/research/researchEvents'
-import ResearchPanel from '../features/research/components/ResearchPanel'
+import { PULLS_EVENTS } from '../features/pulls/pullsApi'
+import PullsPanel from '../features/pulls/PullsPanel'
 import LabInfoPanel from '../features/lab/components/LabInfoPanel'
 import ServerRackPanel from '../features/lab/components/ServerRackPanel'
 import { isRackId } from '../features/lab/model/capacity'
@@ -50,7 +50,7 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
   const containerRef = useRef<HTMLDivElement>(null)
   const eventRef = useRef<Phaser.Events.EventEmitter | null>(null)
   const [recruitmentAgent, setRecruitmentAgent] = useState('SEARCH')
-  const [researchOpen, setResearchOpen] = useState(false)
+  const [pullsOpen, setPullsOpen] = useState(false)
   const [connection, setConnection] = useState<ConnectionInfo>(INITIAL_CONNECTION)
   const clientRef = useRef<MultiplayerClient | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -88,9 +88,9 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
   /**
    * 게임에 닫기 이벤트를 보내고 패널을 숨긴 뒤 게임 영역으로 초점을 돌린다.
    */
-  const closeResearch = () => {
-    eventRef.current?.emit(RESEARCH_EVENTS.closeResearch)
-    setResearchOpen(false)
+  const closePulls = () => {
+    eventRef.current?.emit(PULLS_EVENTS.closePulls)
+    setPullsOpen(false)
     containerRef.current?.focus({ preventScroll: true })
   }
   /** CCTV 패널이 렌더 중 ref를 직접 읽지 않도록 함수로 넘긴다. */
@@ -127,8 +127,8 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
     }, { isAdmin: () => authStore.get().admin })
     clientRef.current = client
     eventRef.current = uiEvents
-    const openResearch = () => setResearchOpen(true)
-    uiEvents.on(RESEARCH_EVENTS.openResearch, openResearch)
+    const openPulls = () => setPullsOpen(true)
+    uiEvents.on(PULLS_EVENTS.openPulls, openPulls)
     const openLabPanel = (kind: RoomPanelKind) => setLabPanel(kind)
     const pickWorkBoard = (id: string) => setWorkBoardId(id)
     uiEvents.on('recruitment:agent', setRecruitmentAgent)
@@ -177,7 +177,7 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
       resizeObserver?.disconnect()
       // Phaser의 비동기 destroy 프레임을 기다리지 않고 소켓·타이머부터 정리한다.
       uiEvents.emit(MULTIPLAYER_EVENTS.dispose)
-      uiEvents.off(RESEARCH_EVENTS.openResearch, openResearch)
+      uiEvents.off(PULLS_EVENTS.openPulls, openPulls)
       uiEvents.off(LAB_EVENTS.openPanel, openLabPanel)
       uiEvents.off(LAB_EVENTS.workBoard, pickWorkBoard)
       uiEvents.off(LAB_EVENTS.serverRack, setRackId)
@@ -203,9 +203,9 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
         error={chatError} onSend={message => clientRef.current?.sendChat(message, tableTalk ? 'table' : 'room') ?? false}
         onInputFocus={focused => { setChatFocused(focused); eventRef.current?.emit('chat:focus') }}
         onExit={() => containerRef.current?.focus({ preventScroll: true })} onEdit={() => setChatError(null)} />}
-      <MobileControls disabled={researchOpen || labPanel !== null || chatFocused || connection.travelling === true} resetToken={controlsReset}
+      <MobileControls disabled={pullsOpen || labPanel !== null || chatFocused || connection.travelling === true} resetToken={controlsReset}
         onMove={moveMobile} onInteract={interactMobile} />
-      {researchOpen && <ResearchPanel onClose={closeResearch} />}
+      {pullsOpen && <PullsPanel onClose={closePulls} />}
       {labPanel === 'recruitment' && <RecruitmentPanel agent={recruitmentAgent} onClose={closeLabPanel} />}
       {labPanel === 'agenda' && <AgendaPanel onClose={closeLabPanel} />}
       {labPanel === 'bookshelf' && <BookPanel onClose={closeLabPanel} />}

@@ -3,7 +3,7 @@ import { fetchTables, isReadOnly, runSql, tableQuery } from './adminApi'
 import type { DbTable, SqlResult } from './adminApi'
 import { playSfx } from '../../audio/AudioManager'
 import LevelRequestsBox from './LevelRequestsBox'
-import '../research/components/ResearchPanel.css'
+import '../../components/panel.css'
 import './sqlConsole.css'
 
 /**

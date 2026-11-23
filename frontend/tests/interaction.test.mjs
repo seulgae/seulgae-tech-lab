@@ -11,7 +11,7 @@ import { LAB_EVENTS } from '../src/features/lab/labEvents.ts'
 import { ROOM_THEMES } from '../src/game/rooms/roomThemes.ts'
 import { crispText } from '../src/game/render/renderScale.ts'
 import { isNearObject } from '../src/game/interaction.ts'
-import { RESEARCH_EVENTS } from '../src/features/research/researchEvents.ts'
+import { PULLS_EVENTS } from '../src/features/pulls/pullsApi.ts'
 import { MOBILE_INPUT } from '../src/game/input/mobileInput.ts'
 import { MULTIPLAYER_EVENTS } from '../src/features/multiplayer/model/protocol.ts'
 
@@ -92,7 +92,7 @@ function createScene(room = 'lobby') {
     .replace('export default class LabLobbyScene', 'class LabLobbyScene')
   const LobbyScene = vm.runInNewContext(source + '\nLabLobbyScene', {
     Phaser: { Scene, Input: { Keyboard: { JustDown } }, Scenes: { Events: { SHUTDOWN: 'shutdown' } } },
-    ROOMS, doorHint, roomObstacles, nearestInteraction, setRoomObstacles() {}, Player, createLobbyMap: () => ({}), RESEARCH_EVENTS, LAB_EVENTS,
+    ROOMS, doorHint, roomObstacles, nearestInteraction, setRoomObstacles() {}, Player, createLobbyMap: () => ({}), PULLS_EVENTS, LAB_EVENTS,
     createRoomAssets() {}, ROOM_THEMES, createRoomFx: () => fx, crispText,
     // 사운드: 재생한 효과음 이름만 기록한다. 발걸음 규칙은 실제 모듈을 쓴다.
     AudioManager: { for: () => ({ enterRoom: (room, phase) => { (state.rooms ??= []).push([room, phase]) } }) },
@@ -116,7 +116,7 @@ function createScene(room = 'lobby') {
 test('채팅 입력 포커스는 이동과 컴퓨터 E를 막고 키 상태를 초기화한다', () => {
   const { scene, uiEvents, key, state } = createScene('development-lab')
   let opens = 0
-  uiEvents.on(RESEARCH_EVENTS.openResearch, () => opens++)
+  uiEvents.on(PULLS_EVENTS.openPulls, () => opens++)
   scene.player.x = 400; scene.player.y = 290
   state.textFocused = true
   uiEvents.emit('chat:focus')
@@ -133,7 +133,7 @@ test('채팅 입력 포커스는 이동과 컴퓨터 E를 막고 키 상태를 �
 test('범위 밖 E는 무시하고 나중에 접근해도 예약 실행하지 않는다', () => {
   const { scene, uiEvents, key } = createScene()
   let opens = 0
-  uiEvents.on(RESEARCH_EVENTS.openResearch, () => opens++)
+  uiEvents.on(PULLS_EVENTS.openPulls, () => opens++)
   key._justDown = true
   scene.update()
   scene.player.x = 620
@@ -148,7 +148,7 @@ test('범위 밖 E는 무시하고 나중에 접근해도 예약 실행하지 �
 test('한 번 누른 E는 한 번만 열고 패널 동안 이동을 잠근다', () => {
   const { scene, uiEvents, key } = createScene('development-lab')
   let opens = 0
-  uiEvents.on(RESEARCH_EVENTS.openResearch, () => opens++)
+  uiEvents.on(PULLS_EVENTS.openPulls, () => opens++)
   scene.player.x = 400; scene.player.y = 290
   key._justDown = true
   for (let frame = 0; frame < 120; frame++) scene.update()
@@ -160,13 +160,13 @@ test('한 번 누른 E는 한 번만 열고 패널 동안 이동을 잠근다', 
 test('패널 표시 중 E를 소비하고 닫은 뒤 새 입력으로만 다시 연다', () => {
   const { scene, uiEvents, key } = createScene('development-lab')
   let opens = 0
-  uiEvents.on(RESEARCH_EVENTS.openResearch, () => opens++)
+  uiEvents.on(PULLS_EVENTS.openPulls, () => opens++)
   scene.player.x = 400; scene.player.y = 290
   key._justDown = true
   scene.update()
   key._justDown = true
   scene.update()
-  uiEvents.emit(RESEARCH_EVENTS.closeResearch)
+  uiEvents.emit(PULLS_EVENTS.closePulls)
   scene.update()
   assert.equal(opens, 1)
   assert.equal(scene.player.movementEnabled, true)
@@ -182,17 +182,17 @@ test('20회 개폐해도 리스너가 늘지 않고 장면 종료 시 제거한�
     key._justDown = true
     scene.update()
     assert.equal(scene.player.movementEnabled, false)
-    uiEvents.emit(RESEARCH_EVENTS.closeResearch)
+    uiEvents.emit(PULLS_EVENTS.closePulls)
     scene.update()
     assert.equal(scene.player.movementEnabled, true)
-    assert.equal(uiEvents.listenerCount(RESEARCH_EVENTS.closeResearch), 1)
+    assert.equal(uiEvents.listenerCount(PULLS_EVENTS.closePulls), 1)
   }
   scene.events.emit('shutdown')
-  assert.equal(uiEvents.listenerCount(RESEARCH_EVENTS.closeResearch), 0)
+  assert.equal(uiEvents.listenerCount(PULLS_EVENTS.closePulls), 0)
   scene.create()
-  assert.equal(uiEvents.listenerCount(RESEARCH_EVENTS.closeResearch), 1)
+  assert.equal(uiEvents.listenerCount(PULLS_EVENTS.closePulls), 1)
   scene.events.emit('shutdown')
-  assert.equal(uiEvents.listenerCount(RESEARCH_EVENTS.closeResearch), 0)
+  assert.equal(uiEvents.listenerCount(PULLS_EVENTS.closePulls), 0)
 })
 
 test('터치 이동은 채팅 포커스 전환 때 초기화되고 정지를 서버에 전달한다', () => {
@@ -211,7 +211,7 @@ test('터치 이동은 채팅 포커스 전환 때 초기화되고 정지를 서
 test('터치 E는 범위 밖에서 예약되지 않고 패널 동안 재실행되지 않는다', () => {
   const { scene, uiEvents } = createScene('development-lab')
   let opens = 0
-  uiEvents.on(RESEARCH_EVENTS.openResearch, () => opens++)
+  uiEvents.on(PULLS_EVENTS.openPulls, () => opens++)
   // 스폰(아래 문 앞): 작업대·슈퍼컴퓨터 모두 범위 밖
   scene.player.y = 470
   uiEvents.emit(MOBILE_INPUT.interact); scene.update()
@@ -223,7 +223,7 @@ test('터치 E는 범위 밖에서 예약되지 않고 패널 동안 재실행�
   assert.equal(opens, 1)
   assert.equal(scene.player.movementEnabled, false)
   uiEvents.emit(MOBILE_INPUT.interact); scene.update()
-  uiEvents.emit(RESEARCH_EVENTS.closeResearch); scene.update()
+  uiEvents.emit(PULLS_EVENTS.closePulls); scene.update()
   assert.equal(opens, 1)
   assert.deepEqual({ ...scene.player.touch }, { x: 0, y: 0 })
   scene.events.emit('shutdown')
@@ -234,7 +234,7 @@ test('터치 E는 범위 밖에서 예약되지 않고 패널 동안 재실행�
 })
 
 test('모든 방에 스폰과 겹치지 않는 상호작용이 있고 위치별로 하나만 고른다', () => {
-  const kinds = new Set(['vending-machine', 'water-dispenser', 'research', 'guestbook', 'build-info', 'server-status', 'table-talk', 'agenda', 'admin-console', 'admin-apply', 'fishing', 'work-board', 'arcade'])
+  const kinds = new Set(['vending-machine', 'water-dispenser', 'pull-requests', 'guestbook', 'build-info', 'server-status', 'table-talk', 'agenda', 'admin-console', 'admin-apply', 'fishing', 'work-board', 'arcade'])
   for (const [id, room] of Object.entries(ROOMS)) {
     // 2·4번은 아직 빈 사무실이라 상호작용이 없다.
     if (id !== 'office-2' && id !== 'office-4') assert.ok(room.interactions.length > 0, id)
@@ -245,7 +245,7 @@ test('모든 방에 스폰과 겹치지 않는 상호작용이 있고 위치별�
   }
   assert.equal(nearestInteraction('lobby', 620, 400)?.kind, 'guestbook', '로비 컴퓨터는 방명록')
   assert.equal(nearestInteraction('server-room', 220, 290)?.kind, 'server-status')
-  assert.equal(nearestInteraction('development-lab', 400, 290)?.id, 'development-supercomputer', '연구 기록은 개발 연구실 슈퍼컴퓨터')
+  assert.equal(nearestInteraction('development-lab', 400, 290)?.id, 'development-supercomputer', 'GitHub PR 목록은 개발 연구실 슈퍼컴퓨터')
   assert.equal(nearestInteraction('development-lab', 400, 440)?.id, 'development-build')
   assert.equal(nearestInteraction('meeting-room', 400, 420)?.kind, 'table-talk')
   assert.equal(nearestInteraction('meeting-room', 400, 460), undefined)
@@ -259,7 +259,7 @@ test('서버실 랙과 개발 연구실 컴퓨터는 해당 패널만 열고 입
     const opened = []
     let research = 0
     uiEvents.on(LAB_EVENTS.openPanel, value => opened.push(value))
-    uiEvents.on(RESEARCH_EVENTS.openResearch, () => research++)
+    uiEvents.on(PULLS_EVENTS.openPulls, () => research++)
     scene.player.x = x; scene.player.y = y
     scene.update()
     assert.equal(scene.interactionHint.text, kind === 'server-status' ? 'E · 1번 랙 · CPU' : 'E · 빌드 정보')
@@ -484,7 +484,7 @@ test('사운드: 방 음악을 시작하고, 실제로 움직일 때만 발걸�
   lobby.scene.player.x = 620; lobby.scene.player.y = 400; lobby.scene.update()
   lobby.key._justDown = true; lobby.scene.update()
   assert.deepEqual(lobby.state.sounds.slice(-2), ['panel-open', 'kiosk'], '키오스크 패널을 열 때')
-  lobby.uiEvents.emit(RESEARCH_EVENTS.closeResearch)
+  lobby.uiEvents.emit(PULLS_EVENTS.closePulls)
   assert.equal(lobby.state.sounds.at(-1), 'panel-close')
 
   const control = createScene('control-room')
@@ -513,23 +513,23 @@ test('가방: I로 가방 창을 열고, 발밑 바닥 물고기는 E로 줍는�
   assert.equal(scene.interactionHint.visible, false, '멀어지면 줍기 대상이 아니다')
 })
 
-test('방명록: 로비 컴퓨터는 방명록 창을 열고, 연구 기록은 개발 연구실 슈퍼컴퓨터에서 연다', () => {
+test('방명록: 로비 컴퓨터는 방명록 창을 열고, GitHub PR 목록은 개발 연구실 슈퍼컴퓨터에서 연다', () => {
   const lobby = createScene('lobby')
   const opened = []
   let research = 0
   lobby.uiEvents.on(LAB_EVENTS.openPanel, value => opened.push(value))
-  lobby.uiEvents.on(RESEARCH_EVENTS.openResearch, () => research++)
+  lobby.uiEvents.on(PULLS_EVENTS.openPulls, () => research++)
   lobby.scene.player.x = 620; lobby.scene.player.y = 400
   lobby.key._justDown = true; lobby.scene.update()
   assert.deepEqual(opened, ['guestbook'])
-  assert.equal(research, 0, '로비에서는 연구 기록을 열지 않는다')
+  assert.equal(research, 0, '로비에서는 PR 목록을 열지 않는다')
 
   const lab = createScene('development-lab')
   let labResearch = 0
-  lab.uiEvents.on(RESEARCH_EVENTS.openResearch, () => labResearch++)
+  lab.uiEvents.on(PULLS_EVENTS.openPulls, () => labResearch++)
   lab.scene.player.x = 400; lab.scene.player.y = 290
   lab.scene.update()
-  assert.equal(lab.scene.interactionHint.text, 'E · 연구 기록')
+  assert.equal(lab.scene.interactionHint.text, 'E · GitHub PR 목록')
   lab.key._justDown = true; lab.scene.update()
   assert.equal(labResearch, 1)
 })

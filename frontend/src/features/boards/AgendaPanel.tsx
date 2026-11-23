@@ -6,7 +6,7 @@ import {
   AGENDAS_CHANGED, AGENDA_CONTENT_MAX, AGENDA_TITLE_MAX, BoardError, createAgenda, deleteAgenda, fetchAgendas, updateAgenda,
 } from './boardsApi'
 import type { Agenda } from './boardsApi'
-import '../research/components/ResearchPanel.css'
+import '../../components/panel.css'
 import { LOGIN_URL, authStore, canWrite, isMine, useAuth } from '../auth/authStore'
 
 type Mode = { kind: 'list' } | { kind: 'view'; agenda: Agenda } | { kind: 'create' } | { kind: 'edit'; agenda: Agenda }
