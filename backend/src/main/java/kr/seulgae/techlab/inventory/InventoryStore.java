@@ -6,7 +6,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * 인벤토리 저장소(V5 lab.tb_lab_member_inventory, lab.tb_lab_coin_history, lab.tb_lab_item). 운영은 PostgreSQL, 로컬·테스트는 메모리 구현을 쓴다.
+ * 인벤토리 저장소(V5 lab.inventories, lab.coin_events, lab.items). 운영은 PostgreSQL, 로컬·테스트는 메모리 구현을 쓴다.
  *
  * @author seulgae
  * @version 1.1, 구매 시 회복 상태 잠금

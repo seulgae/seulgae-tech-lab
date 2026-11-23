@@ -24,7 +24,7 @@ public class JdbcGuestbookStore implements GuestbookStore {
     @Override public List<Entry> latest(String category, int limit) {
         return jdbc.sql("""
             SELECT g.id, g.category, g.title, g.content, m.nickname, g.created_at
-            FROM lab.tb_lab_guestbook g LEFT JOIN lab.tb_lab_member m ON m.id = g.author_id
+            FROM lab.guestbook_entries g LEFT JOIN lab.members m ON m.id = g.author_id
             WHERE g.category = :category ORDER BY g.created_at DESC, g.id DESC LIMIT :limit""")
             .param("category", category).param("limit", limit).query((rs, row) -> map(rs)).list();
     }
@@ -32,11 +32,11 @@ public class JdbcGuestbookStore implements GuestbookStore {
     @Override public Entry insert(String category, String title, String content, UUID authorId) {
         return jdbc.sql("""
             WITH created AS (
-                INSERT INTO lab.tb_lab_guestbook (id, category, title, content, author_id)
+                INSERT INTO lab.guestbook_entries (id, category, title, content, author_id)
                 VALUES (:id, :category, :title, :content, :author)
                 RETURNING id, category, title, content, author_id, created_at)
             SELECT c.id, c.category, c.title, c.content, m.nickname, c.created_at
-            FROM created c LEFT JOIN lab.tb_lab_member m ON m.id = c.author_id""")
+            FROM created c LEFT JOIN lab.members m ON m.id = c.author_id""")
             .param("id", UUID.randomUUID()).param("category", category).param("title", title)
             .param("content", content).param("author", authorId).query((rs, row) -> map(rs)).single();
     }

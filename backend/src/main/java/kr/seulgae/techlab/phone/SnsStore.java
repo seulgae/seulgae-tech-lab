@@ -6,7 +6,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * 폰 SNS 글 저장소(V11 lab.tb_lab_sns_post).
+ * 폰 SNS 글 저장소(V11 lab.sns_posts).
  *
  * @author seulgae
  * @version 1.0, 폰 앱(SNS)

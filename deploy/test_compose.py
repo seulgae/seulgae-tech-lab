@@ -40,7 +40,7 @@ class ComposeTests(unittest.TestCase):
                          'https://seulgae-home-server.tailac4b36.ts.net/api/auth/kakao/callback')
         self.assertRegex(backend['environment']['LAB_AUTH_KAKAO_CLIENT_ID'], r'^[0-9a-f]{32}$')
         self.assertNotIn('LAB_AUTH_SESSION_SECRET', backend['environment'])
-        # 관리자는 회원 등급(lab.tb_lab_member.level = 3)으로만 정한다. 설정 id 예외는 없다.
+        # 관리자는 회원 등급(lab.members.level = 3)으로만 정한다. 설정 id 예외는 없다.
         self.assertNotIn('LAB_ADMIN_MEMBER_IDS', backend['environment'])
         self.assertNotIn('LAB_AUTH_KAKAO_CLIENT_SECRET', backend['environment'])
         self.assertNotIn('homeserver-net', str(config))

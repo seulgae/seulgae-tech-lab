@@ -4,15 +4,15 @@ import { isReadOnly, quoteIdent, tableQuery } from '../src/features/admin/adminA
 import { authStore } from '../src/features/auth/authStore.ts'
 
 test('쿼리 콘솔: 조회 쿼리만 바로 실행하고, 바꾸는 쿼리는 한 번 더 묻는다', () => {
-  for (const sql of ['SELECT 1', '  select * from lab.tb_lab_item', '-- 메모\nSELECT 1', 'WITH a AS (SELECT 1) SELECT * FROM a', 'EXPLAIN SELECT 1', 'SHOW search_path'])
+  for (const sql of ['SELECT 1', '  select * from lab.items', '-- 메모\nSELECT 1', 'WITH a AS (SELECT 1) SELECT * FROM a', 'EXPLAIN SELECT 1', 'SHOW search_path'])
     assert.equal(isReadOnly(sql), true, sql)
-  for (const sql of ['DELETE FROM lab.tb_lab_item', 'update lab.tb_lab_item set name = 1', 'INSERT INTO a VALUES (1)', 'WITH d AS (DELETE FROM a RETURNING *) SELECT * FROM d',
+  for (const sql of ['DELETE FROM lab.items', 'update lab.items set name = 1', 'INSERT INTO a VALUES (1)', 'WITH d AS (DELETE FROM a RETURNING *) SELECT * FROM d',
     'EXPLAIN ANALYZE DELETE FROM a', 'TRUNCATE a', 'DROP TABLE a', '/* x */ delete from a'])
     assert.equal(isReadOnly(sql), false, sql)
 })
 
 test('쿼리 콘솔: 테이블을 누르면 조회 쿼리를 넣는다(필요하면 따옴표)', () => {
-  assert.equal(tableQuery({ schema: 'lab', name: 'tb_lab_guestbook', type: 'TABLE' }), 'SELECT * FROM lab.tb_lab_guestbook LIMIT 100;')
+  assert.equal(tableQuery({ schema: 'lab', name: 'guestbook_entries', type: 'TABLE' }), 'SELECT * FROM lab.guestbook_entries LIMIT 100;')
   assert.equal(quoteIdent('flyway_schema_history'), 'flyway_schema_history')
   assert.equal(quoteIdent('Weird"Name'), '"Weird""Name"')
 })

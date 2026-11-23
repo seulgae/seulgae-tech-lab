@@ -11,7 +11,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 /**
- * PostgreSQL 업무 게시판 저장소(V5 lab.tb_lab_common_code, lab.tb_lab_work_item).
+ * PostgreSQL 업무 게시판 저장소(V5 lab.common_codes, lab.work_items).
  *
  * @author seulgae
  * @version 1.0, 사무실 업무 게시판
@@ -25,32 +25,32 @@ public class JdbcWorkStore implements WorkStore {
     public JdbcWorkStore(JdbcClient jdbc) { this.jdbc = jdbc; }
 
     @Override public List<Code> codes(String group) {
-        return jdbc.sql("SELECT code_group, code, name, sort_order FROM lab.tb_lab_common_code WHERE code_group = :group ORDER BY sort_order, code")
+        return jdbc.sql("SELECT code_group, code, name, sort_order FROM lab.common_codes WHERE code_group = :group ORDER BY sort_order, code")
             .param("group", group).query((rs, row) -> new Code(rs.getString(1), rs.getString(2), rs.getString(3), rs.getInt(4))).list();
     }
 
     @Override public List<WorkItem> byCategory(String category, int limit) {
-        return jdbc.sql("SELECT " + COLUMNS + " FROM lab.tb_lab_work_item WHERE category = :category ORDER BY created_at DESC, id DESC LIMIT :limit")
+        return jdbc.sql("SELECT " + COLUMNS + " FROM lab.work_items WHERE category = :category ORDER BY created_at DESC, id DESC LIMIT :limit")
             .param("category", category).param("limit", limit).query((rs, row) -> map(rs)).list();
     }
 
     @Override public List<WorkItem> tickets(Collection<String> statuses, int limit) {
-        return jdbc.sql("SELECT " + COLUMNS + " FROM lab.tb_lab_work_item WHERE parent_id IS NULL AND status IN (:statuses) ORDER BY created_at DESC, id DESC LIMIT :limit")
+        return jdbc.sql("SELECT " + COLUMNS + " FROM lab.work_items WHERE parent_id IS NULL AND status IN (:statuses) ORDER BY created_at DESC, id DESC LIMIT :limit")
             .param("statuses", List.copyOf(statuses)).param("limit", limit).query((rs, row) -> map(rs)).list();
     }
 
     @Override public Optional<WorkItem> find(UUID id) {
-        return jdbc.sql("SELECT " + COLUMNS + " FROM lab.tb_lab_work_item WHERE id = :id").param("id", id).query((rs, row) -> map(rs)).optional();
+        return jdbc.sql("SELECT " + COLUMNS + " FROM lab.work_items WHERE id = :id").param("id", id).query((rs, row) -> map(rs)).optional();
     }
 
     @Override public List<WorkItem> children(UUID ticketId) {
-        return jdbc.sql("SELECT " + COLUMNS + " FROM lab.tb_lab_work_item WHERE parent_id = :id ORDER BY created_at, id")
+        return jdbc.sql("SELECT " + COLUMNS + " FROM lab.work_items WHERE parent_id = :id ORDER BY created_at, id")
             .param("id", ticketId).query((rs, row) -> map(rs)).list();
     }
 
     @Override public WorkItem insert(UUID parentId, String category, String status, String title, String content, String guide, UUID authorId) {
         return jdbc.sql("""
-            INSERT INTO lab.tb_lab_work_item (id, parent_id, category, status, title, content, guide, author_id)
+            INSERT INTO lab.work_items (id, parent_id, category, status, title, content, guide, author_id)
             VALUES (:id, :parent, :category, :status, :title, :content, :guide, :author)
             RETURNING """ + " " + COLUMNS)
             .param("id", UUID.randomUUID()).param("parent", parentId).param("category", category).param("status", status)
@@ -59,7 +59,7 @@ public class JdbcWorkStore implements WorkStore {
     }
 
     @Override public void updateStatus(UUID ticketId, String status) {
-        jdbc.sql("UPDATE lab.tb_lab_work_item SET status = :status, updated_at = CURRENT_TIMESTAMP WHERE id = :id AND parent_id IS NULL")
+        jdbc.sql("UPDATE lab.work_items SET status = :status, updated_at = CURRENT_TIMESTAMP WHERE id = :id AND parent_id IS NULL")
             .param("status", status).param("id", ticketId).update();
     }
 
