@@ -258,7 +258,7 @@ def preflight():
 
 
 # Flyway versions this repository knows how to run against. Releases still declare their own range.
-SUPPORTED_SCHEMAS = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17)
+SUPPORTED_SCHEMAS = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18)
 
 
 def schema_version():

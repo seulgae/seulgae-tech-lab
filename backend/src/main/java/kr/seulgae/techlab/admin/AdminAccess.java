@@ -11,7 +11,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 /**
  * 관리자 확인. IP가 바뀌어도 되도록 로그인 세션의 회원으로만 판단한다.
- * 회원 등급이 3(관리자)인 회원만 관리자다(lab.members.level).
+ * 회원 등급이 3(관리자)인 회원만 관리자다(lab.tb_lab_member.level).
  *
  * @author seulgae
  * @version 1.1, 등급 3만 관리자(설정 id 예외 제거)
