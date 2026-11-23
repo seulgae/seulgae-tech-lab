@@ -76,7 +76,7 @@ export default function SqlConsolePanel({ onClose }: { onClose: () => void }) {
         </aside>
         <section className="sql-main">
           <textarea ref={editorRef} value={sql} spellCheck={false} autoFocus aria-label="SQL"
-            placeholder={'SELECT * FROM lab.guestbook_entries LIMIT 100;'}
+            placeholder={'SELECT * FROM lab.tb_lab_guestbook LIMIT 100;'}
             onChange={event => setSql(event.target.value)}
             onKeyDown={event => { if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); void run() } }} />
           <div className="sql-actions">
