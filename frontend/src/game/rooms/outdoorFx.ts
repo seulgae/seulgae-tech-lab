@@ -17,7 +17,8 @@ import { OUTDOOR_NPCS } from '../npc/npcData.ts'
 /** 공유 맵과 같은 물 영역: 호수, 강(다리 자리 y 328~382 제외), 낚시 데크 */
 const LAKE = { x: 70, y: 180, width: 260, height: 140 }
 const RIVER = { x: 640, width: 60, top: 64, bridgeTop: 328, bridgeBottom: 382, bottom: 576 }
-const DOCK = { x: 594, y: 450, width: 48, height: 40 }
+// 낚시 데크: 다리 위쪽 강 왼쪽 기슭(다리와 바깥 문 사이 길에서 잘 보이는 자리)
+const DOCK = { x: 594, y: 200, width: 48, height: 40 }
 const OVERLAY_DEPTH = 880
 /** 다리·데크는 걸어 다니는 바닥이라 물(-44~-42) 바로 위, 모든 캐릭터(깊이 = 발 y)보다 아래에 그린다. */
 export const WALKABLE_DECK_DEPTH = -41

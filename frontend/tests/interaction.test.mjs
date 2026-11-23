@@ -250,7 +250,7 @@ test('모든 방에 스폰과 겹치지 않는 상호작용이 있고 위치별�
   assert.equal(nearestInteraction('meeting-room', 400, 420)?.kind, 'table-talk')
   assert.equal(nearestInteraction('meeting-room', 400, 460), undefined)
   assert.equal(nearestInteraction('control-room', 400, 280)?.kind, 'admin-console')
-  assert.equal(nearestInteraction('outdoor', 612, 500)?.kind, 'fishing')
+  assert.equal(nearestInteraction('outdoor', 612, 250)?.kind, 'fishing')
 })
 
 test('서버실 랙과 개발 연구실 컴퓨터는 해당 패널만 열고 입력을 잠근다', () => {

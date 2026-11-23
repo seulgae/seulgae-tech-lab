@@ -29,7 +29,7 @@ export function roomSoundscape(roomId: RoomId, phase: SkyPhase): Soundscape {
 export function footstepSound(roomId: RoomId, x: number, y: number): EffectKey {
   if (roomId === 'outdoor') {
     const onBridge = x >= 626 && x <= 714 && y >= 322 && y <= 390
-    const onDock = x >= 592 && x <= 644 && y >= 448 && y <= 494
+    const onDock = x >= 592 && x <= 644 && y >= 198 && y <= 244
     if (onBridge || onDock) return 'footstep-wood'
   }
   const row = Math.min(18, Math.max(0, Math.floor(y / 32))), column = Math.min(24, Math.max(0, Math.floor(x / 32)))

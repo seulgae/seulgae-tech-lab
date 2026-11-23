@@ -55,7 +55,8 @@ export const OUTDOOR_NPCS: readonly NpcDef[] = [
   {
     id: 'npc-man', kind: 'man', name: '퇴근한 시민',
     // 포장마차(가운데 풀밭)를 돌아 위쪽 풀밭과 바위 옆으로 걷는다.
-    path: [{ x: 380, y: 170 }, { x: 600, y: 170 }, { x: 605, y: 280 }, { x: 470, y: 300 }, { x: 400, y: 300 }],
+    // 낚시 데크(x 594~642, y 200~240)와 낚시꾼 왼쪽으로 돌아 걷는다.
+    path: [{ x: 380, y: 170 }, { x: 556, y: 168 }, { x: 548, y: 290 }, { x: 470, y: 300 }, { x: 400, y: 300 }],
     speed: 52, pause: [1000, 3000],
     talk: [
       '회의 많았죠? 숨 좀 돌려요.',
@@ -103,8 +104,8 @@ export const OUTDOOR_NPCS: readonly NpcDef[] = [
   },
   {
     id: 'npc-fisher', kind: 'fisher', name: '낚시하는 아저씨',
-    // 데크 왼쪽 물가에 서서 강을 향해 낚싯대를 드리운다(데크 낚시 자리는 비워 둔다).
-    path: [{ x: 566, y: 476 }], speed: 0, pause: [600000, 600000], idle: true, fixed: true, facesRight: true,
+    // 데크 아래쪽 물가에 서서 강을 향해 낚싯대를 드리운다(데크 낚시 자리는 비워 둔다).
+    path: [{ x: 575, y: 300 }], speed: 0, pause: [600000, 600000], idle: true, fixed: true, facesRight: true,
     talk: [
       '낚시는 기다림이야. 일도 그렇지.',
       '찌가 쑥 들어가면 그때 E를 눌러.',

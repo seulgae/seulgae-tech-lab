@@ -108,6 +108,8 @@ test('발걸음: 실제로 움직인 거리만큼, 막히면·멈추면 소리 �
   assert.equal(footstepSound('lobby', 100, 400), 'footstep')
   assert.equal(footstepSound('outdoor', 100, 400), 'footstep-grass')
   assert.equal(footstepSound('outdoor', 670, 355), 'footstep-wood', '다리 위')
+  assert.equal(footstepSound('outdoor', 612, 220), 'footstep-wood', '낚시 데크 위(다리 위쪽 강가)')
+  assert.equal(footstepSound('outdoor', 612, 470), 'footstep-grass', '예전 데크 자리는 풀밭')
   assert.equal(footstepSound('outdoor', 400, 480), 'footstep', '흙길')
 })
 
