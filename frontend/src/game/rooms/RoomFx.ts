@@ -1,6 +1,6 @@
 import { officeLifeFx } from './officeLifeFx'
 import Phaser from 'phaser'
-import { recruitmentRoomFx } from './recruitmentRoomFx'
+import { officeDeskWorkersFx } from './officeDeskWorkersFx'
 import { serverRobotsFx } from './serverRobotsFx'
 import { ROOMS, roomObjects } from '../maps/rooms'
 import type { RoomId, RoomInteraction } from '../maps/rooms'
@@ -468,12 +468,12 @@ function officeFx(ctx: Context): RoomHandlers {
     }
     skyWindows(ctx, 'office-window', [190, 610])
     wallClock(ctx, 400, '#4c6270', '#4e879d')
-    const staff = officeLifeFx(ctx), recruitment = recruitmentRoomFx(ctx)
+    const staff = officeLifeFx(ctx), desks = officeDeskWorkersFx(ctx)
     return {
-      targets: () => [...(staff.targets?.() ?? []), ...(recruitment.targets?.() ?? [])],
-      hint: target => recruitment.hint?.(target) ?? staff.hint?.(target),
-      intercept: target => drinkWater(target) || recruitment.intercept?.(target) || staff.intercept?.(target) || false,
-      destroy: () => { staff.destroy?.(); recruitment.destroy?.(); ctx.stop() },
+      targets: () => [...(staff.targets?.() ?? []), ...(desks.targets?.() ?? [])],
+      hint: target => desks.hint?.(target) ?? staff.hint?.(target),
+      intercept: target => drinkWater(target) || desks.intercept?.(target) || staff.intercept?.(target) || false,
+      destroy: () => { staff.destroy?.(); desks.destroy?.(); ctx.stop() },
     }
   }
   const lamp = ctx.glow(400, 230, ROOM_THEMES[ctx.options.room ?? 'office-1'].light, 7, 4, 0.22, -30)

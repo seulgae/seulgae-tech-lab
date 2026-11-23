@@ -57,10 +57,6 @@ services:
       - host.docker.internal:host-gateway
     volumes:
       - ${STLAB_SECRETS_DIR:-/opt/homeserver/config/seulgae-tech-lab}/capacity:/run/capacity:ro
-    # 파일이 없어도 기존 앱은 정상 기동한다. 활성화·키 설정은 운영 가이드 참조.
-    env_file:
-      - path: ${STLAB_SECRETS_DIR:-/opt/homeserver/config/seulgae-tech-lab}/recruitment.env
-        required: false
     secrets:
       - source: prod_db_password
         target: DB_PASSWORD

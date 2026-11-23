@@ -84,7 +84,7 @@ cd /opt/homeserver/apps/seulgae-tech-lab
 python3 deploy/ops.py check
 ```
 
-`check`는 Docker·Compose, PostgreSQL 상태와 네트워크, 두 비밀번호 파일과 권한, 해석된 Compose DB 설정, 기존 Flyway 이력을 확인한다. SQL은 READ ONLY 트랜잭션으로 실행한다. 성공 이력의 스키마 버전 V1~V15만 허용하며 실패 이력·미적용·다른 버전이면 중단한다. 배포할 릴리스와 맞는지는 `deploy`가 릴리스의 `db_schema` 범위로 다시 확인한다. 이미지 Pull, 앱 시작, 마이그레이션은 하지 않는다. 자체 ops 디렉터리와 잠금 파일은 만들 수 있다.
+`check`는 Docker·Compose, PostgreSQL 상태와 네트워크, 두 비밀번호 파일과 권한, 해석된 Compose DB 설정, 기존 Flyway 이력을 확인한다. SQL은 READ ONLY 트랜잭션으로 실행한다. 성공 이력의 스키마 버전 V1~V16만 허용하며 실패 이력·미적용·다른 버전이면 중단한다. 배포할 릴리스와 맞는지는 `deploy`가 릴리스의 `db_schema` 범위로 다시 확인한다. 이미지 Pull, 앱 시작, 마이그레이션은 하지 않는다. 자체 ops 디렉터리와 잠금 파일은 만들 수 있다.
 
 병합 후 main CI에서 이미지·manifest 게시가 끝났는지 GitHub Actions에서 사용자가 확인한 다음:
 
@@ -299,7 +299,7 @@ docker inspect postgres-postgres-1 kafka-kafka-1 --format '{{.Name}} {{.Id}} {{.
 참고: [Compose 파일 secret의 bind mount와 권한](https://docs.docker.com/reference/compose-file/services/#secrets), [GitHub Actions 변수](https://docs.github.com/en/actions/concepts/workflows-and-actions/variables).
 
 
-### V12 마이그레이션 (독립 채용관리)
+### V12 마이그레이션 (독립 채용관리, V16에서 삭제)
 
 1. V12 확장 PR을 병합하고 `db_schema` 11..12 릴리스의 배포 성공을 확인한다.
 2. 운영자가 서버에서 `python3 deploy/migrate-prod.py`를 실행한다. 백업 검증 후 V12를 적용한다.
@@ -334,3 +334,16 @@ docker inspect postgres-postgres-1 kafka-kafka-1 --format '{{.Name}} {{.Id}} {{.
 
 - 지운 연구 기록·아이디어 일지 행은 migrate-prod가 뜨는 `pg_dump` 백업에서만 되살릴 수 있다.
 - 1번 릴리스로 배포한 뒤에는 연구 기록을 쓰던 예전 이미지(14..14)로 롤백하지 않는다. V15 이후 그 이미지는 배포 사전 검사에서 거부된다.
+
+### V16 마이그레이션 (채용 테이블 삭제, 2026-11-23)
+
+V15와 같은 **축소** 순서다. 채용 공고 수집·검토 기능(V12·V13)을 코드와 테이블 모두 없앤다.
+
+| 순서 | 할 일 | 릴리스 `db_schema` |
+|---|---|---|
+| 1 | 축소 PR 머지: 채용 코드·테스트·도구·문서 삭제(앱은 채용 테이블을 읽지 않음) + V16 SQL·도구 | **15..16** |
+| 2 | 서버에서 `python3 deploy/migrate-prod.py`(백업 후 V15 → V16, 채용 테이블 11개 `DROP`) | — |
+| 3 | 마무리 PR: CI `db_schema` **16..16** | 16..16 |
+
+- 서버의 `recruitment.env`(선택 설정)는 더 읽지 않는다. 필요 없으면 지워도 된다.
+- 지운 채용 행은 migrate-prod의 `pg_dump` 백업에서만 되살릴 수 있다.

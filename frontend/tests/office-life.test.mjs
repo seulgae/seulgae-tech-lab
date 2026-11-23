@@ -1,9 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { OFFICE_STAFF, OFFICE_DESK, OFFICE_STAND, officeDeskPhase } from '../src/game/rooms/officeStaffData.ts'
+import { OFFICE_STAFF, OFFICE_DESK, OFFICE_STAND, OFFICE_DESK_WORKERS, officeDeskPhase } from '../src/game/rooms/officeStaffData.ts'
 import { RESEARCHER_STYLES } from '../src/game/npc/npcData.ts'
 import { roomObstacles, roomObjects } from '../src/game/maps/rooms.ts'
-import { AGENTS } from '../src/features/recruitment/recruitmentApi.ts'
 
 const obstacles = roomObstacles('office-1')
 const blocked = (x, y) => obstacles.some(o => Math.abs(x-o.x) < o.width/2+8 && Math.abs(y-o.y) < o.height/2+8)
@@ -26,11 +25,22 @@ test('작업석 연구원은 24초 앉아 일하고 8초 일어났다가 다음 
 })
 
 test('사무실 여섯 인물은 모두 서로 다른 외형의 연구원이다', () => {
-  const kinds=[...AGENTS.map(a=>a.kind),...OFFICE_STAFF.map(a=>a.kind),'researcher-curly']
+  const kinds=[...OFFICE_DESK_WORKERS.map(a=>a.kind),...OFFICE_STAFF.map(a=>a.kind),'researcher-curly']
   assert.equal(new Set(kinds).size,6)
   for (const kind of kinds) assert.ok(RESEARCHER_STYLES.some(s=>s.kind===kind),kind)
   const desks=roomObjects('office-1').filter(o=>o.texture==='computer')
   assert.deepEqual([...new Set(desks.map(o=>o.x))],[190,610])
   assert.deepEqual(desks.slice(0,3).map(o=>o.body.y),[150,300,450])
   assert.deepEqual(desks.slice(3).map(o=>o.body.y),[150,300,450])
+})
+
+test('오른쪽 작업석 연구원 셋은 앉아서 일하다가 가끔 화가 나서 한마디 한다(채용 화면 없음)', () => {
+  assert.equal(OFFICE_DESK_WORKERS.length, 3)
+  for (const worker of OFFICE_DESK_WORKERS) {
+    assert.equal(worker.seated, true, worker.id)
+    assert.ok(worker.angry.length >= 5 && worker.talk.length >= 2, worker.id)
+    assert.ok(worker.angry.every(line => /[!?…]/.test(line)), '화난 말투')
+    assert.ok(roomObjects('office-1').some(o => o.texture === 'chair' && o.x === worker.path[0].x && o.bottom === worker.path[0].y), `${worker.id} 의자`)
+  }
+  assert.ok(OFFICE_DESK_WORKERS.every(worker => !worker.id.startsWith('recruitment-')))
 })

@@ -19,3 +19,24 @@ export const OFFICE_STAND = { x: 235, y: 246 } as const
 
 /** 24초 작업 뒤 8초 동안 일어나 한숨을 쉬고 다시 앉는다. */
 export function officeDeskPhase(elapsedMs: number) { return elapsedMs % 32000 < 24000 ? 'seated' : 'standing' }
+
+/* 작업석 연구원이 일하다가 화가 나서 내뱉는 말 */
+const ANGRY = [
+  '아 왜 또 빌드가 깨져!', '이 버그 누가 만들었어!!', '회의 또 잡혔어?!', 'NullPointerException… 또 너냐!',
+  '금요일 배포하자고 한 사람 누구야!', '커피 떨어졌잖아…!', '테스트는 왜 나만 깨지는데!', '이거 어제는 됐다고!!',
+]
+/* 말을 걸면 일하면서 하는 대답 */
+const BUSY = ['지금 좀 바빠요… 그래도 고마워요.', '이것만 고치고 커피 마시러 가요.', '손이 키보드에서 안 떨어지네요.', '아까 소리 질러서 미안해요…']
+
+/**
+ * 서비스 연구실 오른쪽 열 작업석 연구원 셋(위·가운데·아래 의자에 앉는다).
+ * 채용 업무 화면을 없앤 뒤 일반 직원으로 바꿨다: 일하다가 가끔 화가 나서 한마디 한다.
+ */
+export const OFFICE_DESK_WORKERS: readonly NpcDef[] = ([
+  { id: 'office-desk-top', name: '집중하는 연구원', kind: 'researcher-woman', x: 610, y: 228 },
+  { id: 'office-desk-middle', name: '디버깅하는 연구원', kind: 'researcher-man', x: 610, y: 378 },
+  { id: 'office-desk-bottom', name: '배포 담당 연구원', kind: 'researcher-silver', x: 610, y: 528 },
+] as const).map(worker => ({
+  id: worker.id, kind: worker.kind, name: worker.name, path: [{ x: worker.x, y: worker.y }],
+  fixed: true, seated: true, idle: true, speed: 0, pause: [600000, 600000] as const, talk: BUSY, angry: ANGRY,
+}))

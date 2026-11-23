@@ -72,7 +72,7 @@ export default class Npc {
 
   /** E로 말 걸 수 있는 영역(장면의 상호작용 대상) */
   target(): RoomInteraction {
-    if (this.seated) return { id: this.def.id, kind: 'npc', label: this.def.id.startsWith('recruitment-') ? `${this.def.name} · 공고 보기` : `${this.def.name}에게 말 걸기`, x: this.x, y: this.y - 12, width: 28, height: 24, range: 40 }
+    if (this.seated) return { id: this.def.id, kind: 'npc', label: `${this.def.name}에게 말 걸기`, x: this.x, y: this.y - 12, width: 28, height: 24, range: 40 }
     return { id: this.def.id, kind: 'npc', label: `${this.def.name}에게 말 걸기`, x: this.x, y: this.y - 20, width: 24, height: 40, range: this.def.fixed ? 22 : 30 }
   }
 
@@ -102,6 +102,24 @@ export default class Npc {
     }).setOrigin(0.5).setDepth(1150)
     this.scene.tweens.add({ targets: emote, y: emote.y - 18, alpha: 0, delay: 600, duration: 900, onComplete: () => emote.destroy() })
     this.scene.tweens.add({ targets: this.sprite, y: this.sprite.y - (passed ? 8 : 14), duration: passed ? 160 : 110, yoyo: true, repeat: passed ? 2 : 0, ease: 'Sine.easeOut' })
+    return this.lastLine
+  }
+
+  /**
+   * 일하다가 화가 나서 한마디 내뱉는다. 💢 표시가 떠오르고 몸이 짧게 들썩인다.
+   *
+   * @return 내뱉은 말(화난 대사가 없는 NPC면 빈 문자열)
+   */
+  vent() {
+    const lines = this.def.angry
+    if (!lines || this.bubble.visible) return ''
+    this.lastLine = pickLine(lines, this.lastLine)
+    this.bubble.show(this.lastLine, this.age, TALK_MS)
+    const emote = this.scene.add.text(Math.round(this.x + 14), Math.round(this.y - (this.seated ? 70 : 62)), '💢', {
+      fontFamily: 'sans-serif', fontSize: '16px',
+    }).setOrigin(0.5).setDepth(1150)
+    this.scene.tweens.add({ targets: emote, y: emote.y - 12, alpha: 0, delay: 700, duration: 900, onComplete: () => emote.destroy() })
+    this.scene.tweens.add({ targets: this.sprite, x: this.sprite.x + 2, duration: 50, yoyo: true, repeat: 3 })
     return this.lastLine
   }
 

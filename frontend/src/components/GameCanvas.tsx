@@ -1,4 +1,3 @@
-import RecruitmentPanel from '../features/recruitment/RecruitmentPanel'
 import { ROOMS } from '../game/maps/rooms'
 import type { RoomId } from '../game/maps/rooms'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -50,7 +49,6 @@ import type { DirectionInput } from '../game/input/mobileInput'
 export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: RoomId) => void } = {}) {
   const containerRef = useRef<HTMLDivElement>(null)
   const eventRef = useRef<Phaser.Events.EventEmitter | null>(null)
-  const [recruitmentAgent, setRecruitmentAgent] = useState('SEARCH')
   const [pullsOpen, setPullsOpen] = useState(false)
   const [connection, setConnection] = useState<ConnectionInfo>(INITIAL_CONNECTION)
   const clientRef = useRef<MultiplayerClient | null>(null)
@@ -132,7 +130,6 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
     uiEvents.on(PULLS_EVENTS.openPulls, openPulls)
     const openLabPanel = (kind: RoomPanelKind) => setLabPanel(kind)
     const pickWorkBoard = (id: string) => setWorkBoardId(id)
-    uiEvents.on('recruitment:agent', setRecruitmentAgent)
     uiEvents.on(LAB_EVENTS.workBoard, pickWorkBoard)
     uiEvents.on(LAB_EVENTS.serverRack, setRackId)
     uiEvents.on(LAB_EVENTS.openPanel, openLabPanel)
@@ -207,7 +204,6 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
       <MobileControls disabled={pullsOpen || labPanel !== null || chatFocused || connection.travelling === true} resetToken={controlsReset}
         onMove={moveMobile} onInteract={interactMobile} />
       {pullsOpen && <PullsPanel onClose={closePulls} />}
-      {labPanel === 'recruitment' && <RecruitmentPanel agent={recruitmentAgent} onClose={closeLabPanel} />}
       {labPanel === 'agenda' && <AgendaPanel onClose={closeLabPanel} />}
       {labPanel === 'bookshelf' && <BookPanel onClose={closeLabPanel} />}
       {labPanel === 'admin-console' && <SqlConsolePanel onClose={closeLabPanel} />}
