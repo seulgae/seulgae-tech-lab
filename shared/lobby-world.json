@@ -287,22 +287,42 @@
       "name": "서버실",
       "interactions": [
         {
-          "id": "server-racks-left",
+          "id": "server-rack-1",
           "kind": "server-status",
-          "label": "서버 상태",
-          "x": 220,
+          "label": "1번 랙 · CPU",
+          "x": 160,
           "y": 216,
-          "width": 168,
+          "width": 84,
           "height": 88,
           "range": 40
         },
         {
-          "id": "server-racks-right",
+          "id": "server-rack-2",
           "kind": "server-status",
-          "label": "서버 상태",
-          "x": 580,
+          "label": "2번 랙 · 메모리",
+          "x": 280,
           "y": 216,
-          "width": 168,
+          "width": 84,
+          "height": 88,
+          "range": 40
+        },
+        {
+          "id": "server-rack-3",
+          "kind": "server-status",
+          "label": "3번 랙 · JVM 힙",
+          "x": 520,
+          "y": 216,
+          "width": 84,
+          "height": 88,
+          "range": 40
+        },
+        {
+          "id": "server-rack-4",
+          "kind": "server-status",
+          "label": "4번 랙 · 가동시간",
+          "x": 640,
+          "y": 216,
+          "width": 84,
           "height": 88,
           "range": 40
         }

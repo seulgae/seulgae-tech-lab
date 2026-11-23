@@ -73,10 +73,6 @@ export default function LabInfoPanel({ kind, onClose }: Props) {
             <div><dt>JVM 힙</dt><dd>{status.memory.usedMb} / {status.memory.maxMb} MiB</dd></div>
           </dl>
           <meter className="lab-meter" min={0} max={status.memory.maxMb} value={status.memory.usedMb} aria-label="JVM 힙 사용량" />
-          <h3 className="lab-subtitle">방별 인원</h3>
-          <ul className="lab-rooms">
-            {status.rooms.map(room => <li key={room.id}><span>{room.name}</span><strong>{room.players}명</strong></li>)}
-          </ul>
           <p className="research-footer">3초마다 갱신 · {new Date(status.serverTime).toLocaleTimeString('ko-KR')}</p>
         </>}
         {kind === 'build-info' && build && <dl className="lab-stats">

@@ -104,3 +104,9 @@ assert.equal((await fetch(`${base}/api/todos`, json('POST', { date: '2026-11-22'
 assert.equal((await fetch(`${base}/api/sns`)).status, 200)
 assert.deepEqual(await (await fetch(`${base}/api/sns`)).json(), [])
 assert.equal((await fetch(`${base}/api/sns`, json('POST', { content: '안녕' }))).status, 401)
+// 서버실 랙 용량 조사: 공개 집계값만, CI에는 SSH 설정이 없어 호스트 값은 비어 있다.
+const capacity = await (await fetch(`${base}/api/lab/capacity`)).json()
+assert.equal(capacity.probe.state, 'NOT_CONFIGURED')
+assert.equal(capacity.memory, null)
+assert.ok(capacity.heap.maxMb > 0 && capacity.uptime.jvmSeconds >= 0)
+assert.equal(JSON.stringify(capacity).includes('host.docker'), false)

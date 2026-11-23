@@ -262,7 +262,7 @@ test('서버실 랙과 개발 연구실 컴퓨터는 해당 패널만 열고 입
     uiEvents.on(RESEARCH_EVENTS.openResearch, () => research++)
     scene.player.x = x; scene.player.y = y
     scene.update()
-    assert.equal(scene.interactionHint.text, kind === 'server-status' ? 'E · 서버 상태' : 'E · 빌드 정보')
+    assert.equal(scene.interactionHint.text, kind === 'server-status' ? 'E · 1번 랙 · CPU' : 'E · 빌드 정보')
     key._justDown = true
     for (let frame = 0; frame < 30; frame++) scene.update()
     assert.deepEqual(opened, [kind])
