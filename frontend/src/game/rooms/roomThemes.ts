@@ -82,14 +82,14 @@ export const ROOM_THEMES: Record<RoomId, RoomTheme> = {
     notes: { title: '서비스 연구실', body: 'QA부터 운영까지\n한 방에서 이어져요.', missionTitle: 'QA → 유지보수 → 운영', mission: '왼쪽 열 맨 위 컴퓨터에 QA를 등록하면 가운데 유지보수 컴퓨터로, 조치가 끝나면 맨 아래 운영업무 컴퓨터로 넘어가요. 글 하나에 동전 10원! 오른쪽 열 연구원들은 일하다가 가끔 버럭해요. 연구원에게 E로 말을 걸어 보세요.' },
   },
   'office-2': {
-    mood: '무엇이 들어올지 아직 정하지 않은 하얀 빈 방',
+    mood: '기술 원리를 직접 만들어 보고 눈으로 확인하는 하얀 실습 연구실',
     camera: '#1a1c1d', light: '#ffffff',
     floor: { base: '#ecebe6', baseLine: '#dcdad3', alt: '#f2f1ec', altLine: '#e2e0d9', accent: '#d8d3c6', accentLine: '#c9c3b4', accentDetail: '#b5ad9b' },
     wall: { upper: '#f7f6f2', upperLight: '#ffffff', lower: '#dcd8cd', lowerDark: '#c4bfb2', trim: '#cfc9bb', detail: '#e5e1d6', side: '#dcd8cd', bottom: '#c4bfb2' },
     door: { frame: '#c4bfb2', frameLight: '#ffffff', panel: '#e9e6dd', panelLight: '#f7f6f2', handle: '#9a927f', sign: '#b5ad9b' },
     page: { background: '#171818', card: '#222424', border: '#4a4c4a', accent: '#d9d4c7', muted: '#b3b0a8' },
     textures: { computer: 'dev-desk', chair: 'office-chair', plant: 'tall-plant' },
-    notes: { title: '뭘\n만들까?', body: '아직 비어 있어요.\n아이디어를 기다려요.', missionTitle: '비어 있음', mission: '로비 오른쪽 위 문의 빈 방이에요. 무엇을 만들지 아이디어 일지에 남겨 주세요.' },
+    notes: { title: '실습\n연구실', body: '직접 만들고,\n눈으로 보고, 설명해요.', missionTitle: '원리 실험 준비 중', mission: '기술 면접 대비 실험 장치가 하나씩 들어올 곳이에요. 트랜잭션 격리, 인덱스, 스프링 원리, 동시성 순서로 만들어 갈 예정이에요.' },
   },
   'office-3': {
     mood: '네온이 번쩍이는 보랏빛 오락실(월루 전용 휴게 공간)',
