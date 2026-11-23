@@ -6,7 +6,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * 등급 신청 저장소(V10 lab.tb_lab_level_request). 운영은 PostgreSQL, 테스트·로컬은 메모리 구현을 쓴다.
+ * 등급 신청 저장소(V10 lab.level_requests). 운영은 PostgreSQL, 테스트·로컬은 메모리 구현을 쓴다.
  *
  * @author seulgae
  * @version 1.0, 회원 등급·관리자 신청

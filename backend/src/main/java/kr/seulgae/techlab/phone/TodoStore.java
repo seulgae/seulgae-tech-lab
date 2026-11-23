@@ -7,7 +7,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * 폰 캘린더 할 일 저장소(V11 lab.tb_lab_todo). 회원은 자기 할 일만 읽고 바꾼다.
+ * 폰 캘린더 할 일 저장소(V11 lab.todos). 회원은 자기 할 일만 읽고 바꾼다.
  *
  * @author seulgae
  * @version 1.0, 폰 앱(캘린더)

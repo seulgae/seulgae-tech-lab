@@ -21,7 +21,7 @@ import org.springframework.stereotype.Repository;
 public class JdbcLevelRequestStore implements LevelRequestStore {
     private static final String SELECT = """
         SELECT r.id, r.member_id, m.nickname, r.requested_level, r.reason, r.status, r.created_at
-        FROM lab.tb_lab_level_request r JOIN lab.tb_lab_member m ON m.id = r.member_id""";
+        FROM lab.level_requests r JOIN lab.members m ON m.id = r.member_id""";
     private final JdbcClient jdbc;
 
     public JdbcLevelRequestStore(JdbcClient jdbc) { this.jdbc = jdbc; }
@@ -29,7 +29,7 @@ public class JdbcLevelRequestStore implements LevelRequestStore {
     @Override public Optional<LevelRequest> create(UUID memberId, int level, String reason) {
         var id = UUID.randomUUID();
         try {
-            jdbc.sql("INSERT INTO lab.tb_lab_level_request (id, member_id, requested_level, reason) VALUES (:id, :m, :level, :reason)")
+            jdbc.sql("INSERT INTO lab.level_requests (id, member_id, requested_level, reason) VALUES (:id, :m, :level, :reason)")
                 .param("id", id).param("m", memberId).param("level", level).param("reason", reason).update();
         } catch (DuplicateKeyException pending) { return Optional.empty(); }
         return jdbc.sql(SELECT + " WHERE r.id = :id").param("id", id).query((rs, row) -> map(rs)).optional();
@@ -45,19 +45,19 @@ public class JdbcLevelRequestStore implements LevelRequestStore {
 
     @Override public Optional<LevelRequest> decide(UUID requestId, boolean approve, UUID decidedBy) {
         var decided = jdbc.sql("""
-            UPDATE lab.tb_lab_level_request SET status = :status, decided_at = CURRENT_TIMESTAMP, decided_by = :by
+            UPDATE lab.level_requests SET status = :status, decided_at = CURRENT_TIMESTAMP, decided_by = :by
             WHERE id = :id AND status = 'PENDING' RETURNING member_id, requested_level
             """).param("status", approve ? "APPROVED" : "REJECTED").param("by", decidedBy).param("id", requestId)
             .query((rs, row) -> new Object[]{rs.getObject(1, UUID.class), rs.getInt(2)}).optional();
         if (decided.isEmpty()) return Optional.empty();
         if (approve) {
-            jdbc.sql("UPDATE lab.tb_lab_member SET level = :level WHERE id = :m").param("level", decided.get()[1]).param("m", decided.get()[0]).update();
+            jdbc.sql("UPDATE lab.members SET level = :level WHERE id = :m").param("level", decided.get()[1]).param("m", decided.get()[0]).update();
         }
         return jdbc.sql(SELECT + " WHERE r.id = :id").param("id", requestId).query((rs, row) -> map(rs)).optional();
     }
 
     @Override public int level(UUID memberId) {
-        return jdbc.sql("SELECT level FROM lab.tb_lab_member WHERE id = :m").param("m", memberId).query(Integer.class).optional().orElse(1);
+        return jdbc.sql("SELECT level FROM lab.members WHERE id = :m").param("m", memberId).query(Integer.class).optional().orElse(1);
     }
 
     private static LevelRequest map(ResultSet rs) throws SQLException {

@@ -25,7 +25,7 @@ public class JdbcSnsStore implements SnsStore {
     @Override public List<Post> latest(int limit) {
         return jdbc.sql("""
             SELECT p.id, p.author_id, m.nickname, p.content, p.created_at
-            FROM lab.tb_lab_sns_post p JOIN lab.tb_lab_member m ON m.id = p.author_id
+            FROM lab.sns_posts p JOIN lab.members m ON m.id = p.author_id
             ORDER BY p.created_at DESC, p.id DESC LIMIT :limit""")
             .param("limit", limit).query((rs, row) -> map(rs)).list();
     }
@@ -33,26 +33,26 @@ public class JdbcSnsStore implements SnsStore {
     @Override public Post insert(UUID author, String content) {
         return jdbc.sql("""
             WITH created AS (
-                INSERT INTO lab.tb_lab_sns_post (id, author_id, content) VALUES (:id, :author, :content)
+                INSERT INTO lab.sns_posts (id, author_id, content) VALUES (:id, :author, :content)
                 RETURNING id, author_id, content, created_at)
             SELECT c.id, c.author_id, m.nickname, c.content, c.created_at
-            FROM created c JOIN lab.tb_lab_member m ON m.id = c.author_id""")
+            FROM created c JOIN lab.members m ON m.id = c.author_id""")
             .param("id", UUID.randomUUID()).param("author", author).param("content", content).query((rs, row) -> map(rs)).single();
     }
 
     @Override public int countToday(UUID author) {
         return jdbc.sql("""
-            SELECT count(*) FROM lab.tb_lab_sns_post WHERE author_id = :author
+            SELECT count(*) FROM lab.sns_posts WHERE author_id = :author
             AND created_at >= (date_trunc('day', CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Seoul') AT TIME ZONE 'Asia/Seoul')""")
             .param("author", author).query(Integer.class).single();
     }
 
     @Override public Optional<UUID> author(UUID id) {
-        return jdbc.sql("SELECT author_id FROM lab.tb_lab_sns_post WHERE id = :id").param("id", id).query(UUID.class).optional();
+        return jdbc.sql("SELECT author_id FROM lab.sns_posts WHERE id = :id").param("id", id).query(UUID.class).optional();
     }
 
     @Override public int delete(UUID id) {
-        return jdbc.sql("DELETE FROM lab.tb_lab_sns_post WHERE id = :id").param("id", id).update();
+        return jdbc.sql("DELETE FROM lab.sns_posts WHERE id = :id").param("id", id).update();
     }
 
     private static Post map(ResultSet rs) throws SQLException {

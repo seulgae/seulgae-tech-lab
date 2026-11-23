@@ -84,7 +84,7 @@ cd /opt/homeserver/apps/seulgae-tech-lab
 python3 deploy/ops.py check
 ```
 
-`check`는 Docker·Compose, PostgreSQL 상태와 네트워크, 두 비밀번호 파일과 권한, 해석된 Compose DB 설정, 기존 Flyway 이력을 확인한다. SQL은 READ ONLY 트랜잭션으로 실행한다. 성공 이력의 스키마 버전 V1~V18만 허용하며 실패 이력·미적용·다른 버전이면 중단한다. 배포할 릴리스와 맞는지는 `deploy`가 릴리스의 `db_schema` 범위로 다시 확인한다. 이미지 Pull, 앱 시작, 마이그레이션은 하지 않는다. 자체 ops 디렉터리와 잠금 파일은 만들 수 있다.
+`check`는 Docker·Compose, PostgreSQL 상태와 네트워크, 두 비밀번호 파일과 권한, 해석된 Compose DB 설정, 기존 Flyway 이력을 확인한다. SQL은 READ ONLY 트랜잭션으로 실행한다. 성공 이력의 스키마 버전 V1~V17만 허용하며 실패 이력·미적용·다른 버전이면 중단한다. 배포할 릴리스와 맞는지는 `deploy`가 릴리스의 `db_schema` 범위로 다시 확인한다. 이미지 Pull, 앱 시작, 마이그레이션은 하지 않는다. 자체 ops 디렉터리와 잠금 파일은 만들 수 있다.
 
 병합 후 main CI에서 이미지·manifest 게시가 끝났는지 GitHub Actions에서 사용자가 확인한 다음:
 
@@ -375,7 +375,3 @@ V15와 같은 **축소** 순서다. 채용 공고 수집·검토 기능(V12·V13
 | sns_posts | tb_lab_sns_post |
 
 - 관리자 쿼리 콘솔에서는 V18 전까지 예전 이름도 뷰로 보인다. 새 쿼리는 새 이름으로 쓴다.
-
-### V18 마이그레이션 (호환 뷰 삭제, 2026-11-23)
-
-V17 절차의 3~5번이다. 코드가 `tb_lab_` 새 이름만 쓰는 릴리스(**17..18**)를 배포한 뒤 `migrate-prod.py`로 V17 → V18을 적용한다. 예전 이름의 호환 뷰 11개만 지우고 데이터는 바뀌지 않는다. 그 뒤 마무리 PR로 CI `db_schema`를 **18..18**로 고정한다.

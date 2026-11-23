@@ -67,8 +67,8 @@ class SqlConsoleTest {
     }
 
     @Test void runsOneStatementWithTimeoutAndCapsRowsAndCells() {
-        var result = new SqlConsole(fake(250, null, null)).run("  SELECT id, title FROM lab.tb_lab_guestbook ;  ");
-        assertEquals(List.of("SET LOCAL statement_timeout = '5s'", "SELECT id, title FROM lab.tb_lab_guestbook", "commit"), log);
+        var result = new SqlConsole(fake(250, null, null)).run("  SELECT id, title FROM lab.guestbook_entries ;  ");
+        assertEquals(List.of("SET LOCAL statement_timeout = '5s'", "SELECT id, title FROM lab.guestbook_entries", "commit"), log);
         assertEquals(List.of("id", "title"), result.columns());
         assertEquals(200, result.rows().size(), "최대 200행");
         assertTrue(result.truncated());
@@ -78,7 +78,7 @@ class SqlConsoleTest {
     }
 
     @Test void reportsUpdatedRowsAndRollsBackOnError() {
-        var result = new SqlConsole(fake(0, 3, null)).run("DELETE FROM lab.tb_lab_guestbook WHERE title = '테스트'");
+        var result = new SqlConsole(fake(0, 3, null)).run("DELETE FROM lab.guestbook_entries WHERE title = '테스트'");
         assertEquals(3, result.updated());
         assertTrue(result.columns().isEmpty());
         log.clear();
