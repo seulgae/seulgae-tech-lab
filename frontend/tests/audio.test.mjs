@@ -101,6 +101,7 @@ test('발걸음: 실제로 움직인 거리만큼, 막히면·멈추면 소리 �
   for (let x = 104; x <= 200; x += 2) if (steps.update(x, 100)) count++
   assert.equal(count, 4, '약 24px마다 한 발')
   assert.equal(steps.update(200, 100), false, '막혀서 좌표가 그대로면 소리 없음')
+  assert.equal(steps.update(200, 100, 120), false, '0.12초 넘게 그대로면 멈춘 것')
   assert.equal(steps.update(202, 100), true, '다시 걸으면 첫 발부터')
   assert.equal(steps.update(400, 300), false, '서버 보정·방 이동 같은 순간이동은 무시')
   assert.equal(footstepSound('lobby', 400, 400), 'footstep-carpet', '로비 레드 카펫')
@@ -190,4 +191,21 @@ test('Web Audio가 없으면 소리 없이 조용히 넘어간다', () => {
   assert.doesNotThrow(() => { audio.enterRoom('lobby', 'noon'); audio.sfx('click') })
   assert.equal(getAudioStatus().available, false)
   audio.destroy()
+})
+
+test('발걸음: 화면이 120Hz라 좌표가 그대로인 프레임이 섞여도 60Hz와 같은 간격으로 난다(모바일 연사 방지)', () => {
+  const count = (hz) => {
+    const steps = new FootstepTracker()
+    let x = 100, sounds = 0
+    steps.update(x, 100, 1000 / hz)
+    // 물리는 초당 60번(2.5px씩) 움직이고, 화면은 hz번 그린다.
+    for (let frame = 1; frame <= hz; frame++) {
+      if (Math.floor(frame * 60 / hz) > Math.floor((frame - 1) * 60 / hz)) x += 2.5
+      if (steps.update(x, 100, 1000 / hz)) sounds++
+    }
+    return sounds
+  }
+  assert.equal(count(60), 7, '1초에 150px, 첫 발 + 24px마다')
+  assert.equal(count(120), count(60), '120Hz')
+  assert.equal(count(90), count(60), '90Hz')
 })
