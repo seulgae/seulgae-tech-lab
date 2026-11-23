@@ -48,7 +48,26 @@
    volumes:
      - /opt/homeserver/config/seulgae-tech-lab/capacity:/run/capacity:ro
    ```
-   키 파일은 컨테이너 사용자가 읽을 수 있어야 한다(소유자·권한 확인).
-5. 배포 후 4번 랙의 "호스트 수집"이 "정상 수집 중"이 되는지 본다. 실패하면 백엔드 로그에서 `[capacity]`를 찾는다.
+   키 파일은 컨테이너 사용자가 읽을 수 있어야 한다. 컨테이너의 uid를 확인해 소유자를 맞추고 개인키는 600으로 둔다.
+   ```sh
+   docker exec seulgae-tech-lab-backend-1 id          # uid 확인
+   sudo chown -R <uid> /opt/homeserver/config/seulgae-tech-lab/capacity
+   chmod 600 /opt/homeserver/config/seulgae-tech-lab/capacity/id_ed25519
+   ```
+   배포는 저장소의 `compose.yml`을 기준으로 하므로, 서버에서만 고치면 다음 배포 때 덮어써질 수 있다. 이 변경은 저장소 PR로 반영한다(`deploy/test_compose.py` 검사도 함께 맞춘다).
+5. 배포 후 4번 랙의 "호스트 수집"이 "정상 수집 중"이 되는지 본다. 1번(CPU)·2번(메모리) 랙에도 호스트 값이 나온다. 실패하면 백엔드 로그에서 `[capacity]`를 찾는다.
+   ```sh
+   docker logs seulgae-tech-lab-backend-1 | grep capacity
+   ```
+
+## 실패 코드별 흔한 원인
+
+| 코드 | 흔한 원인 |
+|---|---|
+| `NOT_CONFIGURED` | 환경 변수 누락, 또는 키·known_hosts 파일을 컨테이너가 읽지 못함(마운트·권한) |
+| `CONNECT` | 계정 이름이 다름, 키가 authorized_keys에 없음, known_hosts의 이름이 `host.docker.internal`이 아님(호스트 키 불일치로 거절) |
+| `EXIT` | `capacity-probe.sh` 실행 권한 없음, authorized_keys의 command 경로가 틀림 |
+| `TIMEOUT` | 컨테이너에서 호스트 22번 포트로 가는 길이 막힘(방화벽, `extra_hosts` 누락) |
+| `PARSE` | 호스트에 `vmstat`·`free`가 없거나 출력 형식이 다름(`procps` 설치 확인) |
 
 선택 설정: `LAB_CAPACITY_SSH_PORT`(기본 22), `LAB_CAPACITY_INTERVAL_MS`(기본 30000).
