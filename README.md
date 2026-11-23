@@ -35,7 +35,7 @@ seulgae-tech-lab/
 │  ├─ src/audio/        음악·효과음 합성(오디오 파일 없음)
 │  └─ tests/            프런트 테스트(*.test.mjs)
 ├─ backend/             Spring Boot API
-│  ├─ src/main/java/kr/seulgae/techlab/   기능별 패키지(research, office, inventory, multiplayer, admin …)
+│  ├─ src/main/java/kr/seulgae/techlab/   기능별 → 계층별(controller·dto·entity·repository·service) 패키지, docs/backend-structure.md
 │  ├─ src/main/resources/db/migration/    Flyway 마이그레이션(V1~)
 │  ├─ src/test/                           JUnit 테스트, DB 없는 로컬 실행용 앱
 │  └─ tests/research-api.mjs              실제 DB에 대고 돌리는 API 계약 테스트(CI)

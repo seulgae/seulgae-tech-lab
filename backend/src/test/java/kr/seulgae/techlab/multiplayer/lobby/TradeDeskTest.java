@@ -1,5 +1,6 @@
 package kr.seulgae.techlab.multiplayer.lobby;
 
+import kr.seulgae.techlab.multiplayer.lobby.domain.*;
 import java.util.UUID;
 import kr.seulgae.techlab.multiplayer.lobby.domain.TradeDesk;
 import org.junit.jupiter.api.Test;

@@ -101,15 +101,15 @@ public class LobbySocketHandler extends TextWebSocketHandler {
     public LobbySocketHandler(LobbyRoom room, LobbyChat chat) { this(room, chat, false); }
 
     private final kr.seulgae.techlab.multiplayer.lobby.domain.TradeDesk trades = new kr.seulgae.techlab.multiplayer.lobby.domain.TradeDesk();
-    private kr.seulgae.techlab.inventory.InventoryService inventory;
+    private kr.seulgae.techlab.inventory.service.InventoryService inventory;
 
     /** 인벤토리(아이템 교환). 없으면(테스트) 교환 요청에 unavailable로 답한다. */
     @org.springframework.beans.factory.annotation.Autowired(required = false)
-    public void setInventory(kr.seulgae.techlab.inventory.InventoryService inventory) { this.inventory = inventory; }
+    public void setInventory(kr.seulgae.techlab.inventory.service.InventoryService inventory) { this.inventory = inventory; }
 
     /** 버리기·줍기로 바닥이 바뀌면 그 방에 연결된 사람에게 바로 다시 보낸다(회의실 실시간). */
     @org.springframework.context.event.EventListener
-    public synchronized void groundChanged(kr.seulgae.techlab.inventory.GroundChanged event) {
+    public synchronized void groundChanged(kr.seulgae.techlab.inventory.event.GroundChanged event) {
         broadcastIn(event.roomId(), Map.of("type", "ground", "items", event.items()));
     }
 

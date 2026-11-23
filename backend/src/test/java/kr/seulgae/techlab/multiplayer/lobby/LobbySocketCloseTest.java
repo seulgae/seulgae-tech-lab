@@ -1,5 +1,6 @@
 package kr.seulgae.techlab.multiplayer.lobby;
 
+import kr.seulgae.techlab.multiplayer.lobby.domain.*;
 import java.net.URI;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
