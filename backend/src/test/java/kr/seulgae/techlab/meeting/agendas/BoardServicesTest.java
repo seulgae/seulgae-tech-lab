@@ -6,10 +6,6 @@ import java.util.Optional;
 import java.util.UUID;
 import kr.seulgae.techlab.common.write.EditTokens;
 import kr.seulgae.techlab.common.write.Ownership;
-import kr.seulgae.techlab.research.records.domain.ResearchRecord;
-import kr.seulgae.techlab.research.records.dto.IdeaRequest;
-import kr.seulgae.techlab.research.records.repository.ResearchRepository;
-import kr.seulgae.techlab.research.records.service.ResearchIdeaService;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -74,25 +70,5 @@ class BoardServicesTest {
         var page = new MeetingAgendaService(repository).list(1, 0);
         assertEquals(1, page.items().size());
         assertTrue(page.hasMore());
-    }
-
-    @Test void ideaJournalLimitsContentAndProtectsOldRecords() {
-        var repository = mock(ResearchRepository.class);
-        var service = new ResearchIdeaService(repository);
-        var id = UUID.randomUUID();
-        when(repository.nextIdeaNumber()).thenReturn(4);
-        assertEquals(4, service.nextNumber());
-        when(repository.createIdea(eq("연구 아이디어 일지 #4"), eq("가".repeat(130)), anyString(), isNull()))
-            .thenReturn(new ResearchRecord(id, "연구 아이디어 일지 #4", "가".repeat(130), "가".repeat(130), NOW));
-        var created = service.create(new IdeaRequest("연구 아이디어 일지 #4", "가".repeat(130)), ANONYMOUS);
-        assertNotNull(created.editToken());
-        assertThrows(ResponseStatusException.class, () -> service.create(new IdeaRequest("연구 아이디어 일지 #5", "가".repeat(131)), ANONYMOUS));
-
-        when(repository.ownership(id)).thenReturn(Optional.of(new Ownership("", null)));
-        assertEquals(HttpStatus.FORBIDDEN, assertThrows(ResponseStatusException.class,
-            () -> service.update(id, new IdeaRequest("t", "c"), created.editToken(), ANONYMOUS)).getStatusCode(), "수정 키가 없는 V1 기록은 바꿀 수 없다");
-        when(repository.ownership(id)).thenReturn(Optional.of(new Ownership(EditTokens.hash(created.editToken()), null)));
-        service.update(id, new IdeaRequest(" 연구 아이디어 일지 #4 ", "고친 내용"), created.editToken(), Optional.of(UUID.randomUUID()));
-        verify(repository).updateIdea(id, "연구 아이디어 일지 #4", "고친 내용");
     }
 }

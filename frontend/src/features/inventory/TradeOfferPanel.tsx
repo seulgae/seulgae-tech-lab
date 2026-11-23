@@ -3,7 +3,7 @@ import type { TradeOffer } from '../multiplayer/model/protocol'
 import { inventoryStore, useInventory } from './inventoryStore'
 import { FISH_COLORS } from '../../game/rooms/fishingLogic'
 import { playSfx } from '../../audio/AudioManager'
-import '../research/components/ResearchPanel.css'
+import '../../components/panel.css'
 import './inventory.css'
 
 const swatch = (name: string) => `#${(FISH_COLORS[name] ?? 0xffffff).toString(16).padStart(6, '0')}`

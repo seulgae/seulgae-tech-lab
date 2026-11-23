@@ -40,12 +40,7 @@ public class MemberRepository {
         jdbc.sql("UPDATE lab.members SET nickname = :nickname WHERE id = :id").param("id", id).param("nickname", nickname).update();
     }
 
-    /** 최근에 쓴 글 ID(최대 200개). 화면에서 "내 글"과 수정·삭제 버튼을 표시하는 데 쓴다. */
-    public List<UUID> recentRecordIds(UUID memberId) {
-        return jdbc.sql("SELECT id FROM lab.research_records WHERE author_id = :id ORDER BY created_at DESC LIMIT 200")
-            .param("id", memberId).query(UUID.class).list();
-    }
-
+    /** 최근에 쓴 회의 안건 ID(최대 200개). 화면에서 "내 글"과 수정·삭제 버튼을 표시하는 데 쓴다. */
     public List<UUID> recentAgendaIds(UUID memberId) {
         return jdbc.sql("SELECT id FROM lab.meeting_agendas WHERE author_id = :id ORDER BY created_at DESC LIMIT 200")
             .param("id", memberId).query(UUID.class).list();

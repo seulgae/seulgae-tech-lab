@@ -14,13 +14,12 @@ export type AuthState = {
   admin: boolean
   /** 회원 등급(1 일반 사용자, 2 운영자, 3 관리자), 비회원 0 */
   level: number
-  ownedRecords: Set<string>
   ownedAgendas: Set<string>
 }
 export const NICKNAME_PATTERN = /^[\p{L}\p{N}_-]{1,16}$/u
 export const LOGIN_URL = '/api/auth/kakao/login'
 
-let state: AuthState = { loaded: false, kakaoEnabled: false, member: null, admin: false, level: 0, ownedRecords: new Set(), ownedAgendas: new Set() }
+let state: AuthState = { loaded: false, kakaoEnabled: false, member: null, admin: false, level: 0, ownedAgendas: new Set() }
 const listeners = new Set<() => void>()
 const set = (patch: Partial<AuthState>) => { state = { ...state, ...patch }; listeners.forEach(listener => listener()) }
 
@@ -43,13 +42,13 @@ export const authStore = {
     try {
       const response = await fetcher('/api/auth/me/owned', { headers: { Accept: 'application/json' } })
       if (!response.ok) return
-      const owned = await response.json() as { recordIds?: string[]; agendaIds?: string[] }
-      set({ ownedRecords: new Set(owned.recordIds ?? []), ownedAgendas: new Set(owned.agendaIds ?? []) })
+      const owned = await response.json() as { agendaIds?: string[] }
+      set({ ownedAgendas: new Set(owned.agendaIds ?? []) })
     } catch { /* 표시만 늦어진다 */ }
   },
   async logout(fetcher: typeof fetch = fetch) {
     await fetcher('/api/auth/logout', { method: 'POST' }).catch(() => undefined)
-    set({ member: null, admin: false, level: 0, ownedRecords: new Set(), ownedAgendas: new Set() })
+    set({ member: null, admin: false, level: 0, ownedAgendas: new Set() })
   },
   async rename(nickname: string, fetcher: typeof fetch = fetch) {
     const response = await fetcher('/api/auth/me/nickname', { method: 'PUT', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ nickname }) })
@@ -59,13 +58,13 @@ export const authStore = {
     return member
   },
   /** 테스트용 상태 초기화 */
-  reset(patch: Partial<AuthState> = {}) { state = { loaded: false, kakaoEnabled: false, member: null, admin: false, level: 0, ownedRecords: new Set(), ownedAgendas: new Set(), ...patch } },
+  reset(patch: Partial<AuthState> = {}) { state = { loaded: false, kakaoEnabled: false, member: null, admin: false, level: 0, ownedAgendas: new Set(), ...patch } },
 }
 
 /** 로그인이 꺼져 있거나, 로그인한 회원이면 쓸 수 있다. */
 export const canWrite = (auth: AuthState) => !auth.kakaoEnabled || !!auth.member
 /** 이 브라우저의 수정 키가 있거나, 로그인 회원이 쓴 글이면 내 글이다. */
-export const isMine = (auth: AuthState, kind: 'record' | 'agenda', id: string) =>
-  !!editToken(id) || (kind === 'record' ? auth.ownedRecords : auth.ownedAgendas).has(id)
+export const isMine = (auth: AuthState, kind: 'agenda', id: string) =>
+  !!editToken(id) || (kind === 'agenda' && auth.ownedAgendas.has(id))
 
 export function useAuth() { return useSyncExternalStore(authStore.subscribe, authStore.get, authStore.get) }

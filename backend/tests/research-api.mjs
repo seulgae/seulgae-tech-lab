@@ -10,54 +10,12 @@ for (let attempt = 0; attempt < 30; attempt++) {
   await new Promise((resolve) => setTimeout(resolve, 500))
 }
 assert.ok(ready, 'API must become healthy')
-const route = `${base}/api/research-records`
-assert.deepEqual(await (await fetch(route)).json(), { items: [], hasMore: false })
-const ids = []
-for (let n = 0; n < 3; n++) {
-  const response = await fetch(route, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title: `CI record ${n}`, summary: 'CI summary', content: `한글 본문 ${n}` }),
-  })
-  assert.equal(response.status, 201)
-  const record = await response.json()
-  ids.push(record.id)
-  assert.equal(response.headers.get('location'), `/api/research-records/${record.id}`)
-  const detail = await (await fetch(`${route}/${record.id}`)).json()
-  assert.equal(detail.content, `한글 본문 ${n}`)
-}
-const page = await (await fetch(`${route}?limit=2`)).json()
-assert.equal(page.items.length, 2)
-assert.equal(page.hasMore, true)
-assert.equal('content' in page.items[0], false)
-const second = await (await fetch(`${route}?limit=2&offset=2`)).json()
-assert.equal(second.items.length, 1)
-assert.equal(second.hasMore, false)
-assert.equal(new Set([...page.items, ...second.items].map((item) => item.id)).size, 3)
-for (const suffix of ['?limit=0', '?limit=51', '?offset=-1', '/not-a-uuid']) {
-  assert.equal((await fetch(route + suffix)).status, 400)
-}
-assert.equal((await fetch(`${route}/00000000-0000-0000-0000-000000000000`)).status, 404)
-assert.equal((await fetch(route, {
-  method: 'POST', headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ title: ' ', summary: '', content: '' }),
-})).status, 400)
-
-// V2: 연구 아이디어 일지(수정 키), 회의 안건
+// 연구 기록·아이디어 일지는 V15에서 지웠다(API 없음).
+assert.equal((await fetch(`${base}/api/research-records`)).status, 404)
 const json = (method, body, token) => ({ method, headers: { 'Content-Type': 'application/json', ...(token ? { 'X-Edit-Token': token } : {}) }, body: body && JSON.stringify(body) })
-assert.deepEqual(await (await fetch(`${route}/ideas/next-number`)).json(), { number: 1 })
-const idea = await fetch(`${route}/ideas`, json('POST', { title: '연구 아이디어 일지 #1', content: '가'.repeat(130) }))
-assert.equal(idea.status, 201)
-const created = await idea.json()
-assert.match(created.editToken, /^[A-Za-z0-9_-]{43}$/)
-assert.equal(created.record.summary, '가'.repeat(130))
-assert.deepEqual(await (await fetch(`${route}/ideas/next-number`)).json(), { number: 2 })
-assert.equal((await fetch(`${route}/ideas`, json('POST', { title: '연구 아이디어 일지 #2', content: '가'.repeat(131) }))).status, 400)
-assert.equal((await fetch(`${route}/${created.record.id}`, json('PUT', { title: '연구 아이디어 일지 #1', content: '남의 글' }))).status, 403)
-assert.equal((await fetch(`${route}/${ids[0]}`, json('PUT', { title: 'x', content: 'y' }, created.editToken))).status, 403, 'V1 기록은 수정 불가')
-const updated = await (await fetch(`${route}/${created.record.id}`, json('PUT', { title: '연구 아이디어 일지 #1', content: '고친 내용' }, created.editToken))).json()
-assert.equal(updated.content, '고친 내용')
-assert.equal((await fetch(`${route}/${created.record.id}`, json('DELETE', null, created.editToken))).status, 204)
-assert.equal((await fetch(`${route}/${created.record.id}`)).status, 404)
+// 개발 연구실 슈퍼컴퓨터: GitHub PR 목록(외부 API 실패 시에도 200과 빈/예전 목록)
+const pulls = await (await fetch(`${base}/api/lab/pulls`)).json()
+assert.ok(Array.isArray(pulls.open) && Array.isArray(pulls.merged) && typeof pulls.stale === 'boolean')
 
 const agendas = `${base}/api/meeting-agendas`
 assert.deepEqual(await (await fetch(agendas)).json(), { items: [], hasMore: false })
@@ -87,7 +45,7 @@ assert.equal((await fetch(`${base}/api/inventory/plant`, json('POST', null))).st
 // 포장마차: 비회원은 팔 수 없다.
 assert.equal((await fetch(`${base}/api/inventory/sell`, json('POST', { itemId: '00000000-0000-4000-8000-0000000000aa' }))).status, 401)
 assert.equal((await fetch(`${base}/api/admin/sql`, json('POST', { sql: 'SELECT 1' }))).status, 401)
-assert.deepEqual(await (await fetch(`${base}/api/auth/me/owned`)).json(), { recordIds: [], agendaIds: [] })
+assert.deepEqual(await (await fetch(`${base}/api/auth/me/owned`)).json(), { agendaIds: [] })
 assert.equal((await fetch(`${base}/api/auth/kakao/login`, { redirect: 'manual' })).status, 404)
 console.log('Disposable PostgreSQL HTTP integration checks passed: creation, roundtrip, pagination, validation, 404, idea journal and agenda ownership, auth disabled.')
 

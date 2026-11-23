@@ -258,7 +258,7 @@ def preflight():
 
 
 # Flyway versions this repository knows how to run against. Releases still declare their own range.
-SUPPORTED_SCHEMAS = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14)
+SUPPORTED_SCHEMAS = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
 
 
 def schema_version():
@@ -310,9 +310,9 @@ def health(release):
         if b'<html' not in response.read(100000).lower():
             raise OpsError('Frontend HTML unavailable')
     if not release.get('legacy'):
-        page = request_json('http://127.0.0.1:18082/api/research-records?limit=1')
-        if not isinstance(page.get('items'), list) or type(page.get('hasMore')) is not bool:
-            raise OpsError('Research read API failed')
+        build = request_json('http://127.0.0.1:18082/api/lab/build')
+        if not isinstance(build.get('version'), str) or not isinstance(build.get('commit'), str):
+            raise OpsError('Lab build API failed')
 
 
 def verify_images(release):

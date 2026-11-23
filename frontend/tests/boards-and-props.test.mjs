@@ -4,7 +4,7 @@ import { SKY_LABELS, SKY_PALETTES, SKY_PHASES, clockAngles, clockLabel, skyPhase
 import { nearestInteraction, roomPlants, roomSeats, seatById } from '../src/game/maps/rooms.ts'
 import { parseServerMessage } from '../src/features/multiplayer/model/protocol.ts'
 import {
-  AGENDA_CONTENT_MAX, AGENDA_TITLE_MAX, BoardError, IDEA_CONTENT_MAX, countChars, createAgenda, deleteAgenda, editToken, ideaTitle, rememberToken, updateAgenda,
+  AGENDA_CONTENT_MAX, AGENDA_TITLE_MAX, BoardError, countChars, createAgenda, deleteAgenda, editToken, rememberToken, updateAgenda,
 } from '../src/features/boards/boardsApi.ts'
 
 const at = (hour, minute = 0) => new Date(2026, 10, 16, hour, minute)
@@ -61,8 +61,6 @@ test('글자 수는 이모지도 1자로 세고, 제목·내용 한도는 서버
   assert.equal(countChars('a\r\nb'), 3)
   assert.equal(AGENDA_TITLE_MAX, 8)
   assert.equal(AGENDA_CONTENT_MAX, 130)
-  assert.equal(IDEA_CONTENT_MAX, 130)
-  assert.equal(ideaTitle(12), '연구 아이디어 일지 #12')
   assert.match(new BoardError(429).message, /잠시 후/)
   assert.match(new BoardError(403).message, /내가 쓴 글/)
 })

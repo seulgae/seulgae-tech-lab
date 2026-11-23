@@ -5,7 +5,7 @@ import { LOGIN_URL, canWrite, useAuth } from '../auth/authStore'
 import { GUESTBOOK_CONTENT_MAX, GUESTBOOK_TITLE_MAX, charCount, clip, fetchGuestbook, validEntry, writeGuestbook } from './guestbookApi'
 import type { GuestbookEntry } from './guestbookApi'
 import { playSfx } from '../../audio/AudioManager'
-import '../research/components/ResearchPanel.css'
+import '../../components/panel.css'
 import './guestbook.css'
 
 const date = (value: string) => new Date(value).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })

@@ -111,7 +111,7 @@ $env:LAB_DEV_BACKEND_URL="http://127.0.0.1:8091"; npm run dev
 
 브라우저에서 http://127.0.0.1:5173 을 엽니다. 방향키·WASD로 움직이고 E로 문과 장비를 씁니다. 회의실에 들어가면 서버에 연결되어 다른 창과 함께 움직이고 채팅할 수 있습니다.
 
-> DB 없는 실행에는 연구 기록 쓰기, 회원 기능(가방 동전·HP), 관리자 쿼리 콘솔이 들어 있지 않습니다. 이 기능은 빠른 시작 B로 확인합니다.
+> DB 없는 실행에는 회원 기능(가방 동전·HP), 관리자 쿼리 콘솔이 들어 있지 않습니다. 이 기능은 빠른 시작 B로 확인합니다.
 
 ---
 
@@ -189,7 +189,6 @@ python3 -m unittest discover -s deploy -p 'test_*.py'
 |---|---|---|
 | `DB_URL` | `jdbc:postgresql://127.0.0.1:25432/stlab_dev?currentSchema=lab` | DB 주소 |
 | `DB_USERNAME` / `DB_PASSWORD` | `stlab_dev_app` / 없음 | 앱 DB 계정 |
-| `LAB_RESEARCH_WRITE_ENABLED` | 꺼짐 | `true`면 연구 기록 쓰기 API를 연다 |
 | `LAB_AUTH_KAKAO_CLIENT_ID`, `LAB_AUTH_KAKAO_CLIENT_SECRET`, `LAB_AUTH_KAKAO_REDIRECT_URI`, `LAB_AUTH_SESSION_SECRET` | 없음 | 카카오 로그인. 없으면 로그인이 꺼지고 비회원으로 동작 |
 | `LAB_AUTH_COOKIE_SECURE` | `true` | http 로컬 시험에서만 `false` |
 | `LAB_MULTIPLAYER_ALLOWED_ORIGINS` | localhost 5173·5188 등 | WebSocket을 허용할 Origin |
@@ -235,7 +234,7 @@ python3 -m unittest discover -s deploy -p 'test_*.py'
 | [rooms.md](docs/rooms.md) | 방 이동과 회의실 전용 멀티플레이 |
 | [multiplayer.md](docs/multiplayer.md), [movement-stability.md](docs/movement-stability.md), [network-latency.md](docs/network-latency.md) | 이동 예측·보정, 지연 진단 |
 | [room-interactions.md](docs/room-interactions.md), [room-atmosphere.md](docs/room-atmosphere.md), [room-boards-and-props.md](docs/room-boards-and-props.md) | 방별 상호작용·테마·소품 |
-| [research-records.md](docs/research-records.md), [chat.md](docs/chat.md) | 연구 기록 API, 채팅 |
+| [chat.md](docs/chat.md), [server-capacity.md](docs/server-capacity.md) | 채팅, 서버실 랙 용량 조사 |
 | [kakao-login.md](docs/kakao-login.md) | 카카오 로그인 설정 |
 | [sound.md](docs/sound.md), [pixel-lobby.md](docs/pixel-lobby.md) | 소리 합성, 픽셀 아트 |
 | [dev-log](docs/dev-log/README.md) | 날짜별 개발 로그 |

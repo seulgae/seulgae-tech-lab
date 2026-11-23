@@ -4,12 +4,9 @@
  */
 export type Agenda = { id: string; title: string; content: string; createdAt: string; updatedAt: string | null }
 export type AgendaPage = { items: Agenda[]; hasMore: boolean }
-export type IdeaRecord = { id: string; title: string; summary: string; content: string; createdAt: string }
 
 export const AGENDA_TITLE_MAX = 8
 export const AGENDA_CONTENT_MAX = 130
-export const IDEA_TITLE_MAX = 40
-export const IDEA_CONTENT_MAX = 130
 /** 회의실 칠판이 안건이 바뀐 것을 바로 알 수 있도록 보내는 브라우저 이벤트 */
 export const AGENDAS_CHANGED = 'lab:agendas-changed'
 
@@ -47,10 +44,6 @@ async function request<T>(path: string, init: RequestInit & { token?: string } =
   return response.json() as Promise<T>
 }
 
-/** 아이디어 일지 완료 표시를 바꾼다. 로그인·수정 키 없이 누구나 할 수 있다. */
-export const setIdeaDone = (id: string, done: boolean) =>
-  request<{ id: string; done: boolean }>(`/api/research-records/${encodeURIComponent(id)}/done`, { method: 'PUT', body: JSON.stringify({ done }) })
-
 export const fetchAgendas = (signal?: AbortSignal, limit = 20, offset = 0) => request<AgendaPage>(`/api/meeting-agendas?limit=${limit}&offset=${offset}`, { signal })
 
 export async function createAgenda(title: string, content: string) {
@@ -65,16 +58,3 @@ export async function deleteAgenda(id: string) {
   rememberToken(id, null)
 }
 
-export const nextIdeaNumber = (signal?: AbortSignal) => request<{ number: number }>('/api/research-records/ideas/next-number', { signal }).then(value => value.number)
-export const ideaTitle = (number: number) => `연구 아이디어 일지 #${number}`
-export async function createIdea(title: string, content: string) {
-  const created = await request<{ record: IdeaRecord; editToken: string }>('/api/research-records/ideas', { method: 'POST', body: JSON.stringify({ title, content }) })
-  rememberToken(created.record.id, created.editToken)
-  return created.record
-}
-export const updateIdea = (id: string, title: string, content: string) =>
-  request<IdeaRecord>(`/api/research-records/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify({ title, content }), token: editToken(id) })
-export async function deleteIdea(id: string) {
-  await request<void>(`/api/research-records/${encodeURIComponent(id)}`, { method: 'DELETE', token: editToken(id) })
-  rememberToken(id, null)
-}

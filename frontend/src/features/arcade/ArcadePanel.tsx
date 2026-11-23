@@ -3,7 +3,7 @@ import { BALL_RADIUS, BREAKOUT_HIGH_SCORE_KEY, BRICK_SIZE, FIELD, PADDLE, newGam
 import type { Breakout, BreakoutInput } from './breakout'
 import { playSfx } from '../../audio/AudioManager'
 import { TIRED_MESSAGE, inventoryStore } from '../inventory/inventoryStore'
-import '../research/components/ResearchPanel.css'
+import '../../components/panel.css'
 import './arcade.css'
 
 const ROW_COLORS = ['#ff4d8d', '#ff8a3d', '#ffd23f', '#4ade80', '#38bdf8', '#a78bfa']

@@ -332,16 +332,4 @@ class LobbySocketTest {
             HttpResponse.BodyHandlers.ofString());
         assertEquals(401, pick.statusCode(), "비회원은 로그인 안내");
     }
-
-    @Test void keepsResearchReadRoutesAndResponseContractAvailable() throws Exception {
-        String base = "http://127.0.0.1:" + port() + "/api/research-records";
-        var list = http.send(HttpRequest.newBuilder(URI.create(base + "?limit=10")).GET().build(), HttpResponse.BodyHandlers.ofString());
-        assertEquals(200, list.statusCode());
-        var page = JSON.readTree(list.body());
-        assertEquals(1, page.get("items").size());
-        assertFalse(page.get("hasMore").asBoolean());
-        var detail = http.send(HttpRequest.newBuilder(URI.create(base + "/" + LocalLobbyTestApplication.RECORD_ID)).GET().build(), HttpResponse.BodyHandlers.ofString());
-        assertEquals(200, detail.statusCode());
-        assertTrue(JSON.readTree(detail.body()).get("content").stringValue().contains("로컬"));
-    }
 }

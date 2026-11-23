@@ -4,7 +4,7 @@ import { inventoryStore, useInventory } from './inventoryStore'
 import { FISH_PRICE_MAX, fishPrice } from './fishPrices'
 import { FISH_COLORS } from '../../game/rooms/fishingLogic'
 import { playSfx } from '../../audio/AudioManager'
-import '../research/components/ResearchPanel.css'
+import '../../components/panel.css'
 import './inventory.css'
 
 /**

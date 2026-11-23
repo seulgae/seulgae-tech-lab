@@ -3,7 +3,7 @@ import { LOGIN_URL } from '../auth/authStore'
 import { DRINKS, inventoryStore, useInventory } from './inventoryStore'
 import type { DrinkKind } from './inventoryStore'
 import { playSfx } from '../../audio/AudioManager'
-import '../research/components/ResearchPanel.css'
+import '../../components/panel.css'
 import './inventory.css'
 import './vending.css'
 

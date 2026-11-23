@@ -1,4 +1,4 @@
-package kr.seulgae.techlab.research.records.exception;
+package kr.seulgae.techlab.common.web;
 
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
@@ -23,6 +23,6 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
      */
     @ExceptionHandler(DataAccessException.class)
     ProblemDetail databaseUnavailable() {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, "Research records are temporarily unavailable.");
+        return ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, "Lab data is temporarily unavailable.");
     }
 }

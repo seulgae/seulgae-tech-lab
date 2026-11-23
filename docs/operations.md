@@ -84,7 +84,7 @@ cd /opt/homeserver/apps/seulgae-tech-lab
 python3 deploy/ops.py check
 ```
 
-`check`는 Docker·Compose, PostgreSQL 상태와 네트워크, 두 비밀번호 파일과 권한, 해석된 Compose DB 설정, 기존 Flyway 이력을 확인한다. SQL은 READ ONLY 트랜잭션으로 실행한다. 성공 이력의 스키마 버전 V1~V14만 허용하며 실패 이력·미적용·다른 버전이면 중단한다. 배포할 릴리스와 맞는지는 `deploy`가 릴리스의 `db_schema` 범위로 다시 확인한다. 이미지 Pull, 앱 시작, 마이그레이션은 하지 않는다. 자체 ops 디렉터리와 잠금 파일은 만들 수 있다.
+`check`는 Docker·Compose, PostgreSQL 상태와 네트워크, 두 비밀번호 파일과 권한, 해석된 Compose DB 설정, 기존 Flyway 이력을 확인한다. SQL은 READ ONLY 트랜잭션으로 실행한다. 성공 이력의 스키마 버전 V1~V15만 허용하며 실패 이력·미적용·다른 버전이면 중단한다. 배포할 릴리스와 맞는지는 `deploy`가 릴리스의 `db_schema` 범위로 다시 확인한다. 이미지 Pull, 앱 시작, 마이그레이션은 하지 않는다. 자체 ops 디렉터리와 잠금 파일은 만들 수 있다.
 
 병합 후 main CI에서 이미지·manifest 게시가 끝났는지 GitHub Actions에서 사용자가 확인한 다음:
 
@@ -140,7 +140,7 @@ DB 및 Kafka를 중지하거나 마이그레이션을 재실행하지 않는다.
 - 앱 일부만 존재하거나 동일 이름의 다른 Compose 컨테이너 존재: 중단한다.
 - 기존 앱 2개 + 상태 파일 없음: 기존 legacy 부트스트랩을 유지한다.
 - 최초 성공: `current.json` 및 이력만 기록. 두 번째 정상 업데이트부터 `previous.json`이 생긴다.
-- 앱 컨테이너 health, HTML, `/api/health`, `/api/research-records?limit=1`과 공유 컨테이너 상태 보존을 검사한다.
+- 앱 컨테이너 health, HTML, `/api/health`, `/api/lab/build`(2026-11-23 연구 기록 API 삭제 후)와 공유 컨테이너 상태 보존을 검사한다.
 - PostgreSQL은 필수다. 옛 InvenCore·Redis·Kafka·PG 프록시는 없으면 건너뛴다. 존재하는 공유 인프라 및 새 `kafka-kafka-1`은 ID·시작 시각·재시작 횟수·실행 상태를 전후 비교한다. 의도적으로 중지된 InvenCore 앱은 중지 상태를 유지하며, 두 앱이 실행 중일 때만 옛 health를 검사한다.
 
 공개 GHCR 패키지 익명 Pull이 기본이다. 권한 오류 시 관리자가 패키지 공개 또는 기존 레지스트리 인증을 확인한다. GitHub API 읽기 권한이나 호출 제한 대응이 필요하면 관리자가 `/opt/homeserver/config/seulgae-tech-lab/github-read-token`에 최소 읽기 권한 토큰을 별도 구성한다. 값을 로그에 출력하지 않는다.
@@ -321,3 +321,16 @@ docker inspect postgres-postgres-1 kafka-kafka-1 --format '{{.Name}} {{.Id}} {{.
 `Expected existing Flyway V1-V13; found schema 14`는 V14 마이그레이션 후에도 배포 사전 검사 허용 목록에 V13까지만 남아 있을 때 발생한다. V14를 허용하는 배포 스크립트 수정 릴리스를 main CI로 발행한 다음 배포를 다시 실행한다. 기존 `./deploy.sh`는 검증된 최신 릴리스를 선택하고 해당 릴리스의 배포 파일로 이어서 실행한다.
 
 이 오류 때문에 마이그레이션을 다시 하거나 DB·Flyway 이력을 되돌리지 않는다. 사전 검사에서 V14를 인식한 뒤에도 각 릴리스의 `db_schema` 호환 범위 검사는 유지한다. V13 전용 릴리스를 V14 DB에 배포하는 것은 계속 거절한다. `test_supported_schemas_match_versioned_migration_files`가 마이그레이션 파일과 사전 검사 지원 목록의 불일치를 검출한다.
+
+### V15 마이그레이션 (연구 기록 테이블 삭제, 2026-11-23)
+
+테이블을 **지우는**(축소) 변경이라 순서가 확장과 반대다. 앱이 먼저 테이블을 쓰지 않게 만든 뒤 지운다.
+
+| 순서 | 할 일 | 릴리스 `db_schema` |
+|---|---|---|
+| 1 | 축소 PR 머지: 연구 기록·아이디어 일지 코드 삭제(앱은 테이블을 읽지 않음) + V15 SQL·도구 | **14..15** |
+| 2 | 서버에서 `python3 deploy/migrate-prod.py`(백업 후 V14 → V15, `DROP TABLE lab.research_records`) | — |
+| 3 | 마무리 PR: CI `db_schema` **15..15** | 15..15 |
+
+- 지운 연구 기록·아이디어 일지 행은 migrate-prod가 뜨는 `pg_dump` 백업에서만 되살릴 수 있다.
+- 1번 릴리스로 배포한 뒤에는 연구 기록을 쓰던 예전 이미지(14..14)로 롤백하지 않는다. V15 이후 그 이미지는 배포 사전 검사에서 거부된다.
