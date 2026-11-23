@@ -6,7 +6,7 @@ import { ROOMS, nearestInteraction, roomObjects } from '../src/game/maps/rooms.t
 
 const idle = { left: false, right: false, pointerX: null, launch: false }
 
-test('서비스 연구실은 좌우 두 열에 책상 셋씩(책상마다 의자, 줄 사이 파티션), 2번은 뭘 만들까(빈 방)·4번은 뭘만들지, 오락실은 로비에', () => {
+test('서비스 연구실은 좌우 두 열에 책상 셋씩(책상마다 의자, 줄 사이 파티션), 2번은 실습 연구실(빈 방)·4번은 뭘만들지, 오락실은 로비에', () => {
   const objects = roomObjects('office-1')
   assert.deepEqual([...new Set(objects.map(object => object.texture))].sort(), ['chair', 'computer', 'partition', 'plant', 'water-dispenser'], '책상과 구석 휴게 소품만 배치한다')
   const desks = objects.filter(object => object.texture === 'computer'), chairs = objects.filter(object => object.texture === 'chair')
@@ -25,7 +25,7 @@ test('서비스 연구실은 좌우 두 열에 책상 셋씩(책상마다 의자
     const target = nearestInteraction('office-1', 145, y)
     assert.equal(target?.kind, 'work-board'); assert.equal(target?.id, id, '컴퓨터마다 자기 게시판')
   }
-  assert.equal(ROOMS['office-2'].name, '뭘 만들까')
+  assert.equal(ROOMS['office-2'].name, '실습 연구실')
   assert.equal(ROOMS['office-4'].name, '뭘만들지')
   for (const room of ['office-2', 'office-4']) {
     assert.equal(ROOMS[room].interactions.length, 0, room)
