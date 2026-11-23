@@ -8,6 +8,8 @@ import { RENDER_ZOOM_KEY, canvasSizeFor, renderZoomFor } from '../game/render/re
 import { RESEARCH_EVENTS } from '../features/research/researchEvents'
 import ResearchPanel from '../features/research/components/ResearchPanel'
 import LabInfoPanel from '../features/lab/components/LabInfoPanel'
+import ServerRackPanel from '../features/lab/components/ServerRackPanel'
+import { isRackId } from '../features/lab/model/capacity'
 import { LAB_EVENTS } from '../features/lab/labEvents'
 import type { RoomPanelKind } from '../features/lab/model/labTypes'
 import AgendaPanel from '../features/boards/AgendaPanel'
@@ -59,6 +61,7 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
   const [labPanel, setLabPanel] = useState<RoomPanelKind | null>(null)
   /** 서비스 연구실에서 연 업무 게시판 컴퓨터 */
   const [workBoardId, setWorkBoardId] = useState('')
+  const [rackId, setRackId] = useState('')
   const [tableTalk, setTableTalk] = useState(false)
   /** 회의실에서 받은 교환 신청과 결과 알림 */
   const [tradeOffer, setTradeOffer] = useState<TradeOffer | null>(null)
@@ -130,6 +133,7 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
     const pickWorkBoard = (id: string) => setWorkBoardId(id)
     uiEvents.on('recruitment:agent', setRecruitmentAgent)
     uiEvents.on(LAB_EVENTS.workBoard, pickWorkBoard)
+    uiEvents.on(LAB_EVENTS.serverRack, setRackId)
     uiEvents.on(LAB_EVENTS.openPanel, openLabPanel)
     uiEvents.on(LAB_EVENTS.tableTalk, setTableTalk)
     const resetMobile = () => setControlsReset(value => value + 1)
@@ -176,6 +180,7 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
       uiEvents.off(RESEARCH_EVENTS.openResearch, openResearch)
       uiEvents.off(LAB_EVENTS.openPanel, openLabPanel)
       uiEvents.off(LAB_EVENTS.workBoard, pickWorkBoard)
+      uiEvents.off(LAB_EVENTS.serverRack, setRackId)
       uiEvents.off(LAB_EVENTS.tableTalk, setTableTalk)
       uiEvents.off(MOBILE_INPUT.reset, resetMobile)
       client.destroy()
@@ -215,7 +220,8 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
       {tradeOffer && <TradeOfferPanel offer={tradeOffer} onClose={closeTrade}
         onAnswer={itemId => { clientRef.current?.answerTrade(tradeOffer.tradeId, itemId); setTradeOffer(null) }} />}
       {tradeNotice && <p className="trade-toast" role="status">{tradeNotice}</p>}
-      {(labPanel === 'server-status' || labPanel === 'build-info') && <LabInfoPanel kind={labPanel} onClose={closeLabPanel} />}
+      {labPanel === 'server-status' && <ServerRackPanel rack={isRackId(rackId) ? rackId : 'server-rack-1'} onClose={closeLabPanel} />}
+      {labPanel === 'build-info' && <LabInfoPanel kind={labPanel} onClose={closeLabPanel} />}
     </>
   )
 }

@@ -69,7 +69,8 @@ import org.springframework.context.annotation.Import;
     kr.seulgae.techlab.auth.LevelService.class, kr.seulgae.techlab.auth.LevelController.class,
     kr.seulgae.techlab.inventory.BankService.class, kr.seulgae.techlab.inventory.BankController.class,
     kr.seulgae.techlab.phone.TodoService.class, kr.seulgae.techlab.phone.TodoController.class,
-    kr.seulgae.techlab.phone.SnsService.class, kr.seulgae.techlab.phone.SnsController.class})
+    kr.seulgae.techlab.phone.SnsService.class, kr.seulgae.techlab.phone.SnsController.class,
+    kr.seulgae.techlab.lab.capacity.SshProbe.class, kr.seulgae.techlab.lab.capacity.ServerCapacityService.class, kr.seulgae.techlab.lab.capacity.ServerCapacityController.class})
 public class LocalLobbyTestApplication {
     public static final UUID RECORD_ID = UUID.fromString("00000000-0000-4000-8000-000000000001");
     private static final OffsetDateTime CREATED_AT = OffsetDateTime.parse("2026-11-15T12:00:00+09:00");

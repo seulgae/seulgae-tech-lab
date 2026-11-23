@@ -350,6 +350,7 @@ export default class LabLobbyScene extends Phaser.Scene {
     else if (target.kind === 'bookshelf') this.time.delayedCall(450, () => { if (this.panelOpen) this.uiEvents.emit(LAB_EVENTS.openPanel, 'bookshelf') })
     else {
       if (target.kind === 'work-board') this.uiEvents.emit(LAB_EVENTS.workBoard, target.id)
+      if (target.kind === 'server-status') this.uiEvents.emit(LAB_EVENTS.serverRack, target.id)
       this.uiEvents.emit(LAB_EVENTS.openPanel, target.kind)
     }
   }
