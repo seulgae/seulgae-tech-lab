@@ -21,6 +21,8 @@
     <dependency><groupId>org.postgresql</groupId><artifactId>postgresql</artifactId><scope>runtime</scope></dependency>
     <!-- 서버실 랙: 호스트 CPU·메모리·가동시간을 SSH(EXEC 채널)로 수집한다. -->
     <dependency><groupId>org.apache.sshd</groupId><artifactId>sshd-core</artifactId><version>2.16.0</version></dependency>
+    <!-- MINA SSHD는 Java 17에서 ed25519 키를 이 라이브러리로 읽는다(없으면 Unsupported key type ssh-ed25519). -->
+    <dependency><groupId>net.i2p.crypto</groupId><artifactId>eddsa</artifactId><version>0.3.0</version></dependency>
   </dependencies>
   <build>
   <resources>

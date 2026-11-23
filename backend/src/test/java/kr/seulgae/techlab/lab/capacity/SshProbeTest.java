@@ -88,6 +88,18 @@ class SshProbeTest {
         } finally { probe.stop(); }
     }
 
+    @Test void readsAnEd25519ClientKeyLikeProduction() throws Exception {
+        // 운영 문서대로 만든 ed25519 키(ssh-keygen -t ed25519)를 읽을 수 있어야 한다(eddsa 라이브러리 필요).
+        var ed =org.apache.sshd.common.util.security.SecurityUtils.getKeyPairGenerator("EdDSA").generateKeyPair();
+        clientKey = ed;
+        PublicKey allowed = ed.getPublic();
+        server.setPublickeyAuthenticator((user, key, session) -> "probe".equals(user) && org.apache.sshd.common.config.keys.KeyUtils.compareKeys(allowed, key));
+        var probe = probe(hostKey());
+        try {
+            assertEquals(17.0, HostMetrics.parse(probe.run()).cpuUsed());
+        } finally { probe.stop(); }
+    }
+
     @Test void rejectsUnknownHostKeysAndFailedCommands() throws Exception {
         var other = KeyPairGenerator.getInstance("RSA");
         other.initialize(2048);
