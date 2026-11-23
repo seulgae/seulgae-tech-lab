@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * 로비 방명록 저장소(V6 lab.guestbook_entries).
+ * 로비 방명록 저장소(V6 lab.tb_lab_guestbook).
  *
  * @author seulgae
  * @version 1.0, 로비 방명록

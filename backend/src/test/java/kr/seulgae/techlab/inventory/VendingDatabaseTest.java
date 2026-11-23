@@ -30,7 +30,7 @@ class VendingDatabaseTest {
         var service = new InventoryService(store);
         var tx = new TransactionTemplate(new DataSourceTransactionManager(ds));
         UUID member = UUID.randomUUID();
-        jdbc.sql("INSERT INTO lab.members (id, kakao_id, nickname) VALUES (:m, :k, '자판기검증')")
+        jdbc.sql("INSERT INTO lab.tb_lab_member (id, kakao_id, nickname) VALUES (:m, :k, '자판기검증')")
             .param("m", member).param("k", -Math.abs(member.getMostSignificantBits())).update();
         var pool = Executors.newFixedThreadPool(2);
         try {
@@ -41,7 +41,7 @@ class VendingDatabaseTest {
                 assertEquals("WATER".equals(kind) ? -1 : -2, event.amount());
                 assertEquals(switch (kind) { case "COLA" -> "콜라"; case "CIDER" -> "사이다"; case "FANTA" -> "환타"; default -> "물"; }, event.reasonName());
             }
-            jdbc.sql("UPDATE lab.inventories SET fatigue = 45 WHERE member_id = :m").param("m", member).update();
+            jdbc.sql("UPDATE lab.tb_lab_member_inventory SET fatigue = 45 WHERE member_id = :m").param("m", member).update();
             int balance = store.coins(member);
             int events = store.history(member, 100).size();
             var ready = new CountDownLatch(2);
@@ -63,7 +63,7 @@ class VendingDatabaseTest {
         } finally {
             pool.shutdownNow();
             assertTrue(pool.awaitTermination(15, TimeUnit.SECONDS));
-            jdbc.sql("DELETE FROM lab.members WHERE id = :m").param("m", member).update();
+            jdbc.sql("DELETE FROM lab.tb_lab_member WHERE id = :m").param("m", member).update();
         }
     }
 }
