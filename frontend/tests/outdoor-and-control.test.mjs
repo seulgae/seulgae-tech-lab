@@ -64,7 +64,7 @@ test('바깥: 호수와 강은 들어갈 수 없고, 다리로 강을 건널 수
   // 강 북쪽은 막히고, 다리 높이(y 360)에서는 건너간다.
   assert.ok(constrainedPosition(620, 200, 40, 0).x <= 640 - 10)
   assert.ok(constrainedPosition(620, 370, 100, 0).x > 700)
-  assert.equal(nearestInteraction('outdoor', 612, 500)?.kind, 'fishing')
+  assert.equal(nearestInteraction('outdoor', 612, 250)?.kind, 'fishing')
   assert.equal(nearestInteraction('outdoor', 400, 460), undefined, '스폰에서는 아무 상호작용도 잡히지 않는다')
   setRoomObstacles(roomObstacles('lobby'))
 })

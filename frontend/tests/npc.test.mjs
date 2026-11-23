@@ -79,9 +79,9 @@ test('포장마차 자리는 NPC가 지나가지 않고, 낚시꾼은 데크 낚
   const fisher = OUTDOOR_NPCS.find(npc => npc.kind === 'fisher')
   assert.equal(fisher.fixed, true)
   assert.equal(fisher.mutter.length >= 3, true, '혼자 중얼거린다')
-  // 데크 낚시 자리(612, 470)에서 낚시꾼 말 걸기 범위(22)는 닿지 않는다.
+  // 데크 낚시 자리(612, 220)에서 낚시꾼 말 걸기 범위(22)는 닿지 않는다.
   const reach = { x: fisher.path[0].x, y: fisher.path[0].y - 20, width: 24, height: 40 }
-  const dx = Math.max(Math.abs(612 - reach.x) - reach.width / 2, 0), dy = Math.max(Math.abs(470 - reach.y) - reach.height / 2, 0)
+  const dx = Math.max(Math.abs(612 - reach.x) - reach.width / 2, 0), dy = Math.max(Math.abs(220 - reach.y) - reach.height / 2, 0)
   assert.ok(Math.hypot(dx, dy) > 22)
 })
 
