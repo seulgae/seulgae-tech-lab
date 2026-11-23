@@ -2,7 +2,7 @@
  * 화면에만 사는 NPC들. 정해진 길(장애물을 피해 그린 순환 경로)을 천천히 오가며, E로 말을 걸면 한마디 한다.
  * 바깥 시민 셋은 지친 직장인을 위로하고, 로비 청소 아주머니는 돌아다니며 궁시렁거린다.
  */
-export type NpcKind = 'woman' | 'man' | 'elder' | 'cleaner' | 'guard' | 'kid-boy' | 'kid-girl' | 'fisher' | 'professor' | 'researcher-woman' | 'researcher-man' | 'researcher-silver' | 'researcher-curly' | 'researcher-bob' | 'researcher-red'
+export type NpcKind = 'woman' | 'man' | 'elder' | 'cleaner' | 'guard' | 'kid-boy' | 'kid-girl' | 'fisher' | 'professor' | 'researcher-woman' | 'researcher-man' | 'researcher-silver' | 'researcher-curly' | 'researcher-bob' | 'researcher-red' | 'robot'
 /** 연구원 픽셀 외형: 기존 시민·박사 외형과 독립된 가운 직원 변형이다. */
 export const RESEARCHER_STYLES = [
   { kind: 'researcher-woman', hair: '#8a5a3c', skin: '#f3c9a8', shirt: '#f7d4dd', badge: '#e05a6c', style: 'long', glasses: false },
@@ -185,6 +185,25 @@ export const DEV_LAB_NPCS: readonly NpcDef[] = [
 ]
 
 /** 포장마차: 저녁 6시~자정에만 연다(서버도 같은 시간에만 산다). */
+/** 서버 용량 조사를 어떻게 만들었는지 쓴 블로그 글(서버실 로봇이 안내한다) */
+export const SERVER_BLOG_URL = 'https://seulgae.github.io/blog/jsch-to-mina-sshd'
+
+const robot = (id: string, name: string, path: { x: number; y: number }[], mutter: string[]): NpcDef => ({
+  id: `server-robot-${id}`, kind: 'robot', name, path, speed: 26, pause: [1800, 4200], mutter,
+  talk: ['삐빅, 서버 점검 이야기 들려 드릴게요!', '제가 어떻게 숫자를 모으는지 궁금하세요?', 'SSH로 30초마다 물어봐요. 삐빅.'],
+})
+
+/**
+ * 서버실 관리 로봇 다섯. 랙(y 172~260)과 장비(y 344~400)를 피해 랙 앞 통로(y 300), 아래 통로(y 470), 가운데 기둥 길(x 400)을 순찰한다.
+ */
+export const SERVER_ROBOTS: readonly NpcDef[] = [
+  robot('temp', '온도 관리 로봇', [{ x: 90, y: 300 }, { x: 340, y: 300 }], ['랙 온도 18°C, 정상. 삐빅.', '흡기 온도 확인 완료.', '뜨거운 공기는 위로, 찬 공기는 앞으로!']),
+  robot('fan', '팬 관리 로봇', [{ x: 460, y: 300 }, { x: 710, y: 300 }], ['팬 회전수 점검 중… 위잉.', '먼지 필터 교체까지 12일.', '팬 소리, 오늘도 고르다.']),
+  robot('backup', '백업 관리 로봇', [{ x: 400, y: 130 }, { x: 400, y: 290 }], ['DB 백업 무결성 확인 완료.', 'pg_dump 파일, 잘 보관 중.', '마이그레이션 전엔 꼭 백업! 삐빅.']),
+  robot('log', '로그 관리 로봇', [{ x: 80, y: 470 }, { x: 320, y: 470 }], ['로그 파일 압축 중…', '경고 로그 0건. 평화롭다.', 'capacity 수집 성공 로그 확인!']),
+  robot('security', '보안 관리 로봇', [{ x: 480, y: 470 }, { x: 720, y: 470 }], ['known_hosts 지문 대조 완료.', '이 키로는 측정 스크립트만 실행 가능.', '수상한 접속 시도 없음. 삐빅.']),
+]
+
 export const CART_OPEN_HOUR = 18
 export const CART_SPOT = { x: 490, bottom: 270 }
 export const cartOpenAt = (date: Date) => date.getHours() >= CART_OPEN_HOUR

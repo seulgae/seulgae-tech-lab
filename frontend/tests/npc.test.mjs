@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { CART_OPEN_HOUR, CART_SPOT, DEV_LAB_NPCS, LOBBY_NPCS, OUTDOOR_NPCS, cartOpenAt, pickLine, stepToward } from '../src/game/npc/npcData.ts'
+import { CART_OPEN_HOUR, CART_SPOT, DEV_LAB_NPCS, SERVER_ROBOTS, SERVER_BLOG_URL, LOBBY_NPCS, OUTDOOR_NPCS, cartOpenAt, pickLine, stepToward } from '../src/game/npc/npcData.ts'
 import { roomObstacles } from '../src/game/maps/rooms.ts'
 import { FISH_PRICE_MAX, fishPrice } from '../src/features/inventory/fishPrices.ts'
 
@@ -23,6 +23,7 @@ test('NPC 경로는 호수·강·나무·가구를 지나지 않는다', () => {
   for (const npc of OUTDOOR_NPCS) assert.equal(blockedOnPath('outdoor', npc.path), null, npc.id)
   for (const npc of LOBBY_NPCS) assert.equal(blockedOnPath('lobby', npc.path), null, npc.id)
   for (const npc of DEV_LAB_NPCS) assert.equal(blockedOnPath('development-lab', npc.path), null, npc.id)
+  for (const npc of SERVER_ROBOTS) assert.equal(blockedOnPath('server-room', npc.path), null, npc.id)
   const professor = DEV_LAB_NPCS[0]
   assert.equal(professor.kind, 'professor')
   assert.ok(professor.reactions.fail.length >= 2 && professor.reactions.pass.length >= 2, '빌드 실패에 놀라고 성공에 웃는다')
@@ -93,4 +94,11 @@ test('로비 경비는 입구 안쪽을 순찰하며 방명록을 안내하고 �
   assert.ok(LOBBY_NPCS.every(npc=>npc.speed >= 50))
   const { OFFICE_STAFF }=await import('../src/game/rooms/officeStaffData.ts')
   assert.ok(OFFICE_STAFF.every(npc=>npc.speed >= 50))
+})
+
+test('서버실 관리 로봇 다섯: 각자 관리 말을 중얼거리고, 말을 걸면 MINA SSHD 블로그 글로 안내한다', () => {
+  assert.equal(SERVER_ROBOTS.length, 5)
+  assert.ok(SERVER_ROBOTS.every(robot => robot.kind === 'robot' && robot.mutter.length >= 3 && robot.talk.length >= 1))
+  assert.equal(new Set(SERVER_ROBOTS.map(robot => robot.id)).size, 5)
+  assert.equal(SERVER_BLOG_URL, 'https://seulgae.github.io/blog/jsch-to-mina-sshd')
 })

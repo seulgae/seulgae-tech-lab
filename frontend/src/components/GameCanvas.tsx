@@ -9,6 +9,7 @@ import { PULLS_EVENTS } from '../features/pulls/pullsApi'
 import PullsPanel from '../features/pulls/PullsPanel'
 import LabInfoPanel from '../features/lab/components/LabInfoPanel'
 import ServerRackPanel from '../features/lab/components/ServerRackPanel'
+import ServerBlogPanel from '../features/lab/components/ServerBlogPanel'
 import { isRackId } from '../features/lab/model/capacity'
 import { LAB_EVENTS } from '../features/lab/labEvents'
 import type { RoomPanelKind } from '../features/lab/model/labTypes'
@@ -222,6 +223,7 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
       {tradeNotice && <p className="trade-toast" role="status">{tradeNotice}</p>}
       {labPanel === 'server-status' && <ServerRackPanel rack={isRackId(rackId) ? rackId : 'server-rack-1'} onClose={closeLabPanel} />}
       {labPanel === 'build-info' && <LabInfoPanel kind={labPanel} onClose={closeLabPanel} />}
+      {labPanel === 'server-blog' && <ServerBlogPanel onClose={closeLabPanel} />}
     </>
   )
 }

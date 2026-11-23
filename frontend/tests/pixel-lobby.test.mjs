@@ -74,7 +74,8 @@ test('원본 픽셀을 정수 좌표로 생성하고 캐릭터 시트를 실제 
     } }
     createPixelAssets(scene)
     createPixelAssets(scene)
-    assert.equal(textures.size, 62)
+    assert.equal(textures.size, 64)
+    for (const frame of [0, 1]) assert.ok(textures.has(`npc-robot-${frame}`), '서버실 관리 로봇')
     for (const kind of ['researcher-woman', 'researcher-man']) for (const frame of [0, 1]) assert.ok(textures.has(`npc-${kind}-${frame}`), `서비스 연구실 ${kind} ${frame}`)
     for (const kind of ['researcher-woman', 'researcher-man', 'professor']) for (const frame of [0, 1]) assert.ok(textures.has(`npc-${kind}-seated-${frame}`), `앉아서 일하는 ${kind} ${frame}`)
     for (const frame of [0, 1]) assert.ok(textures.has(`npc-guard-${frame}`), `남색 제복 경비 ${frame}`)

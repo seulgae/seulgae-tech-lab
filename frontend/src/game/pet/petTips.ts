@@ -24,6 +24,7 @@ export const PET_TIPS: Record<RoomId, readonly string[]> = {
   'server-room': [
     '랙 앞에서 E! 서버 상태 확인',
     '여기 좀 춥죠? 서버실이에요',
+    '로봇에게 E! 점검 비결 들어요',
   ],
   'meeting-room': [
     '여기선 다른 연구원과 만나요!',
