@@ -94,7 +94,8 @@ import org.springframework.context.annotation.Import;
     kr.seulgae.techlab.phone.service.impl.TodoServiceImpl.class, kr.seulgae.techlab.phone.controller.TodoController.class,
     kr.seulgae.techlab.phone.service.impl.SnsServiceImpl.class, kr.seulgae.techlab.phone.controller.SnsController.class,
     kr.seulgae.techlab.lab.capacity.client.SshProbe.class, kr.seulgae.techlab.lab.capacity.service.impl.ServerCapacityServiceImpl.class, kr.seulgae.techlab.lab.capacity.controller.ServerCapacityController.class,
-    kr.seulgae.techlab.lab.pulls.service.impl.GithubPullsServiceImpl.class, kr.seulgae.techlab.lab.pulls.controller.GithubPullsController.class})
+    kr.seulgae.techlab.lab.pulls.service.impl.GithubPullsServiceImpl.class, kr.seulgae.techlab.lab.pulls.controller.GithubPullsController.class,
+    kr.seulgae.techlab.dorm.service.impl.DormServiceImpl.class, kr.seulgae.techlab.dorm.controller.DormController.class})
 public class LocalLobbyTestApplication {
     private static final OffsetDateTime CREATED_AT = OffsetDateTime.parse("2026-11-15T12:00:00+09:00");
 
@@ -116,6 +117,10 @@ public class LocalLobbyTestApplication {
     /** 폰 SNS(DB 없는 로컬 실행) */
     @Bean
     kr.seulgae.techlab.phone.repository.SnsRepository fixtureSnsStore() { return new kr.seulgae.techlab.phone.repository.impl.InMemoryPhoneRepositories.Sns(); }
+
+    /** 개인 기숙사 가구(DB 없는 로컬 실행) */
+    @Bean
+    kr.seulgae.techlab.dorm.repository.DormRepository fixtureDormStore() { return new kr.seulgae.techlab.dorm.repository.impl.InMemoryDormRepository(); }
 
     /** 로비 방명록(DB 없는 로컬 실행) */
     @Bean

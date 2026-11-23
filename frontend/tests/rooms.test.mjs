@@ -22,7 +22,7 @@ test('회의실 밖은 서버 없이 방을 옮기고, 회의실 문에서만 �
   assert.equal(c.changeRoom('development-to-lobby'),true);t.mock.timers.tick(0)
   assert.equal(c.currentRoom(),'lobby');assert.equal(Socket.all.length,0,'회의실 밖 이동은 서버 없이')
   assert.equal(c.changeRoom('lobby-to-office-4'),true);t.mock.timers.tick(0)
-  assert.equal(c.currentRoom(),'office-4');assert.equal(ROOMS['office-4'].name,'뭘만들지');assert.equal(Socket.all.length,0)
+  assert.equal(c.currentRoom(),'office-4');assert.equal(ROOMS['office-4'].name,'개인 기숙사');assert.equal(Socket.all.length,0)
   assert.equal(c.changeRoom('office-4-to-lobby'),true);t.mock.timers.tick(0)
   assert.equal(c.changeRoom('lobby-to-development'),true);t.mock.timers.tick(0)
   assert.equal(c.changeRoom('development-to-meeting'),true)
@@ -52,7 +52,7 @@ test('모든 방의 스폰은 가구 밖이고 출입구는 로비 중심으로 
   // 로비와 개발 연구실은 문이 다섯(옆문 넷 + 아래 가운데), 나머지 방은 들어온 곳으로 가는 문 하나
   const hub=id==='lobby'||id==='development-lab'
   assert.equal(room.doors.length,hub?5:1, id)
-  // 서버실·관리자실·서비스 연구실·회의실은 개발 연구실로, 오락실·빈 사무실(2번)·뭘만들지·바깥은 로비로 돌아간다.
+  // 서버실·관리자실·서비스 연구실·회의실은 개발 연구실로, 오락실·빈 사무실(2번)·개인 기숙사·바깥은 로비로 돌아간다.
   const fromLab=['server-room','control-room','office-1','meeting-room'].includes(id)
   for(const door of room.doors)assert.ok(hub||door.target===(fromLab?'development-lab':'lobby'), id)
   if(id==='development-lab') assert.deepEqual(room.doors.map(d=>[d.target,d.x,d.y]),[['office-1',70,250],['control-room',730,250],['server-room',70,520],['meeting-room',730,520],['lobby',400,540]])

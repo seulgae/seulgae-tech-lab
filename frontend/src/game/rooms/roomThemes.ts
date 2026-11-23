@@ -102,14 +102,14 @@ export const ROOM_THEMES: Record<RoomId, RoomTheme> = {
     notes: { title: '오락실', body: '잠깐 쉬어 가요.\n최고 점수에 도전!', missionTitle: '벽돌 부수기', mission: '가운데 큰 오락기에서 E를 누르면 벽돌 부수기를 할 수 있어요. 최고 점수는 이 브라우저에 남아요.' },
   },
   'office-4': {
-    mood: '푸른 카펫만 깔린 빈 사무실',
+    mood: '내 가구로 꾸미는 개인 기숙사 방',
     camera: '#14181d', light: '#e3efff',
     floor: { base: '#c9a77c', baseLine: '#b08d63', alt: '#d2b088', altLine: '#b8966c', accent: '#3f6b7a', accentLine: '#335a67', accentDetail: '#7fb3c4' },
     wall: { upper: '#e6edf2', upperLight: '#f4f8fa', lower: '#4f6472', lowerDark: '#3a4b56', trim: '#9cb5c4', detail: '#6f8796', side: '#4f6472', bottom: '#3a4b56' },
     door: { frame: '#3a4b56', frameLight: '#9cb5c4', panel: '#6f8796', panelLight: '#8aa2b0', handle: '#e7d29a', sign: '#3f6b7a' },
     page: { background: '#12161a', card: '#1b2228', border: '#3e4f5b', accent: '#8fc4d9', muted: '#a9bac4' },
     textures: { computer: 'dev-desk', chair: 'office-chair', rack: 'bookshelf', equipment: 'workbench', plant: 'tall-plant' },
-    notes: { title: '뭘만들지', body: '아직 비어 있어요.\n곧 누가 올까요?', missionTitle: '비어 있음', mission: '지금은 화분 하나뿐인 빈 사무실이에요. 새 공간이 곧 들어올 예정이에요.' },
+    notes: { title: '개인 기숙사', body: '나만 보는 내 방.\n가구로 꾸며 봐요.', missionTitle: '방 꾸미기', mission: '폰의 가구점 앱에서 동전으로 가구를 사고, 보관함 가구 탭에서 배치를 눌러 E로 놓아요. 놓은 가구 앞에서 E를 누르면 다시 보관함으로 들어가요.' },
   },
   outdoor: {
     mood: '연구소 밖, 시간 따라 하늘과 빛이 바뀌는 초원과 호수, 낚시터가 있는 강',

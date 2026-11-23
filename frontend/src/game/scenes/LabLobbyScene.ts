@@ -179,7 +179,7 @@ export default class LabLobbyScene extends Phaser.Scene {
         playSfx('panel-open', { volume: 0.6 })
         this.uiEvents.emit(LAB_EVENTS.openPanel, kind)
       },
-      from: data.from, client: this.client, plants, player: () => this.player && { x: this.player.x, y: this.player.y },
+      from: data.from, client: this.client, plants, player: () => this.player && { x: this.player.x, y: this.player.y }, obstacles,
     })
     // 처음엔 로비 가운데, 문으로 들어오면 그 방의 스폰(서버 없이 옮기므로 클라이언트가 정한다)
     const spawn = data.from ? ROOMS[this.activeRoom].spawn : SPAWN

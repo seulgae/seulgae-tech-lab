@@ -147,7 +147,7 @@ jobs:
           import json,os
           manifest = dict(format=1, repository=os.environ['GITHUB_REPOSITORY'],
                           sha=os.environ['GITHUB_SHA'], run_id=int(os.environ['GITHUB_RUN_ID']),
-                          db_schema=dict(min=18,max=19),
+                          db_schema=dict(min=19,max=19),
                           images={s:'ghcr.io/seulgae/seulgae-tech-lab-'+s+'@'+os.environ[s.upper()+'_DIGEST']
                                   for s in ('backend','frontend')})
           with open('release.json','w') as f: json.dump(manifest,f,indent=2)

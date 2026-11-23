@@ -26,6 +26,7 @@
 .icon-bank { background: linear-gradient(160deg, #ffe082, #f9a825); }
 .icon-calendar { background: linear-gradient(160deg, #ffffff, #dfe6ee); }
 .icon-browser { background: linear-gradient(160deg, #80cbc4, #00796b); }
+.icon-furniture { background: linear-gradient(160deg, #e7c66f, #a0522d); }
 .icon-sns { background: linear-gradient(160deg, #f48fb1, #8e24aa); }
 
 .phone-app { flex: 1; display: flex; flex-direction: column; min-height: 0; background: #f4f6f9; color: #1e2a36; color-scheme: light; accent-color: #2f6fed; }
@@ -121,3 +122,15 @@
 .sns-feed header small { color: #8a97a5; font-size: 11px; }
 .phone-app-body .sns-feed header button { margin-left: auto; padding: 1px 8px; font-size: 11px; color: #8a97a5; }
 .sns-feed p { margin: 6px 0 0; line-height: 1.5; overflow-wrap: anywhere; white-space: pre-wrap; }
+
+/* 가구점 앱: 탭과 가구 카드 */
+.phone-tabs { display: flex; gap: 6px; }
+.phone-tabs button { flex: 1; padding: 6px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.15); background: transparent; color: inherit; cursor: pointer; }
+.phone-tabs button[aria-selected="true"] { background: rgba(255, 255, 255, 0.14); font-weight: 700; }
+.furniture-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.furniture-card { display: flex; align-items: center; gap: 10px; }
+.furniture-icon { font-size: 22px; width: 28px; text-align: center; }
+.furniture-name { flex: 1; display: flex; flex-direction: column; }
+.furniture-name small { opacity: 0.65; font-size: 11px; }
+.furniture-card button { min-width: 56px; padding: 5px 8px; border-radius: 8px; border: 0; background: #e7c66f; color: #2a1d0a; font-weight: 700; cursor: pointer; }
+.furniture-card button:disabled { opacity: 0.45; cursor: default; }
