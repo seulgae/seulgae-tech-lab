@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import type { RoomId } from '../maps/rooms'
 import type MultiplayerClient from '../../features/multiplayer/MultiplayerClient'
+import type { RoomPanelKind } from '../../features/lab/model/labTypes'
 import { MONO_FONT, UI_FONT, crispText } from '../render/renderScale'
 import { nextDelay } from './roomEventLogic'
 
@@ -8,6 +9,8 @@ import { nextDelay } from './roomEventLogic'
 export type Options = {
   /** 이 연출이 그리는 방(공용 연출이 방 테마를 고를 때 쓴다) */
   openRecruitment?: (agent: string) => void
+  /** 방 연출이 화면 패널을 연다(예: 서버실 로봇 → 블로그 안내 창) */
+  openPanel?: (kind: RoomPanelKind) => void
   room?: RoomId
   from?: RoomId; client: MultiplayerClient; plants?: Map<string, Phaser.GameObjects.Image>
   /** 먹고 마시기·책 꺼내기 연출이 따라갈 내 캐릭터 위치 */

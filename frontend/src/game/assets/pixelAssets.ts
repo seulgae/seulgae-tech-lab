@@ -128,6 +128,7 @@ export function createPixelAssets(scene: Phaser.Scene) {
   kidsAndFisher(scene)
   professor(scene)
   labStaff(scene)
+  serverRobot(scene)
   seatedStaff(scene)
   securityGuard(scene)
   // 관리자실 앞 작은 관리자 신청 컴퓨터(10×8, 2배로 그린다)
@@ -347,6 +348,25 @@ function securityGuard(scene: Phaser.Scene) {
       p(ink, 6, 6, 1, 1); p(ink, 9, 6, 1, 1); p('#665048', 6, 8, 4, 1)
       p('#142b4b', 3, 1, 10, 3); p('#304e7a', 4, 0, 8, 2)
       p('#101f35', 3, 4, 11, 1); p('#e4c16e', 7, 2, 2, 1)
+    })
+  }
+}
+
+/** 서버실 관리 로봇: 은색 몸통, 파란 LED 눈과 안테나, 가슴 상태등, 바퀴. 16×24, 바퀴가 구르는 두 프레임 */
+function serverRobot(scene: Phaser.Scene) {
+  for (const frame of [0, 1]) {
+    texture(scene, `npc-robot-${frame}`, 16, 24, (p) => {
+      // 안테나와 끝 LED
+      p('#8a96a3', 7, 0, 2, 3); p(frame ? '#39e6b4' : '#5fb6ff', 6, 0, 4, 1)
+      // 머리: 은색 상자와 검은 화면, 파란 눈
+      p(ink, 3, 3, 10, 8); p('#c9d2db', 4, 4, 8, 6); p('#1b2538', 5, 5, 6, 4); p('#5fb6ff', 6, 6, 1, 2); p('#5fb6ff', 9, 6, 1, 2)
+      // 몸통과 가슴 상태등, 팔
+      p(ink, 3, 11, 10, 8); p('#aab4bf', 4, 12, 8, 6); p('#8a96a3', 4, 16, 8, 2)
+      p(frame ? '#22c55e' : '#e2b33c', 6, 13, 1, 1); p('#22c55e', 8, 13, 1, 1); p('#5fb6ff', 10, 13, 1, 1)
+      p('#8a96a3', 2, 12, 1, 5); p('#8a96a3', 13, 12, 1, 5)
+      // 바퀴(굴러가는 두 프레임)
+      p(ink, 3, 19, 10, 4); p('#3b4250', 4, 20, 8, 2)
+      for (let x = 4 + frame; x < 12; x += 2) p('#8a96a3', x, 20, 1, 2)
     })
   }
 }

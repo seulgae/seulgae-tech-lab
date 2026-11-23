@@ -1,6 +1,7 @@
 import { officeLifeFx } from './officeLifeFx'
 import Phaser from 'phaser'
 import { recruitmentRoomFx } from './recruitmentRoomFx'
+import { serverRobotsFx } from './serverRobotsFx'
 import { ROOMS, roomObjects } from '../maps/rooms'
 import type { RoomId, RoomInteraction } from '../maps/rooms'
 import type { TreatKind } from './roomEventLogic'
@@ -236,16 +237,19 @@ function serverFx(ctx: Context): RoomHandlers {
   }, 8000)
   scene.time.addEvent({ delay: 500, loop: true, callback: () => { if (alert.update(scene.time.now) === 'auto') calm('자동 냉각 완료 · 18°C 정상') } })
 
+  const robots = serverRobotsFx(ctx)
   return {
-    hint: target => target.kind === 'server-status' && alert.state.active ? 'E · 냉각 시스템 가동' : undefined,
+    targets: robots.targets,
+    hint: target => robots.hint?.(target) ?? (target.kind === 'server-status' && alert.state.active ? 'E · 냉각 시스템 가동' : undefined),
     intercept: target => {
+      if (robots.intercept?.(target)) return true
       if (target.kind !== 'server-status' || alert.resolve() !== 'manual') return false
       burst.explode(50, target.x, target.y + 30)
       playSfx('success', { volume: 0.6 })
       calm('❄ 냉각 완료! 온도가 정상으로 돌아왔어요')
       return true
     },
-    destroy: () => ctx.stop(),
+    destroy: () => { robots.destroy?.(); ctx.stop() },
   }
 }
 

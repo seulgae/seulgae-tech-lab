@@ -70,3 +70,9 @@
 .rack-trend path { fill: none; stroke: #39e6b4; stroke-width: 2; vector-effect: non-scaling-stroke; }
 .rack-trend-warn { stroke: #ff9a8a; stroke-width: 1; stroke-dasharray: 4 4; vector-effect: non-scaling-stroke; }
 .rack-trend figcaption { margin-top: 4px; font-size: 11px; color: #aab9a3; }
+
+/* 서버실 로봇 → 블로그 안내 */
+.server-blog-points { margin: 0 0 16px; padding-left: 18px; line-height: 1.7; font-size: 13px; color: #d8e2da; }
+.server-blog-points code { padding: 0 4px; background: #101e20; color: #9fe0a0; }
+.server-blog-link { display: block; padding: 12px 14px; border: 1px solid #d8bd87; background: #344e46; color: #f1f6f4; font-weight: 700; text-align: center; text-decoration: none; }
+.server-blog-link:hover, .server-blog-link:focus-visible { background: #3f5d54; outline: 2px solid #b2dfdb; outline-offset: 2px; }
