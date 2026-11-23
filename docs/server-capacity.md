@@ -33,9 +33,9 @@
    ```text
    restrict,command="/opt/homeserver/apps/seulgae-tech-lab/deploy/capacity-probe.sh" ssh-ed25519 AAAA... stlab-capacity
    ```
-3. 호스트 키를 known_hosts 파일로 저장한다. 컨테이너에서 접속할 이름(아래 `host.docker.internal`)으로 저장해야 한다.
+3. 호스트 키를 known_hosts 파일로 저장한다. 컨테이너에서 접속할 이름(아래 `host.docker.internal`)으로 저장하고, **키 종류를 고르지 말고 모두** 저장한다. MINA SSHD는 서버가 내미는 키 중 ecdsa를 ed25519보다 먼저 고를 수 있어서, 한 종류만 저장하면 "Server key did not validate"로 거절된다.
    ```sh
-   ssh-keyscan -t ed25519 localhost | sed 's/^localhost/host.docker.internal/' > /opt/homeserver/config/seulgae-tech-lab/capacity/known_hosts
+   ssh-keyscan localhost 2>/dev/null | sed 's/^localhost/host.docker.internal/' > /opt/homeserver/config/seulgae-tech-lab/capacity/known_hosts
    ```
 4. `compose.yml`의 backend에 아래를 더한다. 키 파일은 이미지·저장소에 넣지 않고 읽기 전용으로 마운트한다.
    ```yaml
@@ -65,7 +65,7 @@
 | 코드 | 흔한 원인 |
 |---|---|
 | `NOT_CONFIGURED` | 환경 변수 누락, 또는 키·known_hosts 파일을 컨테이너가 읽지 못함(마운트·권한) |
-| `CONNECT` | 계정 이름이 다름, 키가 authorized_keys에 없음, known_hosts의 이름이 `host.docker.internal`이 아님(호스트 키 불일치로 거절) |
+| `CONNECT` | 로그에 `Server key did not validate`면 known_hosts에 서버가 고른 키 종류가 없음(3단계를 모든 종류로 다시), 그 밖에 계정 이름이 다름, 키가 authorized_keys에 없음, known_hosts의 이름이 `host.docker.internal`이 아님(호스트 키 불일치로 거절) |
 | `EXIT` | `capacity-probe.sh` 실행 권한 없음, authorized_keys의 command 경로가 틀림 |
 | `TIMEOUT` | 컨테이너에서 호스트 22번 포트로 가는 길이 막힘(방화벽, `extra_hosts` 누락) |
 | `PARSE` | 호스트에 `vmstat`·`free`가 없거나 출력 형식이 다름(`procps` 설치 확인) |
