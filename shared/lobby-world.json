@@ -1262,7 +1262,7 @@
       ]
     },
     "office-4": {
-      "name": "뭘만들지",
+      "name": "개인 기숙사",
       "interactions": [],
       "spawn": {
         "x": 400,
@@ -1276,19 +1276,7 @@
           "y": 540
         }
       ],
-      "objects": [
-        {
-          "texture": "plant",
-          "x": 700,
-          "bottom": 170,
-          "body": {
-            "x": 700,
-            "y": 160,
-            "width": 24,
-            "height": 20
-          }
-        }
-      ]
+      "objects": []
     }
   }
 }

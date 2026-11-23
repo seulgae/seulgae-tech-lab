@@ -14,6 +14,8 @@ export type Options = {
   from?: RoomId; client: MultiplayerClient; plants?: Map<string, Phaser.GameObjects.Image>
   /** 먹고 마시기·책 꺼내기 연출이 따라갈 내 캐릭터 위치 */
   player?: () => { x: number; y: number } | undefined
+  /** 장면 충돌 그룹(개인 기숙사처럼 연출이 나중에 가구를 놓을 때 충돌 영역을 더한다) */
+  obstacles?: Phaser.Physics.Arcade.StaticGroup
 }
 export const hex = (color: string) => Phaser.Display.Color.HexStringToColor(color).color
 export const BANNER_DEPTH = 1100

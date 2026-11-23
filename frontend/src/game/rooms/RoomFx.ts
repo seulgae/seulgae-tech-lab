@@ -2,6 +2,7 @@ import { officeLifeFx } from './officeLifeFx'
 import Phaser from 'phaser'
 import { officeDeskWorkersFx } from './officeDeskWorkersFx'
 import { serverRobotsFx } from './serverRobotsFx'
+import { dormFx } from './dormFx'
 import { ROOMS, roomObjects } from '../maps/rooms'
 import type { RoomId, RoomInteraction } from '../maps/rooms'
 import type { TreatKind } from './roomEventLogic'
@@ -51,7 +52,7 @@ export function createRoomFx(scene: Phaser.Scene, roomId: RoomId, options: Optio
   const builders = {
     lobby: lobbyFx, 'development-lab': developmentFx, 'server-room': serverFx, 'meeting-room': meetingFx,
     'control-room': adminRoomFx, outdoor: outdoorFx,
-    'office-1': officeFx, 'office-2': officeFx, 'office-3': arcadeFx, 'office-4': officeFx,
+    'office-1': officeFx, 'office-2': officeFx, 'office-3': arcadeFx, 'office-4': dormRoomFx,
   } as const
   const room = builders[roomId](new Context(scene, banner, { ...options, room: roomId }))
   const shakePlant = plantShaker(scene, options.plants ?? new Map(), banner)
@@ -480,6 +481,12 @@ function officeFx(ctx: Context): RoomHandlers {
   ctx.scene.tweens.add({ targets: lamp, alpha: 0.14, duration: 2600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' })
   wallClock(ctx, 640, '#5f3d24', '#8c2f39')
   return { destroy: () => ctx.stop() }
+}
+
+/** 개인 기숙사(로비 오른쪽 아래): 사무실 조명·시계 위에 내 가구(dormFx) */
+function dormRoomFx(ctx: Context): RoomHandlers {
+  const ambience = officeFx(ctx), dorm = dormFx(ctx)
+  return { ...dorm, destroy: () => { dorm.destroy?.(); ambience.destroy?.() } }
 }
 
 /** 오락실(로비 왼쪽 아래): 벽의 네온 간판, 오락기마다 번갈아 깜빡이는 네온 빛, 가끔 터지는 반짝이 */

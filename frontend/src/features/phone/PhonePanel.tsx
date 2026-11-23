@@ -11,6 +11,7 @@ import BankApp from './apps/BankApp'
 import CalendarApp from './apps/CalendarApp'
 import BrowserApp from './apps/BrowserApp'
 import SnsApp from './apps/SnsApp'
+import FurnitureShopApp from './apps/FurnitureShopApp'
 import '../../components/panel.css'
 import '../inventory/inventory.css'
 import './phone.css'
@@ -101,6 +102,7 @@ export default function PhonePanel({ client, onClose }: { client: () => Multipla
                 {app === 'calendar' && <CalendarApp />}
                 {app === 'browser' && <BrowserApp />}
                 {app === 'sns' && <SnsApp canWrite={member} />}
+                {app === 'furniture' && <FurnitureShopApp onClose={onClose} />}
               </>
             )}
           </div>

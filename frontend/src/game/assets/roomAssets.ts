@@ -23,7 +23,34 @@ export function createRoomAssets(scene: Phaser.Scene) {
   serverFurniture(scene)
   arcadeFurniture(scene)
   outdoorScenery(scene)
+  dormFurniture(scene)
   effects(scene)
+}
+
+/**
+ * 개인 기숙사 전용 가구 텍스처(침대·러그·스탠드 조명). 나머지 가구는 기존 연구소 가구 텍스처를 쓴다.
+ *
+ * @param scene 텍스처를 등록할 장면
+ */
+function dormFurniture(scene: Phaser.Scene) {
+  /* 침대: 나무 프레임, 베개, 접힌 이불 */
+  texture(scene, 'dorm-bed', 48, 40, p => {
+    p(ink, 0, 2, 48, 38); p('#8a5a3b', 1, 3, 46, 36); p('#a8714a', 1, 3, 46, 3)
+    p('#f4efe6', 3, 7, 42, 30); p('#ffffff', 5, 8, 14, 7); p('#dfe7ee', 5, 14, 14, 1)
+    p('#ffffff', 29, 8, 14, 7); p('#dfe7ee', 29, 14, 14, 1)
+    p('#5b8fc7', 3, 18, 42, 19); p('#7aa9db', 3, 18, 42, 3); p('#4a78ab', 3, 33, 42, 4)
+    p('#6b432b', 1, 37, 46, 3)
+  })
+  /* 러그: 테두리와 마름모 무늬 */
+  texture(scene, 'dorm-rug', 48, 32, p => {
+    p('#7a3e3e', 0, 0, 48, 32); p('#b5574f', 2, 2, 44, 28); p('#e0b26a', 4, 4, 40, 24); p('#b5574f', 6, 6, 36, 20)
+    for (let i = 0; i < 6; i++) { p('#e0b26a', 23 - i * 2, 10 + i, 2 + i * 4, 1); p('#e0b26a', 23 - i * 2, 21 - i, 2 + i * 4, 1) }
+  })
+  /* 스탠드 조명: 받침, 기둥, 따뜻한 갓 */
+  texture(scene, 'dorm-lamp', 10, 24, p => {
+    p(ink, 0, 0, 10, 9); p('#f3d27a', 1, 1, 8, 7); p('#fff1c4', 2, 1, 6, 2)
+    p('#5a4a3f', 4, 9, 2, 12); p('#3b2f28', 1, 21, 8, 3)
+  })
 }
 
 function floor(scene: Phaser.Scene, roomId: RoomId) {

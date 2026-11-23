@@ -6,8 +6,8 @@ import { PHONE_APPS } from '../src/features/phone/phoneApps.ts'
 import { addTodo, amountText, deleteSns, fetchTodos, searchRecipients, setTodoDone, transfer, writeSns } from '../src/features/phone/phoneApi.ts'
 
 test('폰 앱: 물고기 보관함·은행·캘린더는 회원만, 브라우저·SNS는 누구나', () => {
-  assert.deepEqual(PHONE_APPS.map(app => app.id), ['fish', 'bank', 'calendar', 'browser', 'sns'])
-  assert.deepEqual(PHONE_APPS.filter(app => app.memberOnly).map(app => app.id), ['fish', 'bank', 'calendar'])
+  assert.deepEqual(PHONE_APPS.map(app => app.id), ['fish', 'bank', 'calendar', 'browser', 'sns', 'furniture'])
+  assert.deepEqual(PHONE_APPS.filter(app => app.memberOnly).map(app => app.id), ['fish', 'bank', 'calendar', 'furniture'])
 })
 
 test('폰 시계·달력: 한국 시간, 일요일 시작 달력, 달 넘기기', () => {

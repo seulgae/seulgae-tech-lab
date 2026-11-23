@@ -333,4 +333,15 @@ class LobbySocketTest {
             HttpResponse.BodyHandlers.ofString());
         assertEquals(401, pick.statusCode(), "비회원은 로그인 안내");
     }
+
+    /** 개인 기숙사 가구는 회원 전용이다: 비회원은 보기·구매·배치·보관 모두 401. */
+    @Test void dormFurnitureNeedsLogin() throws Exception {
+        String base = "http://127.0.0.1:" + port() + "/api/dorm";
+        assertEquals(401, http.send(HttpRequest.newBuilder(URI.create(base)).GET().build(), HttpResponse.BodyHandlers.ofString()).statusCode());
+        for (String path : new String[]{"/buy", "/place", "/store"}) {
+            var response = http.send(HttpRequest.newBuilder(URI.create(base + path)).header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString("{\"code\":\"DESK\"}")).build(), HttpResponse.BodyHandlers.ofString());
+            assertEquals(401, response.statusCode(), path);
+        }
+    }
 }
