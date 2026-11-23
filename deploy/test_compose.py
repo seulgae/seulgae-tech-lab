@@ -44,3 +44,14 @@ class ComposeTests(unittest.TestCase):
         self.assertNotIn('LAB_ADMIN_MEMBER_IDS', backend['environment'])
         self.assertNotIn('LAB_AUTH_KAKAO_CLIENT_SECRET', backend['environment'])
         self.assertNotIn('homeserver-net', str(config))
+        # 서버실 용량 조사: 호스트 SSH는 키 폴더를 읽기 전용으로만 받고, 비밀번호 환경 변수는 두지 않는다.
+        self.assertEqual(backend['environment']['LAB_CAPACITY_SSH_HOST'], 'host.docker.internal')
+        hosts = backend['extra_hosts']
+        # Compose 버전에 따라 목록('이름:주소'/'이름=주소') 또는 사전({이름: [주소]})으로 나온다.
+        pairs = [f'{k}={v[0] if isinstance(v, list) else v}' for k, v in hosts.items()] if isinstance(hosts, dict) else [h.replace(':', '=', 1) for h in hosts]
+        self.assertIn('host.docker.internal=host-gateway', pairs)
+        capacity = [v for v in backend['volumes'] if v['target'] == '/run/capacity']
+        self.assertEqual(len(capacity), 1)
+        self.assertTrue(capacity[0]['read_only'])
+        self.assertTrue(capacity[0]['source'].endswith('/capacity'))
+        self.assertFalse(any('PASSWORD' in key for key in backend['environment'] if key.startswith('LAB_CAPACITY')))

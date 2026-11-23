@@ -47,6 +47,16 @@ services:
       LAB_AUTH_KAKAO_CLIENT_ID: 8e235c19470d153bef77ad4ddddc3f23
       LAB_AUTH_KAKAO_REDIRECT_URI: https://seulgae-home-server.tailac4b36.ts.net/api/auth/kakao/callback
       JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=65 -XX:ActiveProcessorCount=2
+      # 서버실 랙 용량 조사(docs/server-capacity.md): 호스트에 SSH로 프로브 하나만 실행한다(키 인증, known_hosts 검증).
+      # 키 폴더가 비어 있으면 앱은 그대로 뜨고 랙에 "설정되지 않았어요"만 보인다.
+      LAB_CAPACITY_SSH_HOST: host.docker.internal
+      LAB_CAPACITY_SSH_USER: seulgae
+      LAB_CAPACITY_SSH_KEY_PATH: /run/capacity/id_ed25519
+      LAB_CAPACITY_SSH_KNOWN_HOSTS_PATH: /run/capacity/known_hosts
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    volumes:
+      - ${STLAB_SECRETS_DIR:-/opt/homeserver/config/seulgae-tech-lab}/capacity:/run/capacity:ro
     # 파일이 없어도 기존 앱은 정상 기동한다. 활성화·키 설정은 운영 가이드 참조.
     env_file:
       - path: ${STLAB_SECRETS_DIR:-/opt/homeserver/config/seulgae-tech-lab}/recruitment.env
