@@ -132,7 +132,7 @@ export default class LobbyMultiplayer {
       let steps = this.remoteSteps.get(id)
       if (!steps) { steps = new FootstepTracker(); this.remoteSteps.set(id, steps) }
       // 스냅샷이 반복 와도 실제로 그려진 위치가 움직일 때만 소리가 난다.
-      if (steps.update(remote.x, remote.y)) {
+      if (steps.update(remote.x, remote.y, delta)) {
         playSpatialSfx(footstepSound(this.client.currentRoom(), remote.x, remote.y), remote, this.player, { volume: 0.7, rate: 0.9 + Math.random() * 0.2 })
       }
     }

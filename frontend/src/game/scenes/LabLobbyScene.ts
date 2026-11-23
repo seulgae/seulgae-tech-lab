@@ -277,7 +277,7 @@ export default class LabLobbyScene extends Phaser.Scene {
     this.player.update(!this.panelOpen && !this.transition && !textFocused && !this.fx?.locksMovement(), this.touchInput)
     // 앉아 있거나 막혀서 좌표가 그대로면 발걸음이 나지 않는다. 음높이를 조금씩 바꿔 반복감을 줄인다.
     if (this.player.seat) this.footsteps.reset()
-    else if (this.footsteps.update(this.player.x, this.player.y)) {
+    else if (this.footsteps.update(this.player.x, this.player.y, delta)) {
       playSfx(footstepSound(this.activeRoom, this.player.x, this.player.y), { volume: 0.45, rate: 0.92 + Math.random() * 0.16 })
     }
     this.multiplayer?.update(delta)

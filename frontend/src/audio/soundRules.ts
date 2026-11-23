@@ -42,32 +42,47 @@ export function footstepSound(roomId: RoomId, x: number, y: number): EffectKey {
 /**
  * 실제로 움직인 거리만큼 발걸음을 센다. 방향키를 눌러도 벽·가구에 막혀 좌표가 그대로면 소리가 없고,
  * 멈추면 쌓인 거리를 버려 멈춘 뒤 한 발이 더 나지 않는다. 순간이동(서버 보정·방 이동)은 무시한다.
+ *
+ * 멈춤은 좌표가 STOP_MS 동안 그대로일 때만 본다. 화면이 90·120Hz인 휴대폰은 물리(초당 60번)보다 화면을 자주 그려
+ * 걷는 중에도 좌표가 그대로인 프레임이 끼는데, 그 한 프레임을 멈춤으로 보면 매 프레임 첫 발이 나서 소리가 연사된다.
  */
 export class FootstepTracker {
+  static readonly STOP_MS = 120
   private last?: { x: number; y: number }
   private travelled = 0
+  private moving = false
+  private idle = 0
   private readonly stride: number
   private readonly teleport: number
   constructor(stride = 24, teleport = 48) { this.stride = stride; this.teleport = teleport }
 
-  /** @returns 이번 갱신에서 발걸음 소리를 낼지 */
-  update(x: number, y: number): boolean {
+  /**
+   * @param delta 지난 갱신 뒤 흐른 시간(ms). 화면 주사율과 상관없이 멈춤을 시간으로 판단한다.
+   * @returns 이번 갱신에서 발걸음 소리를 낼지
+   */
+  update(x: number, y: number, delta = 1000 / 60): boolean {
     const last = this.last
     this.last = { x, y }
     if (!last) return false
     const distance = Math.hypot(x - last.x, y - last.y)
-    if (distance > this.teleport) { this.travelled = 0; return false }
-    if (distance < 0.05) { this.travelled = 0; return false }
+    if (distance > this.teleport) { this.stop(); return false }
+    if (distance < 0.05) {
+      this.idle += delta
+      if (this.idle >= FootstepTracker.STOP_MS) this.stop()
+      return false
+    }
+    this.idle = 0
     // 첫 발은 움직이기 시작하자마자 낸다.
-    const first = this.travelled === 0
+    if (!this.moving) { this.moving = true; this.travelled = 0; return true }
     this.travelled += distance
-    if (first) { this.travelled = 0.001; return true }
     if (this.travelled < this.stride) return false
     this.travelled -= this.stride
     return true
   }
 
-  reset() { this.last = undefined; this.travelled = 0 }
+  private stop() { this.moving = false; this.travelled = 0; this.idle = 0 }
+
+  reset() { this.last = undefined; this.stop() }
 }
 
 /** 다른 연구원 소리의 거리 감쇠: 가까우면 작게(최대 0.6), 멀수록 작아지고 maxDistance 밖은 0 */
