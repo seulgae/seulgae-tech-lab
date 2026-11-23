@@ -8,7 +8,6 @@ import { nextDelay } from './roomEventLogic'
 /** 방 연출 모듈(RoomFx와 방별 연출 파일)이 함께 쓰는 공통 도구 */
 export type Options = {
   /** 이 연출이 그리는 방(공용 연출이 방 테마를 고를 때 쓴다) */
-  openRecruitment?: (agent: string) => void
   /** 방 연출이 화면 패널을 연다(예: 서버실 로봇 → 블로그 안내 창) */
   openPanel?: (kind: RoomPanelKind) => void
   room?: RoomId

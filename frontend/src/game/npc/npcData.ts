@@ -35,6 +35,8 @@ export type NpcDef = {
   seated?: boolean
   /** 바라보는 방향(제자리 NPC): true면 오른쪽 */
   facesRight?: boolean
+  /** 일하다가 화가 나서 내뱉는 말(작업석 연구원). Npc.vent()가 쓴다. */
+  angry?: readonly string[]
   /** 개발 연구실 빌드 결과에 따른 반응(실패하면 놀라고, 성공하면 웃는다) */
   reactions?: { fail: readonly string[]; pass: readonly string[] }
 }
