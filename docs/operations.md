@@ -84,7 +84,7 @@ cd /opt/homeserver/apps/seulgae-tech-lab
 python3 deploy/ops.py check
 ```
 
-`check`는 Docker·Compose, PostgreSQL 상태와 네트워크, 두 비밀번호 파일과 권한, 해석된 Compose DB 설정, 기존 Flyway 이력을 확인한다. SQL은 READ ONLY 트랜잭션으로 실행한다. 성공 이력의 스키마 버전 V1~V16만 허용하며 실패 이력·미적용·다른 버전이면 중단한다. 배포할 릴리스와 맞는지는 `deploy`가 릴리스의 `db_schema` 범위로 다시 확인한다. 이미지 Pull, 앱 시작, 마이그레이션은 하지 않는다. 자체 ops 디렉터리와 잠금 파일은 만들 수 있다.
+`check`는 Docker·Compose, PostgreSQL 상태와 네트워크, 두 비밀번호 파일과 권한, 해석된 Compose DB 설정, 기존 Flyway 이력을 확인한다. SQL은 READ ONLY 트랜잭션으로 실행한다. 성공 이력의 스키마 버전 V1~V17만 허용하며 실패 이력·미적용·다른 버전이면 중단한다. 배포할 릴리스와 맞는지는 `deploy`가 릴리스의 `db_schema` 범위로 다시 확인한다. 이미지 Pull, 앱 시작, 마이그레이션은 하지 않는다. 자체 ops 디렉터리와 잠금 파일은 만들 수 있다.
 
 병합 후 main CI에서 이미지·manifest 게시가 끝났는지 GitHub Actions에서 사용자가 확인한 다음:
 
@@ -347,3 +347,31 @@ V15와 같은 **축소** 순서다. 채용 공고 수집·검토 기능(V12·V13
 
 - 서버의 `recruitment.env`(선택 설정)는 더 읽지 않는다. 필요 없으면 지워도 된다.
 - 지운 채용 행은 migrate-prod의 `pg_dump` 백업에서만 되살릴 수 있다.
+
+### V17 마이그레이션 (테이블 이름 규칙 tb_lab_, 2026-11-23)
+
+테이블 11개를 `tb_lab_<명시적 이름>`(단수)으로 바꾸고 모든 테이블·컬럼에 주석(`COMMENT ON`)을 단다. 예전 이름은 **호환 뷰**로 남겨 서비스가 끊기지 않는다.
+
+| 순서 | 할 일 | 릴리스 `db_schema` |
+|---|---|---|
+| 1 | 확장 PR 머지: V17(이름 변경 + 예전 이름 뷰 + 주석)과 도구 | **16..17** |
+| 2 | 서버에서 `python3 deploy/migrate-prod.py`(백업 후 V16 → V17). 돌아가는 앱은 뷰로 계속 동작 | — |
+| 3 | 사용 PR 머지: 코드가 새 이름을 쓰고 V18(호환 뷰 삭제) 포함 | **17..18** |
+| 4 | 서버에서 `migrate-prod.py`(V17 → V18) | — |
+| 5 | 마무리 PR: CI `db_schema` **18..18** | 18..18 |
+
+| 예전 이름 | 새 이름 |
+|---|---|
+| members | tb_lab_member |
+| common_codes | tb_lab_common_code |
+| work_items | tb_lab_work_item |
+| inventories | tb_lab_member_inventory |
+| coin_events | tb_lab_coin_history |
+| items | tb_lab_item |
+| guestbook_entries | tb_lab_guestbook |
+| meeting_agendas | tb_lab_meeting_agenda |
+| level_requests | tb_lab_level_request |
+| todos | tb_lab_todo |
+| sns_posts | tb_lab_sns_post |
+
+- 관리자 쿼리 콘솔에서는 V18 전까지 예전 이름도 뷰로 보인다. 새 쿼리는 새 이름으로 쓴다.
