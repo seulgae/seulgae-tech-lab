@@ -13,6 +13,7 @@ import BrowserApp from './apps/BrowserApp'
 import SnsApp from './apps/SnsApp'
 import FurnitureShopApp from './apps/FurnitureShopApp'
 import MapApp from './apps/MapApp'
+import StockApp from './apps/StockApp'
 import type { RoomId } from '../../game/maps/rooms'
 import '../../components/panel.css'
 import '../inventory/inventory.css'
@@ -105,7 +106,8 @@ export default function PhonePanel({ client, onClose }: { client: () => Multipla
                 {app === 'browser' && <BrowserApp />}
                 {app === 'sns' && <SnsApp canWrite={member} />}
                 {app === 'furniture' && <FurnitureShopApp onClose={onClose} />}
-                {app === 'map' && <MapApp current={(client()?.currentRoom() ?? 'lobby') as RoomId} />}
+                {app === 'stock' && <StockApp />}
+                {app === 'map' &&<MapApp current={(client()?.currentRoom() ?? 'lobby') as RoomId} />}
               </>
             )}
           </div>

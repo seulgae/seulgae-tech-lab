@@ -344,4 +344,18 @@ class LobbySocketTest {
             assertEquals(401, response.statusCode(), path);
         }
     }
+
+    /** 적금·주식·오락실 내기는 회원 전용이다: 비회원은 보기·쓰기 모두 401. */
+    @Test void savingsStocksAndGambleNeedLogin() throws Exception {
+        String base = "http://127.0.0.1:" + port();
+        for (String path : new String[]{"/api/savings", "/api/stocks", "/api/gamble"}) {
+            assertEquals(401, http.send(HttpRequest.newBuilder(URI.create(base + path)).GET().build(), HttpResponse.BodyHandlers.ofString()).statusCode(), path);
+        }
+        for (String path : new String[]{"/api/savings/deposit", "/api/savings/withdraw", "/api/stocks/buy", "/api/stocks/sell", "/api/gamble/play"}) {
+            var response = http.send(HttpRequest.newBuilder(URI.create(base + path)).header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString("{\"amount\":1,\"days\":1,\"code\":\"SGLB\",\"quantity\":1,\"game\":\"DICE\",\"bet\":1,\"pick\":\"1\"}")).build(),
+                HttpResponse.BodyHandlers.ofString());
+            assertEquals(401, response.statusCode(), path);
+        }
+    }
 }

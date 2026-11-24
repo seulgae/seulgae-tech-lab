@@ -96,3 +96,13 @@ test('벽돌 부수기: 마지막 벽돌을 깨면 클리어, 다음 판은 점�
   const launched = stepBreakout(next, 0.016, { ...idle, launch: true }).state
   assert.ok(Math.hypot(launched.ball.vx, launched.ball.vy) > 150 * 1.1, '레벨이 오르면 공이 빨라진다')
 })
+
+test('오락실 내기: 위쪽 오락기 넷이 홀짝·사다리·주사위·슬롯이고, 사다리 길은 서버와 같은 규칙으로 따라간다', async () => {
+  const { GAMBLE_MACHINES, ladderPath, resultText } = await import('../src/features/arcade/gambleApi.ts')
+  const ids = ROOMS['office-3'].interactions.filter(item => item.kind === 'gamble').map(item => item.id)
+  assert.deepEqual(ids.map(id => GAMBLE_MACHINES[id]), ['ODD_EVEN', 'LADDER', 'DICE', 'SLOT'])
+  assert.deepEqual(ladderPath(0, [0, -1, 1, 1, 0, -1]), [0, 1, 1, 2, 1, 0, 0])
+  assert.match(resultText({ game: 'DICE', pick: '3', bet: 10, numbers: [3], win: true, payout: 55, coins: 0, betsLeftToday: 1 }), /당첨! 55원/)
+  assert.match(resultText({ game: 'SLOT', pick: '', bet: 10, numbers: [1, 1, 2], win: false, payout: 5, coins: 0, betsLeftToday: 1 }), /5원만/)
+  assert.match(resultText({ game: 'ODD_EVEN', pick: 'ODD', bet: 4, numbers: [1, 1], win: false, payout: 0, coins: 0, betsLeftToday: 1 }), /4원을 잃었어요/)
+})

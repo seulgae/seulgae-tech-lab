@@ -95,7 +95,10 @@ import org.springframework.context.annotation.Import;
     kr.seulgae.techlab.phone.service.impl.SnsServiceImpl.class, kr.seulgae.techlab.phone.controller.SnsController.class,
     kr.seulgae.techlab.lab.capacity.client.SshProbe.class, kr.seulgae.techlab.lab.capacity.service.impl.ServerCapacityServiceImpl.class, kr.seulgae.techlab.lab.capacity.controller.ServerCapacityController.class,
     kr.seulgae.techlab.lab.pulls.service.impl.GithubPullsServiceImpl.class, kr.seulgae.techlab.lab.pulls.controller.GithubPullsController.class,
-    kr.seulgae.techlab.dorm.service.impl.DormServiceImpl.class, kr.seulgae.techlab.dorm.controller.DormController.class})
+    kr.seulgae.techlab.dorm.service.impl.DormServiceImpl.class, kr.seulgae.techlab.dorm.controller.DormController.class,
+    kr.seulgae.techlab.savings.service.impl.SavingsServiceImpl.class, kr.seulgae.techlab.savings.controller.SavingsController.class,
+    kr.seulgae.techlab.stock.service.impl.StockServiceImpl.class, kr.seulgae.techlab.stock.controller.StockController.class,
+    kr.seulgae.techlab.gamble.service.impl.GambleServiceImpl.class, kr.seulgae.techlab.gamble.controller.GambleController.class})
 public class LocalLobbyTestApplication {
     private static final OffsetDateTime CREATED_AT = OffsetDateTime.parse("2026-11-15T12:00:00+09:00");
 
@@ -121,6 +124,14 @@ public class LocalLobbyTestApplication {
     /** 개인 기숙사 가구(DB 없는 로컬 실행) */
     @Bean
     kr.seulgae.techlab.dorm.repository.DormRepository fixtureDormStore() { return new kr.seulgae.techlab.dorm.repository.impl.InMemoryDormRepository(); }
+
+    /** 은행 적금(DB 없는 로컬 실행) */
+    @Bean
+    kr.seulgae.techlab.savings.repository.SavingsRepository fixtureSavingsStore() { return new kr.seulgae.techlab.savings.repository.impl.InMemorySavingsRepository(); }
+
+    /** 주식 앱(DB 없는 로컬 실행) */
+    @Bean
+    kr.seulgae.techlab.stock.repository.StockRepository fixtureStockStore() { return new kr.seulgae.techlab.stock.repository.impl.InMemoryStockRepository(); }
 
     /** 로비 방명록(DB 없는 로컬 실행) */
     @Bean

@@ -3,3 +3,30 @@
 .arcade-hud strong { color: #ffd23f; font-size: 14px; }
 .arcade-screen { display: block; width: 100%; aspect-ratio: 4 / 3; border: 3px solid #f472b6; box-shadow: 0 0 18px rgba(244, 114, 182, .45); image-rendering: pixelated; touch-action: none; cursor: none; }
 .arcade-notice { margin: 0 0 8px; font-size: 12px; color: #fbcfe8; }
+
+/* 오락실 내기 게임 */
+.research-panel.gamble-panel { width: min(520px, calc(100vw - 32px)); }
+.gamble-stage { display: grid; place-items: center; min-height: 190px; margin: 8px 0; border: 3px solid #a78bfa; border-radius: 10px; background: #0b0618; }
+.gamble-stage.won { border-color: #ffd23f; box-shadow: 0 0 22px rgba(255, 210, 63, 0.5); }
+.gamble-stage.lost { border-color: #6b5a86; }
+.gamble-dice { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; justify-content: center; }
+.gamble-dice small { width: 100%; text-align: center; color: #fbcfe8; }
+.gamble-die, .gamble-reel { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 12px; background: #f8f4ff; color: #1b1030; font: 700 30px monospace; }
+.gamble-reels { display: flex; gap: 10px; }
+.gamble-stage.rolling .gamble-die, .gamble-stage.rolling .gamble-reel { animation: gamble-shake 0.18s infinite alternate; }
+@keyframes gamble-shake { from { transform: rotate(-12deg) translateY(-3px); } to { transform: rotate(12deg) translateY(3px); } }
+.gamble-ladder { width: 100%; max-width: 300px; }
+.gamble-ladder-path { stroke-dasharray: 600; stroke-dashoffset: 600; animation: gamble-draw 0.9s ease-out forwards; }
+@keyframes gamble-draw { to { stroke-dashoffset: 0; } }
+.gamble-result { min-height: 18px; margin: 0 0 8px; text-align: center; font-weight: 700; color: #ffd23f; }
+.gamble-picks { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-bottom: 10px; }
+.gamble-picks button { min-width: 48px; padding: 6px 10px; border-radius: 8px; border: 1px solid #a78bfa; background: transparent; color: #e9d5ff; cursor: pointer; }
+.gamble-picks button[aria-checked="true"] { background: #a78bfa; color: #12081f; font-weight: 700; }
+.gamble-bet { display: flex; align-items: center; gap: 10px; color: #e9d5ff; }
+.gamble-bet input { flex: 1; accent-color: #f472b6; }
+.gamble-go { padding: 8px 16px; border: 0; border-radius: 8px; background: #f472b6; color: #12081f; font-weight: 800; cursor: pointer; }
+.gamble-go:disabled { opacity: 0.45; cursor: default; }
+.gamble-login { color: #fbcfe8; }
+@media (prefers-reduced-motion: reduce) {
+  .gamble-stage.rolling .gamble-die, .gamble-stage.rolling .gamble-reel, .gamble-ladder-path { animation: none; stroke-dashoffset: 0; }
+}

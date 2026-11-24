@@ -5,6 +5,8 @@ export const LAB_EVENTS = {
   workBoard: 'lab:work-board',
   /** 서버실 랙을 열 때 몇 번 랙(상호작용 id)인지 먼저 알린다. */
   serverRack: 'lab:server-rack',
+  /** 오락실 내기 오락기를 열 때 어떤 게임(상호작용 id)인지 먼저 알린다. */
+  gamble: 'lab:gamble',
   closePanel: 'lab:close-panel',
   tableTalk: 'lab:table-talk',
 } as const

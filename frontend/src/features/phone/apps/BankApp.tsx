@@ -3,6 +3,7 @@ import { inventoryStore } from '../../inventory/inventoryStore'
 import { playSfx } from '../../../audio/AudioManager'
 import { TRANSFER_MAX, amountText, fetchBank, searchRecipients, transfer } from '../phoneApi'
 import type { BankView, Recipient } from '../phoneApi'
+import SavingsSection from './SavingsSection'
 
 const errorText = (cause: unknown) => cause instanceof Error ? cause.message : '요청에 실패했어요.'
 
@@ -79,6 +80,8 @@ export default function BankApp() {
           <button type="submit" className="phone-primary" disabled={!valid || busy}>보내기</button>
         </form>
       </section>
+
+      <SavingsSection onChanged={() => { fetchBank().then(setBank).catch(() => undefined) }} />
 
       <section className="phone-card" aria-label="거래 내역">
         <h3>최근 거래</h3>

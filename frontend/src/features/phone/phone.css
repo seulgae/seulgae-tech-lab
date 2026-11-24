@@ -125,8 +125,8 @@
 
 /* 가구점 앱: 탭과 가구 카드 */
 .phone-tabs { display: flex; gap: 6px; }
-.phone-tabs button { flex: 1; padding: 6px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.15); background: transparent; color: inherit; cursor: pointer; }
-.phone-tabs button[aria-selected="true"] { background: rgba(255, 255, 255, 0.14); font-weight: 700; }
+.phone-tabs button { flex: 1; padding: 6px; border-radius: 8px; border: 1px solid rgba(0, 0, 0, 0.12); background: transparent; color: inherit; cursor: pointer; }
+.phone-tabs button[aria-selected="true"], .phone-tabs button[aria-checked="true"] { background: #e7c66f; border-color: #c9a24b; color: #2a1d0a; font-weight: 700; }
 .furniture-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .furniture-card { display: flex; align-items: center; gap: 10px; }
 .furniture-icon { font-size: 22px; width: 28px; text-align: center; }
@@ -150,3 +150,16 @@
 .map-info p { margin: 4px 0 0; font-size: 12px; line-height: 1.5; }
 .map-info small { display: block; opacity: 0.7; }
 .icon-map { background: linear-gradient(160deg, #7fd0a8, #2f6f8f); }
+
+/* 주식 앱: 오르면 빨강, 내리면 파랑(한국식) */
+.stock-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.stock-list button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(0, 0, 0, 0.08); background: #fff; color: inherit; cursor: pointer; text-align: left; }
+.stock-list button[aria-pressed="true"] { border-color: #e7c66f; box-shadow: 0 0 0 1px #e7c66f inset; }
+.stock-name { flex: 1; display: flex; flex-direction: column; font-weight: 700; }
+.stock-name small, .stock-quote small { font-weight: 400; font-size: 11px; opacity: 0.75; }
+.stock-quote { display: flex; flex-direction: column; align-items: flex-end; font: 700 13px monospace; }
+.stock-detail header small { display: block; opacity: 0.7; }
+.stock-price { margin: 4px 0; font: 700 18px monospace; }
+.stock-list .plus, .stock-detail .plus { color: #e5484d; opacity: 1; }
+.stock-list .minus, .stock-detail .minus { color: #3b82f6; opacity: 1; }
+.icon-stock { background: linear-gradient(160deg, #e5484d, #3b82f6); }
