@@ -138,3 +138,23 @@ test('오락실 안내: 하루 5판, 남은 판, 다 했을 때와 기력이 모
   assert.match(arcadeNotice('limit', null), /5판을 다 했어요/)
   assert.match(arcadeNotice('tired', null), /기력이나 HP가 모자라요/)
 })
+
+test('간식: 가방을 아직 안 읽었으면 먼저 읽어서 마신 뒤 기력 +5 변화량을 띄운다', async () => {
+  const { inventoryStore, VITALS_EVENT } = await import('../src/features/inventory/inventoryStore.ts')
+  const original = globalThis.fetch
+  const seen = []
+  const events = []
+  const listener = event => events.push(event.detail)
+  const target = new EventTarget()
+  Object.assign(globalThis, { addEventListener: target.addEventListener.bind(target), removeEventListener: target.removeEventListener.bind(target), dispatchEvent: target.dispatchEvent.bind(target) })
+  globalThis.addEventListener(VITALS_EVENT, listener)
+  const view = fatigue => new Response(JSON.stringify({ coins: 10, items: [], rewardsLeftToday: 3, hp: 50, hpMax: 50, fatigue, fatigueMax: 50 }), { headers: { 'Content-Type': 'application/json' } })
+  globalThis.fetch = async (url, options = {}) => { seen.push(`${options.method ?? 'GET'} ${url}`); return view(url === '/api/inventory' ? 30 : 35) }
+  try {
+    inventoryStore.reset()
+    assert.equal(await inventoryStore.buySnack('COFFEE'), 'bought')
+    assert.equal(inventoryStore.get().fatigue, 35)
+    assert.deepEqual(seen, ['GET /api/inventory', 'POST /api/inventory/snack'], '처음이면 먼저 가방을 읽는다')
+    assert.deepEqual(events.at(-1), { hp: 0, fatigue: 5 }, '마신 만큼 변화량을 띄운다')
+  } finally { globalThis.fetch = original; globalThis.removeEventListener(VITALS_EVENT, listener); delete globalThis.addEventListener; delete globalThis.removeEventListener; delete globalThis.dispatchEvent }
+})

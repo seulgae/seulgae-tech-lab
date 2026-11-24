@@ -126,6 +126,8 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
       },
     }, { isAdmin: () => authStore.get().admin })
     clientRef.current = client
+    // 처음부터 가방(동전·HP·기력)을 읽어 둔다. 그래야 첫 간식·오락부터 변화량이 캐릭터 위에 뜬다.
+    void inventoryStore.refresh()
     eventRef.current = uiEvents
     const openPulls = () => setPullsOpen(true)
     uiEvents.on(PULLS_EVENTS.openPulls, openPulls)

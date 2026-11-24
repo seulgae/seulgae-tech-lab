@@ -83,6 +83,8 @@ export function vitalsText(change: { hp: number; fatigue: number }) {
 
 export const inventoryStore = {
   get: () => state,
+  /** 테스트용: 아직 가방을 읽지 않은 처음 상태로 되돌린다. */
+  reset() { state = { loaded: false, available: false, coins: 0, items: [], rewardsLeftToday: 0, ...FULL } },
   subscribe(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener) } },
   /** 서버에서 다시 읽는다. 로그인하지 않았으면 가방을 쓸 수 없는 상태가 된다. */
   async refresh() {
@@ -161,6 +163,8 @@ export const inventoryStore = {
    */
   async buySnack(kind: SnackKind): Promise<'bought' | 'guest' | 'broke' | 'full' | 'error'> {
     try {
+      // 가방을 아직 안 읽었으면 먼저 읽어 둔다: 그래야 마신 뒤 '기력 +5' 변화량을 계산해 띄울 수 있다.
+      if (!state.loaded) await inventoryStore.refresh()
       const response = await call('/api/inventory/snack', { method: 'POST', body: JSON.stringify({ kind }) })
       if (response.status === 401) { set({ ...state, loaded: true, available: false }); return 'guest' }
       if (response.status === 409) return 'broke'
