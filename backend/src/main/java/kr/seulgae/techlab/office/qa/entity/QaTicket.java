@@ -8,7 +8,7 @@ import java.util.UUID;
  *
  * @author 길태형
  * @version 1.0, QA 게시판 개편
- * @see None
+ * @see "None"
  */
 public record QaTicket(UUID id, String title, String content, String status, String statusName, String author,
                        OffsetDateTime createdAt, OffsetDateTime updatedAt) {}

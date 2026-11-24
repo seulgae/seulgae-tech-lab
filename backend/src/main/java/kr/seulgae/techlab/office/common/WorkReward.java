@@ -7,11 +7,11 @@ import org.springframework.web.server.ResponseStatusException;
 
 /**
  * 서비스 연구실 게시판에서 일하기(글 등록·상태 변경)의 공통 비용과 보상.
- * 회원은 HP 3·기력 5가 남아 있어야 하고(모자라면 423), 일하면 HP -3·기력 -5에 동전 10원(하루 10번까지)을 받는다.
+ * 행동 코드별 서버 규칙으로 HP·기력 비용을 확인하고, 하루 한도 안에서 게시판 동전 보상을 지급한다.
  *
  * @author 길태형
  * @version 1.0, 게시판 개편
- * @see None
+ * @see InventoryService
  */
 @Component
 public class WorkReward {
@@ -20,17 +20,20 @@ public class WorkReward {
     public WorkReward(InventoryService inventory) { this.inventory = inventory; }
 
     /**
-     * 일하기 전 기운 확인.
+     * 게시판 작업 전에 행동별 HP·기력 비용을 감당할 수 있는지 확인한다.
      *
      * @param author 회원(비회원이면 null, 확인하지 않음)
-     * @exception ResponseStatusException 모자라면 423
+     * @param action 행동 비용 조회에 쓸 코드
+     * @throws ResponseStatusException HP 또는 기력이 부족할 때
      */
     public void ensureFit(UUID author, String action) { if (author != null) inventory.ensureFit(author, action); }
 
     /**
-     * 일한 뒤 비용을 빼고 보상을 준다.
+     * 작업 후 행동 비용을 차감하고, 일일 한도에 따라 동전 보상을 지급한다.
+     * 비용 확인과 차감 사이에 다른 요청이 먼저 재화를 사용해 차감이 거절되어도 보상 처리는 이어 간다.
      *
-     * @param author 회원(비회원이면 null, 아무것도 하지 않음)
+     * @param author 작업한 회원 ID. 비회원이면 null
+     * @param action 차감할 행동 비용 코드
      */
     public void reward(UUID author, String action) {
         if (author == null) return;

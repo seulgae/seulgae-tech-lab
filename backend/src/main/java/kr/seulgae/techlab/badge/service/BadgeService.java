@@ -11,7 +11,7 @@ import kr.seulgae.techlab.badge.entity.Rank;
  *
  * @author 길태형
  * @version 1.0, 사원증·급여
- * @see None
+ * @see "None"
  */
 public interface BadgeService {
     /** 급여 간격 */

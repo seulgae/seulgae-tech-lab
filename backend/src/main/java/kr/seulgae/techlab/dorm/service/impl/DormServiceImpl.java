@@ -29,7 +29,7 @@ import org.springframework.web.server.ResponseStatusException;
  *
  * @author 길태형
  * @version 1.1, 가구 배치 비용과 침대 휴식
- * @see None
+ * @see "None"
  */
 @Service
 public class DormServiceImpl implements DormService {

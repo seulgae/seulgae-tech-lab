@@ -7,7 +7,7 @@ import type { Phase, RetroEvent, RetroGame, RetroInput } from './retroGame.ts'
  *
  * @author 길태형
  * @version 1.0, 오락실 게임 고르기
- * @see None
+ * @see "None"
  */
 export const GRID = { cols: 32, rows: 24, cell: 10 }
 export type Point = { x: number; y: number }

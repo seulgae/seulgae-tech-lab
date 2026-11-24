@@ -15,7 +15,7 @@ import org.springframework.web.server.ResponseStatusException;
  *
  * @author 길태형
  * @version 1.0, QA 게시판 개편
- * @see None
+ * @see "None"
  */
 @Service
 public class QaTicketServiceImpl implements QaTicketService {

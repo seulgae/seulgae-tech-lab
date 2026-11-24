@@ -6,7 +6,7 @@ import type { TechBook } from './techBooks'
  *
  * @author 길태형
  * @version 1.1, 새 행동 비용·침대 휴식(V24)
- * @see None
+ * @see "None"
  */
 export const ADMIN_BOOKS: readonly TechBook[] = [
   {

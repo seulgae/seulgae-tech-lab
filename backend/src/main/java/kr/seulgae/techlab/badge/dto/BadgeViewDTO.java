@@ -8,7 +8,7 @@ import kr.seulgae.techlab.badge.entity.Rank;
  *
  * @author 길태형
  * @version 1.0, 사원증·급여
- * @see None
+ * @see "None"
  */
 public record BadgeViewDTO(String nickname, Rank rank, Rank next, int workCount, long nextSalarySeconds, int salaryCountToday,
                            int salaryToday, int paid, int coins, List<Rank> ranks) {}

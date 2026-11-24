@@ -9,7 +9,7 @@ import kr.seulgae.techlab.office.idea.entity.IdeaPost;
  *
  * @author 길태형
  * @version 1.0, 아이디어 기획 게시판
- * @see None
+ * @see "None"
  */
 public interface IdeaPostService {
     int TITLE_MAX = 60, CONTENT_MAX = 1000, LIST_LIMIT = 50;

@@ -15,7 +15,7 @@ const time = (at: number) => new Date(at).toLocaleTimeString('ko-KR', { hour: '2
  *
  * @author 길태형
  * @version 1.0, 유즈맵 플랫폼
- * @see None
+ * @see "None"
  * @param props 닫기 콜백
  * @returns 대기실 모달
  */

@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
  *
  * @author 길태형
  * @version 1.0, QA 게시판 개편
- * @see None
+ * @see "None"
  */
 @RestController
 @RequestMapping("/api/qa")

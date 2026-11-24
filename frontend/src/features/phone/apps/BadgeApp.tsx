@@ -7,7 +7,7 @@ import type { BadgeView } from '../../badge/badgeApi'
  *
  * @author 길태형
  * @version 1.0, 사원증·급여
- * @see None
+ * @see "None"
  * @returns 사원증 화면
  */
 export default function BadgeApp() {

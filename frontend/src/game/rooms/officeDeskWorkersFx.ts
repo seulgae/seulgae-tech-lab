@@ -10,7 +10,7 @@ import type { RoomHandlers } from './RoomFx'
  *
  * @author 길태형
  * @version 1.0, 채용 업무 삭제 후 작업석 연구원을 일반 직원 연출로 전환
- * @see None
+ * @see "None"
  */
 export function officeDeskWorkersFx(ctx: Context): RoomHandlers {
   /* 작업석 연구원: 경로 한 점에 고정해 앉힌다. */

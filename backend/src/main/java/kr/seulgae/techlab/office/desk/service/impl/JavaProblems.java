@@ -15,7 +15,7 @@ import kr.seulgae.techlab.office.desk.dto.JavaProblemDTO;
  *
  * @author 길태형
  * @version 1.0, 내 자리 컴퓨터
- * @see None
+ * @see "None"
  */
 public final class JavaProblems {
     /** 문제 하나: 화면 값과 실제 인자 */

@@ -7,7 +7,7 @@ import type { Phase, RetroEvent, RetroGame } from './retroGame.ts'
  *
  * @author 길태형
  * @version 1.0, 오락실 게임 고르기
- * @see None
+ * @see "None"
  */
 export const PLANE = { width: 16, height: 14, speed: 140 }
 export const ENEMY = { width: 16, height: 12 }

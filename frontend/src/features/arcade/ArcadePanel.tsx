@@ -17,7 +17,7 @@ import { costText, useRules } from '../rules/rulesStore'
  *
  * @author 길태형
  * @version 2.0, 오락실 게임 고르기
- * @see None
+ * @see "None"
  * @param props 닫기 콜백
  * @returns 오락기 모달
  */

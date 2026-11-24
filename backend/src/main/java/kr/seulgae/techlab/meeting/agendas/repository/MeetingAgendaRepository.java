@@ -11,7 +11,7 @@ import kr.seulgae.techlab.meeting.agendas.entity.*;
  *
  * @author 길태형
  * @version 1.0, 계층별 패키지 정리(저장소 인터페이스 분리)
- * @see None
+ * @see "None"
  */
 public interface MeetingAgendaRepository {
     /** 최신순 목록. 다음 페이지 여부 확인을 위해 호출자가 limit+1을 요청한다. */

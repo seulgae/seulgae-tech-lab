@@ -5,7 +5,7 @@ import { BoardError } from '../boards/boardsApi.ts'
  *
  * @author 길태형
  * @version 1.0, 게시판 개편·내 자리 컴퓨터
- * @see None
+ * @see "None"
  */
 export type IdeaPost = { id: string; title: string; content: string; author: string | null; createdAt: string }
 export type QaStatus = 'REGISTERED' | 'IN_PROGRESS' | 'RESOLVED'

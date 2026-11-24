@@ -5,6 +5,6 @@ package kr.seulgae.techlab.stock.dto;
  *
  * @author 길태형
  * @version 1.0, 주식 앱
- * @see None
+ * @see "None"
  */
 public record StockTradeRequestDTO(String code, Integer quantity) {}

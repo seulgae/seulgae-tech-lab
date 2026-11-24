@@ -5,7 +5,7 @@ package kr.seulgae.techlab.rule.entity;
  *
  * @author 길태형
  * @version 1.0, 숫자 규칙 테이블(V24)
- * @see None
+ * @see "None"
  */
 public record GameValue(String code, String name, int value, String description) {
     /** 침대 휴식: 회복 간격(초)·한 번 HP·한 번 기력 */

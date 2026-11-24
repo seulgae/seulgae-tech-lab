@@ -3,7 +3,7 @@
  *
  * @author 길태형
  * @version 1.0, 사원증·급여
- * @see None
+ * @see "None"
  */
 export type Rank = { code: string; name: string; minWork: number; pay: number; vitalsMax: number; unlimited: boolean }
 export type BadgeView = {

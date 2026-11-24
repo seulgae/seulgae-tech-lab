@@ -7,7 +7,7 @@ import type { Phase, RetroEvent, RetroGame, RetroInput } from './retroGame.ts'
  *
  * @author 길태형
  * @version 1.0, 오락실 게임 고르기
- * @see None
+ * @see "None"
  */
 export const COLS = 10, ROWS = 20, CELL = 11
 const LEFT = (SCREEN.width - COLS * CELL) / 2, TOP = (SCREEN.height - ROWS * CELL) / 2

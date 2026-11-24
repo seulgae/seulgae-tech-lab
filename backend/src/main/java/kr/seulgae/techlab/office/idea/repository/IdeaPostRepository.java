@@ -9,7 +9,7 @@ import kr.seulgae.techlab.office.idea.entity.IdeaPost;
  *
  * @author 길태형
  * @version 1.0, 아이디어 기획 게시판
- * @see None
+ * @see "None"
  */
 public interface IdeaPostRepository {
     /**

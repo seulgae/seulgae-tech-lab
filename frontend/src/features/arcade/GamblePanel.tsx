@@ -15,7 +15,7 @@ const REVEAL_MS = 1100
  *
  * @author 길태형
  * @version 1.0, 오락실 내기 게임
- * @see None
+ * @see "None"
  * @param props 게임, 닫기 콜백
  * @returns 내기 게임 모달
  */

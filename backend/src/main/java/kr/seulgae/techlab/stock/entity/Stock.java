@@ -7,6 +7,6 @@ import java.time.OffsetDateTime;
  *
  * @author 길태형
  * @version 1.0, 주식 앱
- * @see None
+ * @see "None"
  */
 public record Stock(String code, String name, String summary, int price, int volatilityPct, OffsetDateTime updatedAt) {}

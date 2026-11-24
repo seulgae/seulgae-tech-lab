@@ -17,7 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
  *
  * @author 길태형
  * @version 1.0, 개인 기숙사 가구
- * @see None
+ * @see "None"
  */
 @RestController
 @RequestMapping("/api/dorm")

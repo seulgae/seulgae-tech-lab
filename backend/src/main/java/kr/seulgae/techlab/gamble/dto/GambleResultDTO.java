@@ -9,6 +9,6 @@ import java.util.List;
  *
  * @author 길태형
  * @version 1.0, 오락실 내기 게임
- * @see None
+ * @see "None"
  */
 public record GambleResultDTO(String game, String pick, int bet, List<Integer> numbers, boolean win, int payout, int coins, int betsLeftToday) {}

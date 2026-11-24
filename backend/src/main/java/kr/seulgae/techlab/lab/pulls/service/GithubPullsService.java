@@ -7,7 +7,7 @@ import kr.seulgae.techlab.lab.pulls.dto.*;
  *
  * @author 길태형
  * @version 1.0, 계층별 패키지 정리(서비스 인터페이스 분리)
- * @see None
+ * @see "None"
  */
 public interface GithubPullsService {
     /** 캐시가 5분 안이면 그대로, 아니면 GitHub에서 다시 받는다. */

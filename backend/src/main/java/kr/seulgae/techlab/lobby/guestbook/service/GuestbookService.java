@@ -9,7 +9,7 @@ import kr.seulgae.techlab.lobby.guestbook.entity.*;
  *
  * @author 길태형
  * @version 1.0, 계층별 패키지 정리(서비스 인터페이스 분리)
- * @see None
+ * @see "None"
  */
 public interface GuestbookService {
     /** 공통코드 BOARD_CATEGORY의 방명록 카테고리 */

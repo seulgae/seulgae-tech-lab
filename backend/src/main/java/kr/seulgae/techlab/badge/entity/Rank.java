@@ -9,7 +9,7 @@ import java.util.List;
  *
  * @author 길태형
  * @version 1.1, 직급표를 운영 DB(tb_lab_rank)로
- * @see None
+ * @see "None"
  */
 public record Rank(String code, String name, int minWork, int pay, int vitalsMax, boolean unlimited) {
     /** 무제한 직급이 DB에 넣는 최대치(열 제한 1~999 안) */

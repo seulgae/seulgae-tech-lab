@@ -6,7 +6,7 @@ import { tiredMessage } from '../rules/rulesStore.ts'
  *
  * @author 길태형
  * @version 1.0, 개인 기숙사 가구
- * @see None
+ * @see "None"
  */
 export type Furniture = { code: string; name: string; price: number; width: number; height: number; blocking: boolean }
 export type OwnedFurniture = { id: string; code: string; placed: boolean; x: number | null; y: number | null }

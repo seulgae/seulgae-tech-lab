@@ -5,6 +5,6 @@ package kr.seulgae.techlab.office.desk.dto;
  *
  * @author 길태형
  * @version 1.0, 내 자리 컴퓨터
- * @see None
+ * @see "None"
  */
 public record DailyTaskDTO(String code, String title, String where, boolean done) {}

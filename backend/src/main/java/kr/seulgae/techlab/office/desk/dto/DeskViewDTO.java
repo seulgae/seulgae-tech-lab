@@ -7,7 +7,7 @@ import java.util.List;
  *
  * @author 길태형
  * @version 1.0, 내 자리 컴퓨터
- * @see None
+ * @see "None"
  */
 public record DeskViewDTO(List<DailyTaskDTO> tasks, int reward, boolean rewardClaimed, List<JavaProblemDTO> problems,
                           int javaRewardsToday, int javaRewardLimit, int coins, String promotedTo) {}

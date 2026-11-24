@@ -5,7 +5,7 @@ package kr.seulgae.techlab.lab.capacity.dto;
  *
  * @author 길태형
  * @version 1.0, 계층별 패키지 정리
- * @see None
+ * @see "None"
  */
 public record HeapDTO(long usedMb, long committedMb, long maxMb, double usedPercent, long nonHeapMb, long gcCount, long gcMillis,
                    int threads, int peakThreads, boolean warning) {}

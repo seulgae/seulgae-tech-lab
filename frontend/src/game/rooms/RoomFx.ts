@@ -102,7 +102,7 @@ function lobbyFx(ctx: Context): RoomHandlers {
     sparkle.explode(24, 400, 100)
   })
 
-  // 다른 연구원이 로비에 들어오면 반겨 준다.
+  // 현재 수신한 접속자 스냅샷의 신규 참가자를 감지한다. 공유 소켓은 회의실에서만 연결된다.
   let known: Set<string> | null = null
   const unsubscribe = ctx.options.client.subscribe({ snapshot: (players, selfId) => {
     for (const player of detectArrivals(known, players, selfId)) {
@@ -543,7 +543,7 @@ function dormRoomFx(ctx: Context): RoomHandlers {
   return { ...dorm, destroy: () => { dorm.destroy?.(); ambience.destroy?.() } }
 }
 
-/** 오락실(로비 왼쪽 아래): 벽의 네온 간판, 오락기마다 번갈아 깜빡이는 네온 빛, 가끔 터지는 반짝이 */
+/** 오락 연구실(로비 왼쪽 아래): 벽의 네온 간판, 오락기마다 번갈아 깜빡이는 네온 빛, 가끔 터지는 반짝이 */
 function arcadeFx(ctx: Context): RoomHandlers {
   const { scene } = ctx
   scene.add.rectangle(400, 32, 220, 34, 0x05020a, 0.9).setStrokeStyle(2, 0xf472b6).setDepth(61)

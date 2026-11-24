@@ -4,7 +4,7 @@
  *
  * @author 길태형
  * @version 1.0, 오락실 게임 고르기
- * @see None
+ * @see "None"
  */
 export const SCREEN = { width: 320, height: 240 }
 

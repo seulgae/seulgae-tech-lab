@@ -163,7 +163,7 @@ export const LOBBY_NPCS: readonly NpcDef[] = [
  *
  * @author 길태형
  * @version 1.0, 오락실 단골 NPC
- * @see None
+ * @see "None"
  */
 export const ARCADE_NPCS: readonly NpcDef[] = [
   {

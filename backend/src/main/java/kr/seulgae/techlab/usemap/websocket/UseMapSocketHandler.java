@@ -31,7 +31,7 @@ import tools.jackson.databind.json.JsonMapper;
  *
  * @author 길태형
  * @version 1.0, 유즈맵 플랫폼
- * @see None
+ * @see "None"
  */
 @Component
 public class UseMapSocketHandler extends TextWebSocketHandler {

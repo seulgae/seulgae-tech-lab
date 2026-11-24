@@ -10,7 +10,7 @@ import kr.seulgae.techlab.meeting.agendas.entity.*;
  *
  * @author 길태형
  * @version 1.0, 계층별 패키지 정리(서비스 인터페이스 분리)
- * @see None
+ * @see "None"
  */
 public interface MeetingAgendaService {
     /** 화이트보드 필기 영역(약 100px)에 12px 글자로 한 줄에 들어가는 길이 */

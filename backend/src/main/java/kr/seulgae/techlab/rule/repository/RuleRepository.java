@@ -11,7 +11,7 @@ import kr.seulgae.techlab.rule.entity.Snack;
  *
  * @author 길태형
  * @version 1.0, 게임 규칙 테이블
- * @see None
+ * @see "None"
  */
 public interface RuleRepository {
     /** @return 행동별 비용(표시 순서) */

@@ -5,6 +5,6 @@ package kr.seulgae.techlab.rule.entity;
  *
  * @author 길태형
  * @version 1.0, 게임 규칙 테이블
- * @see None
+ * @see "None"
  */
 public record Snack(String code, String name, int price, int hpGain, int fatigueGain, String place) {}

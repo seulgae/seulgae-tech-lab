@@ -6,7 +6,7 @@ import { useSyncExternalStore } from 'react'
  *
  * @author 길태형
  * @version 1.1, 새 행동 비용·침대 휴식 규칙(V24)
- * @see None
+ * @see "None"
  */
 export type ActionCost = { code: string; name: string; hpCost: number; fatigueCost: number; description: string }
 export type Snack = { code: string; name: string; price: number; hpGain: number; fatigueGain: number; place: 'LOBBY' | 'VENDING' }

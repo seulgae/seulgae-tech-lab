@@ -9,7 +9,7 @@ import kr.seulgae.techlab.phone.entity.*;
  *
  * @author 길태형
  * @version 1.0, 계층별 패키지 정리(서비스 인터페이스 분리)
- * @see None
+ * @see "None"
  */
 public interface TodoService {
     int TITLE_MAX = 40, MAX_TODOS = 300;

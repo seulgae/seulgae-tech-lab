@@ -5,6 +5,6 @@ package kr.seulgae.techlab.dorm.dto;
  *
  * @author 길태형
  * @version 1.0, 개인 기숙사 가구
- * @see None
+ * @see "None"
  */
 public record FurnitureRequestDTO(String code, String id, Integer x, Integer y) {}

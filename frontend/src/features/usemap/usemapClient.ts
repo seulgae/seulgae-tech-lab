@@ -4,7 +4,7 @@
  *
  * @author 길태형
  * @version 1.0, 유즈맵 플랫폼
- * @see None
+ * @see "None"
  */
 export type UseMapPlayer = { id: string; nickname: string }
 export type UseMapInfo = { id: string; name: string; minPlayers: number; maxPlayers: number }

@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
- * 회의 안건 목록과 작성·수정·삭제 규칙을 처리한다. 작성 브라우저의 수정 키로만 바꿀 수 있다.
+ * 회의 안건의 조회·작성·수정·삭제를 처리한다. 로그인한 작성자 또는 유효한 편집 키가 있는 작성 브라우저에서 수정·삭제할 수 있다.
  *
  * @author seulgae
  * @version 1.0, 회의 안건
