@@ -363,7 +363,8 @@ class LobbySocketTest {
     @Test void deskNeedsLoginButBoardsAreReadable() throws Exception {
         String base = "http://127.0.0.1:" + port();
         assertEquals(401, http.send(HttpRequest.newBuilder(URI.create(base + "/api/desk")).GET().build(), HttpResponse.BodyHandlers.ofString()).statusCode());
-        for (String path : new String[]{"/api/desk/claim", "/api/desk/java"}) {
+        assertEquals(401, http.send(HttpRequest.newBuilder(URI.create(base + "/api/badge")).GET().build(), HttpResponse.BodyHandlers.ofString()).statusCode(), "사원증");
+        for (String path : new String[]{"/api/desk/claim", "/api/desk/java", "/api/badge/tick"}) {
             var response = http.send(HttpRequest.newBuilder(URI.create(base + path)).header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString("{\"problemId\":\"sum\",\"format\":\"%d\"}")).build(), HttpResponse.BodyHandlers.ofString());
             assertEquals(401, response.statusCode(), path);

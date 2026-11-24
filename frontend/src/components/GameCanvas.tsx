@@ -26,6 +26,7 @@ import TradeOfferPanel from '../features/inventory/TradeOfferPanel'
 import VendingPanel from '../features/inventory/VendingPanel'
 import FoodCartPanel from '../features/inventory/FoodCartPanel'
 import { inventoryStore } from '../features/inventory/inventoryStore'
+import { SALARY_TICK_MS, tickSalary } from '../features/badge/badgeApi'
 import type { TradeOffer } from '../features/multiplayer/model/protocol'
 import GuestbookPanel from '../features/guestbook/GuestbookPanel'
 import MultiplayerStatus from '../features/multiplayer/components/MultiplayerStatus'
@@ -128,6 +129,13 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
     clientRef.current = client
     // 처음부터 가방(동전·HP·기력)을 읽어 둔다. 그래야 첫 간식·오락부터 변화량이 캐릭터 위에 뜬다.
     void inventoryStore.refresh()
+    // 접속해 있는 동안 1분마다 급여 차례를 확인한다(지급은 서버가 10분에 한 번). 받으면 가방을 다시 읽어 동전이 튀어 오른다.
+    const payday = () => {
+      if (!authStore.get().member) return
+      tickSalary().then(view => { if (view.paid > 0) { playSfx('coin', { volume: 0.6 }); void inventoryStore.refresh() } }).catch(() => undefined)
+    }
+    const salaryTimer = window.setInterval(payday, SALARY_TICK_MS)
+    const firstPay = window.setTimeout(payday, 5000)
     eventRef.current = uiEvents
     const openPulls = () => setPullsOpen(true)
     uiEvents.on(PULLS_EVENTS.openPulls, openPulls)
@@ -175,6 +183,7 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
     return () => {
       cancelAnimationFrame(frameId)
       resizeObserver?.disconnect()
+      window.clearInterval(salaryTimer); window.clearTimeout(firstPay)
       // Phaser의 비동기 destroy 프레임을 기다리지 않고 소켓·타이머부터 정리한다.
       uiEvents.emit(MULTIPLAYER_EVENTS.dispose)
       uiEvents.off(PULLS_EVENTS.openPulls, openPulls)

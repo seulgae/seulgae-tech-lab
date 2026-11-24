@@ -1,7 +1,7 @@
 /**
  * 폰 홈 화면 앱 목록. memberOnly 앱은 로그인한 연구원만 연다(서버도 401로 막는다).
  */
-export type PhoneAppId = 'fish' | 'bank' | 'calendar' | 'browser' | 'sns' | 'furniture' | 'map' | 'stock'
+export type PhoneAppId = 'fish' | 'bank' | 'calendar' | 'browser' | 'sns' | 'furniture' | 'map' | 'stock' | 'badge'
 export type PhoneApp = { id: PhoneAppId; name: string; icon: string; memberOnly: boolean }
 
 export const PHONE_APPS: readonly PhoneApp[] = [
@@ -13,4 +13,5 @@ export const PHONE_APPS: readonly PhoneApp[] = [
   { id: 'furniture', name: '가구점', icon: '🛋️', memberOnly: true },
   { id: 'map', name: '지도', icon: '🗺️', memberOnly: false },
   { id: 'stock', name: '슬개 증권', icon: '📈', memberOnly: true },
+  { id: 'badge', name: '사원증', icon: '🪪', memberOnly: true },
 ]

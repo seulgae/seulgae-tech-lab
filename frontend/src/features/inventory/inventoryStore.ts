@@ -6,8 +6,9 @@ import { useSyncExternalStore } from 'react'
  */
 export type InventoryItem = { id: string; kind: string; name: string; sizeCm: number | null; createdAt: string }
 export type Vitals = { hp: number; hpMax: number; fatigue: number; fatigueMax: number }
-export type InventoryState = { loaded: boolean; available: boolean; coins: number; items: InventoryItem[]; rewardsLeftToday: number } & Vitals
-type InventoryView = { coins: number; items: InventoryItem[]; rewardsLeftToday: number } & Partial<Vitals>
+/** unlimited: 연구소장이라 HP·기력이 줄지 않음(화면에 ∞) */
+export type InventoryState = { loaded: boolean; available: boolean; coins: number; items: InventoryItem[]; rewardsLeftToday: number; unlimited: boolean } & Vitals
+type InventoryView = { coins: number; items: InventoryItem[]; rewardsLeftToday: number; unlimited?: boolean } & Partial<Vitals>
 export const COIN_EVENT = 'lab:coin'
 /** HP·기력이 바뀌면 게임 장면에 변화량을 띄우는 window 이벤트(detail: { hp, fatigue }) */
 export const VITALS_EVENT = 'lab:vitals'
@@ -56,7 +57,7 @@ export const INVENTORY_KEY = 'I'
 export const OPEN_INVENTORY_EVENT = 'lab:open-inventory'
 
 const FULL: Vitals = { hp: 50, hpMax: 50, fatigue: 50, fatigueMax: 50 }
-let state: InventoryState = { loaded: false, available: false, coins: 0, items: [], rewardsLeftToday: 0, ...FULL }
+let state: InventoryState = { loaded: false, available: false, coins: 0, items: [], rewardsLeftToday: 0, unlimited: false, ...FULL }
 const listeners = new Set<() => void>()
 const set = (next: InventoryState) => { state = next; listeners.forEach(listener => listener()) }
 
@@ -70,7 +71,7 @@ function apply(view: InventoryView) {
   const gained = known ? view.coins - state.coins : 0
   const hp = known ? vitals.hp - state.hp : 0
   const fatigue = known ? vitals.fatigue - state.fatigue : 0
-  set({ loaded: true, available: true, coins: view.coins, items: view.items, rewardsLeftToday: view.rewardsLeftToday, ...vitals })
+  set({ loaded: true, available: true, coins: view.coins, items: view.items, rewardsLeftToday: view.rewardsLeftToday, unlimited: view.unlimited === true, ...vitals })
   if (gained !== 0) globalThis.dispatchEvent?.(new CustomEvent(COIN_EVENT, { detail: { amount: gained } }))
   if (hp !== 0 || fatigue !== 0) globalThis.dispatchEvent?.(new CustomEvent(VITALS_EVENT, { detail: { hp, fatigue } }))
 }
@@ -84,7 +85,7 @@ export function vitalsText(change: { hp: number; fatigue: number }) {
 export const inventoryStore = {
   get: () => state,
   /** 테스트용: 아직 가방을 읽지 않은 처음 상태로 되돌린다. */
-  reset() { state = { loaded: false, available: false, coins: 0, items: [], rewardsLeftToday: 0, ...FULL } },
+  reset() { state = { loaded: false, available: false, coins: 0, items: [], rewardsLeftToday: 0, unlimited: false, ...FULL } },
   subscribe(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener) } },
   /** 서버에서 다시 읽는다. 로그인하지 않았으면 가방을 쓸 수 없는 상태가 된다. */
   async refresh() {

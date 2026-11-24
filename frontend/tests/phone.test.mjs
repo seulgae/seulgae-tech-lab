@@ -6,8 +6,8 @@ import { PHONE_APPS } from '../src/features/phone/phoneApps.ts'
 import { addTodo, amountText, deleteSns, fetchTodos, searchRecipients, setTodoDone, transfer, writeSns } from '../src/features/phone/phoneApi.ts'
 
 test('폰 앱: 물고기 보관함·은행·캘린더는 회원만, 브라우저·SNS는 누구나', () => {
-  assert.deepEqual(PHONE_APPS.map(app => app.id), ['fish', 'bank', 'calendar', 'browser', 'sns', 'furniture', 'map', 'stock'])
-  assert.deepEqual(PHONE_APPS.filter(app => app.memberOnly).map(app => app.id), ['fish', 'bank', 'calendar', 'furniture', 'stock'])
+  assert.deepEqual(PHONE_APPS.map(app => app.id), ['fish', 'bank', 'calendar', 'browser', 'sns', 'furniture', 'map', 'stock', 'badge'])
+  assert.deepEqual(PHONE_APPS.filter(app => app.memberOnly).map(app => app.id), ['fish', 'bank', 'calendar', 'furniture', 'stock', 'badge'])
 })
 
 test('폰 시계·달력: 한국 시간, 일요일 시작 달력, 달 넘기기', () => {
@@ -93,4 +93,13 @@ test('적금 만기 수령액과 주식 평가 손익(서버와 같은 계산)',
   assert.equal(savingsPayout(item, new Date('2026-11-26T23:59:00Z')), 101, '만기 전은 원금만')
   assert.equal(savingsPayout(item, new Date('2026-11-27T00:00:00Z')), 111, '만기면 이자(내림)까지')
   assert.equal(profitOf({ code: 'SGLB', quantity: 3, totalCost: 300 }, 90), -30)
+})
+
+test('사원증: 승진 진행률과 남은 시간 문구', async () => {
+  const { promotionProgress, remainText, RANK_COLORS } = await import('../src/features/badge/badgeApi.ts')
+  const rank = (code, minWork) => ({ code, name: code, minWork, pay: 1, vitalsMax: 50, unlimited: false })
+  assert.equal(promotionProgress({ rank: rank('SENIOR', 5), next: rank('PRINCIPAL', 10), workCount: 7 }), 0.4)
+  assert.equal(promotionProgress({ rank: rank('DIRECTOR', 100), next: null, workCount: 120 }), 1)
+  assert.equal(remainText(500), '8분 20초'); assert.equal(remainText(30), '30초'); assert.equal(remainText(0), '곧')
+  assert.deepEqual(Object.keys(RANK_COLORS), ['INTERN', 'JUNIOR', 'SENIOR', 'PRINCIPAL', 'CHIEF', 'DIRECTOR'])
 })

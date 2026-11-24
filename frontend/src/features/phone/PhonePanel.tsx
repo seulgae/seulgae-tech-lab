@@ -14,6 +14,7 @@ import SnsApp from './apps/SnsApp'
 import FurnitureShopApp from './apps/FurnitureShopApp'
 import MapApp from './apps/MapApp'
 import StockApp from './apps/StockApp'
+import BadgeApp from './apps/BadgeApp'
 import type { RoomId } from '../../game/maps/rooms'
 import '../../components/panel.css'
 import '../inventory/inventory.css'
@@ -66,7 +67,7 @@ export default function PhonePanel({ client, onClose }: { client: () => Multipla
                     <span className="inventory-bar" role="meter" aria-label={label} aria-valuemin={0} aria-valuemax={max} aria-valuenow={value}>
                       <span style={{ width: `${Math.round(value / max * 100)}%` }} />
                     </span>
-                    <strong>{value}/{max}</strong>
+                    <strong>{inventory.unlimited ? '∞' : `${value}/${max}`}</strong>
                   </div>
                 ))}
                 <small>일·오락 한 번에 HP -3, 기력 -5 · 게시물 보상 오늘 {inventory.rewardsLeftToday}번 남음</small>
@@ -107,6 +108,7 @@ export default function PhonePanel({ client, onClose }: { client: () => Multipla
                 {app === 'sns' && <SnsApp canWrite={member} />}
                 {app === 'furniture' && <FurnitureShopApp onClose={onClose} />}
                 {app === 'stock' && <StockApp />}
+                {app === 'badge' && <BadgeApp />}
                 {app === 'map' &&<MapApp current={(client()?.currentRoom() ?? 'lobby') as RoomId} />}
               </>
             )}

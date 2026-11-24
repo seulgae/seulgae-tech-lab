@@ -95,7 +95,8 @@ import org.springframework.context.annotation.Import;
     kr.seulgae.techlab.office.common.WorkReward.class,
     kr.seulgae.techlab.office.idea.service.impl.IdeaPostServiceImpl.class, kr.seulgae.techlab.office.idea.controller.IdeaPostController.class,
     kr.seulgae.techlab.office.qa.service.impl.QaTicketServiceImpl.class, kr.seulgae.techlab.office.qa.controller.QaTicketController.class,
-    kr.seulgae.techlab.office.desk.service.impl.DeskServiceImpl.class, kr.seulgae.techlab.office.desk.controller.DeskController.class})
+    kr.seulgae.techlab.office.desk.service.impl.DeskServiceImpl.class, kr.seulgae.techlab.office.desk.controller.DeskController.class,
+    kr.seulgae.techlab.badge.service.impl.BadgeServiceImpl.class, kr.seulgae.techlab.badge.controller.BadgeController.class})
 public class LocalLobbyTestApplication {
     private static final OffsetDateTime CREATED_AT = OffsetDateTime.parse("2026-11-15T12:00:00+09:00");
 

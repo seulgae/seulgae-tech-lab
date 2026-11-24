@@ -2,6 +2,7 @@ package kr.seulgae.techlab.inventory.repository;
 
 import kr.seulgae.techlab.inventory.dto.*;
 import kr.seulgae.techlab.inventory.entity.*;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -54,4 +55,17 @@ public interface InventoryRepository {
     int remove(UUID member, UUID itemId);
     /** 이 방 바닥의 아이템을 줍는다. 이미 누가 주웠으면 빈 값(동시에 주워도 한 명만 성공) */
     Optional<Item> pick(UUID member, UUID itemId, String roomId);
+
+    /** 누적 일 완료 수(사원증 직급의 기준) */
+    int workCount(UUID member);
+    /** 누적 일 완료 수를 1 올린다. @return 올린 뒤의 값 */
+    int addWork(UUID member);
+    /** HP·기력 최대치를 둘 다 max로 바꾸고 가득 채운다(승진). */
+    void raiseVitals(UUID member, int max);
+    /** 마지막 급여 시각(받은 적 없으면 빈 값) */
+    Optional<OffsetDateTime> lastSalaryAt(UUID member);
+    /**
+     * 급여 차례를 잡는다: 마지막 급여가 없거나 cutoff 이전이면 now로 바꾸고 true. 동시에 여러 번 불러도 한 번만 true다.
+     */
+    boolean claimSalary(UUID member, OffsetDateTime now, OffsetDateTime cutoff);
 }

@@ -56,7 +56,7 @@ export default function VendingPanel({ onClose }: { onClose: () => void }) {
         <button type="button" className="research-close" onClick={onClose} autoFocus>닫기</button>
       </header>
       <p className="inventory-note" role="status">{message}</p>
-      <p className="inventory-note">내 동전 <strong>{inventory.available ? `${inventory.coins}원` : '—'}</strong> · 기력 {inventory.fatigue}/{inventory.fatigueMax}</p>
+      <p className="inventory-note">내 동전 <strong>{inventory.available ? `${inventory.coins}원` : '—'}</strong> · 기력 {inventory.unlimited ? '∞' : `${inventory.fatigue}/${inventory.fatigueMax}`}</p>
       {inventory.loaded && !inventory.available && <p className="inventory-note"><a className="auth-kakao" href={LOGIN_URL}>카카오 로그인</a> 후 구매해 주세요.</p>}
       <div className="vending-drinks">
         {(Object.keys(DRINKS) as DrinkKind[]).map(kind => (

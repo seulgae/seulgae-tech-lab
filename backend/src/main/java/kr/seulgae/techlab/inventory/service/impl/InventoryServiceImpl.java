@@ -69,7 +69,7 @@ public class InventoryServiceImpl implements InventoryService {
     public InventoryViewDTO view(UUID member) {
         var vitals = store.vitals(member);
         return new InventoryViewDTO(store.coins(member), store.owned(member), Math.max(0, DAILY_REWARD_LIMIT - store.countToday(member, WORK_POST)),
-            vitals.hp(), vitals.hpMax(), vitals.fatigue(), vitals.fatigueMax());
+            vitals.hp(), vitals.hpMax(), vitals.fatigue(), vitals.fatigueMax(), unlimited(member));
     }
 
     /** 낚은 물고기를 가방에 넣는다. 어종·크기를 확인하고 가방이 꽉 차면 거절한다. */
@@ -104,6 +104,7 @@ public class InventoryServiceImpl implements InventoryService {
 
     /** 일·오락을 할 수 있을 만큼 HP·기력이 남았는지 확인한다. 모자라면 423. */
     public void ensureFit(UUID member) {
+        if (unlimited(member)) return;
         var vitals = store.vitals(member);
         if (vitals.hp() < WORK_HP_COST || vitals.fatigue() < WORK_FATIGUE_COST) {
             throw new ResponseStatusException(TIRED, "Too tired: eat cake or drink coffee in the lobby");
@@ -114,7 +115,11 @@ public class InventoryServiceImpl implements InventoryService {
     @Transactional
     public void spendWork(UUID member) { spend(member); }
 
+    /** 연구소장은 HP·기력이 무제한이라 일·오락에서 줄지 않는다. */
+    private boolean unlimited(UUID member) { return kr.seulgae.techlab.badge.entity.Rank.of(store.workCount(member)).unlimited(); }
+
     private void spend(UUID member) {
+        if (unlimited(member)) return;
         store.changeVitals(member, -WORK_HP_COST, -WORK_FATIGUE_COST)
             .orElseThrow(() -> new ResponseStatusException(TIRED, "Too tired: eat cake or drink coffee in the lobby"));
     }

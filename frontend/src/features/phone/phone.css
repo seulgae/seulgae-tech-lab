@@ -163,3 +163,20 @@
 .stock-list .plus, .stock-detail .plus { color: #e5484d; opacity: 1; }
 .stock-list .minus, .stock-detail .minus { color: #3b82f6; opacity: 1; }
 .icon-stock { background: linear-gradient(160deg, #e5484d, #3b82f6); }
+
+/* 사원증 앱 */
+.badge-card { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 22px 12px 14px; border-radius: 14px; border-top: 8px solid var(--rank); background: #fff; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12); }
+.badge-strap { position: absolute; top: -18px; width: 40px; height: 14px; border-radius: 4px; background: var(--rank); opacity: 0.6; }
+.badge-org { margin: 0; font: 700 10px monospace; letter-spacing: 2px; color: #6b7280; }
+.badge-photo { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 10px; background: #f3f4f6; font-size: 36px; }
+.badge-name { font-size: 18px; }
+.badge-rank { padding: 2px 12px; border-radius: 999px; background: var(--rank); color: #fff; font-weight: 800; }
+.badge-progress { display: block; height: 8px; background: #e5e7eb; }
+.badge-progress > span { display: block; height: 100%; background: #4ade80; }
+.badge-progress-text, .badge-pay { margin: 4px 0; }
+.badge-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.badge-table th, .badge-table td { padding: 4px 2px; text-align: center; border-bottom: 1px solid #eee; }
+.badge-table td:first-child { text-align: left; }
+.badge-table tr.current { background: #fff7e0; font-weight: 700; }
+.badge-dot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; }
+.icon-badge { background: linear-gradient(160deg, #9ca3af, #ef4444); }

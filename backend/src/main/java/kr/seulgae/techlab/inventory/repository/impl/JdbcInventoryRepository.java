@@ -147,4 +147,36 @@ public class JdbcInventoryRepository implements InventoryRepository {
         return new Item(rs.getObject("id", UUID.class), rs.getString("kind"), rs.getString("name"), sizeCm, rs.getString("room_id"), px, py,
             rs.getObject("created_at", OffsetDateTime.class));
     }
+
+    /* 소지품 행이 없으면 먼저 만든다(회원의 첫 게임 기록). */
+    private void ensureRow(UUID member) {
+        jdbc.sql("INSERT INTO lab.tb_lab_member_inventory (member_id, coins) VALUES (:m, 0) ON CONFLICT (member_id) DO NOTHING").param("m", member).update();
+    }
+
+    @Override public int workCount(UUID member) {
+        return jdbc.sql("SELECT work_count FROM lab.tb_lab_member_inventory WHERE member_id = :m").param("m", member).query(Integer.class).optional().orElse(0);
+    }
+
+    @Override public int addWork(UUID member) {
+        ensureRow(member);
+        return jdbc.sql("UPDATE lab.tb_lab_member_inventory SET work_count = work_count + 1, updated_at = CURRENT_TIMESTAMP WHERE member_id = :m RETURNING work_count")
+            .param("m", member).query(Integer.class).single();
+    }
+
+    @Override public void raiseVitals(UUID member, int max) {
+        ensureRow(member);
+        jdbc.sql("UPDATE lab.tb_lab_member_inventory SET hp_max = :max, hp = :max, fatigue_max = :max, fatigue = :max, updated_at = CURRENT_TIMESTAMP WHERE member_id = :m")
+            .param("max", max).param("m", member).update();
+    }
+
+    @Override public Optional<OffsetDateTime> lastSalaryAt(UUID member) {
+        return jdbc.sql("SELECT last_salary_at FROM lab.tb_lab_member_inventory WHERE member_id = :m").param("m", member)
+            .query((rs, row) -> Optional.ofNullable(rs.getObject(1, OffsetDateTime.class))).optional().flatMap(value -> value);
+    }
+
+    @Override public boolean claimSalary(UUID member, OffsetDateTime now, OffsetDateTime cutoff) {
+        ensureRow(member);
+        return jdbc.sql("UPDATE lab.tb_lab_member_inventory SET last_salary_at = :now WHERE member_id = :m AND (last_salary_at IS NULL OR last_salary_at <= :cutoff)")
+            .param("now", now).param("m", member).param("cutoff", cutoff).update() == 1;
+    }
 }
