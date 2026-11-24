@@ -25,9 +25,8 @@ test('서비스 연구실은 좌우 두 열에 책상 셋씩(책상마다 의자
   assert.equal(nearestInteraction('office-1', 145, 210), undefined, '아이디어 자리는 게시판이 아니다')
   assert.equal(ROOMS['office-2'].name, '실습 연구실')
   assert.equal(ROOMS['office-4'].name, '개인 기숙사')
-  for (const room of ['office-2', 'office-4']) {
-    assert.equal(ROOMS[room].interactions.length, 0, room)
-  }
+  assert.equal(ROOMS['office-4'].interactions.length, 0, '개인 기숙사는 가구로만 꾸민다')
+  assert.deepEqual(ROOMS['office-2'].interactions.map(item => item.kind), ['usemap'], '실습 연구실 가운데 단말기는 유즈맵 대기실')
   assert.equal(ROOMS['office-3'].name, '오락실')
   assert.deepEqual(ROOMS.lobby.doors.find(door => door.target === 'office-3') && [ROOMS.lobby.doors.find(door => door.target === 'office-3').x, ROOMS.lobby.doors.find(door => door.target === 'office-3').y], [70, 520], '오락실은 로비 왼쪽 아래 문')
   assert.equal(ROOMS['office-3'].doors[0].target, 'lobby')
@@ -161,4 +160,31 @@ test('하늘 순찰대: 자동 사격으로 적기를 떨어뜨리고, 적기와
   state = { ...state, bullets: [], reload: 99, enemies: [{ x: state.plane.x, y: state.plane.y, vx: 0, vy: 0, hp: 1, fire: 99 }] }
   const hit = skyPatrol.step(state, 0.016, input(), fixed)
   assert.ok(hit.events.includes('hit')); assert.equal(hit.state.lives, 2)
+})
+
+test('유즈맵 대기실: 맵 메시지 검사와 방장·준비·시작 조건', async () => {
+  const { parseFromMap, roomActions, SDK_SOURCE } = await import('../src/features/usemap/usemapClient.ts')
+  assert.equal(parseFromMap({ source: SDK_SOURCE, type: 'send', data: { k: 'h', id: 3 } })?.type, 'send')
+  assert.equal(parseFromMap({ source: SDK_SOURCE, type: 'end', result: { win: true } })?.type, 'end')
+  assert.equal(parseFromMap({ source: SDK_SOURCE, type: 'end' }), null, '결과 없는 끝은 무시')
+  assert.equal(parseFromMap({ source: 'other', type: 'send' }), null, '다른 창 메시지는 무시')
+  assert.equal(parseFromMap('hello'), null)
+  const room = { id: 'r1', name: '방', mapId: 'bug-squash', maxPlayers: 4, locked: false, hostId: 'a', players: [{ id: 'a', nickname: '가' }, { id: 'b', nickname: '나' }], ready: [], playing: false }
+  const map = { id: 'bug-squash', name: '협동 버그 잡기', minPlayers: 1, maxPlayers: 8 }
+  assert.equal(roomActions(room, 'a', map).canStart, false)
+  assert.match(roomActions(room, 'a', map).waitingFor, /모두 준비/)
+  assert.equal(roomActions({ ...room, ready: ['b'] }, 'a', map).canStart, true)
+  assert.equal(roomActions({ ...room, ready: ['b'] }, 'b', map).canStart, false, '방장만 시작')
+  assert.equal(roomActions({ ...room, ready: ['b'] }, 'b', map).ready, true)
+})
+
+test('유즈맵 목록: 화면·서버가 같이 읽는 shared/usemaps.json에 맵 실행 파일이 있다', async () => {
+  const { readFileSync, existsSync } = await import('node:fs')
+  const catalog = JSON.parse(readFileSync(new URL('../../shared/usemaps.json', import.meta.url), 'utf8'))
+  for (const map of catalog.maps) {
+    assert.match(map.id, /^[a-z0-9-]{1,30}$/)
+    assert.ok(map.minPlayers >= 1 && map.maxPlayers <= 8 && map.minPlayers <= map.maxPlayers, map.id)
+    assert.ok(existsSync(new URL(`../public${map.entry}`, import.meta.url)), `${map.id} 실행 파일`)
+  }
+  assert.ok(existsSync(new URL('../public/usemaps/sdk/usemap-sdk.js', import.meta.url)), 'SDK')
 })

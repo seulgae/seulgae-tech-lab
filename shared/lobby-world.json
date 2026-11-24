@@ -1086,7 +1086,18 @@
     },
     "office-2": {
       "name": "실습 연구실",
-      "interactions": [],
+      "interactions": [
+        {
+          "id": "office-2-usemap",
+          "kind": "usemap",
+          "label": "유즈맵 대기실",
+          "x": 400,
+          "y": 150,
+          "width": 160,
+          "height": 72,
+          "range": 48
+        }
+      ],
       "spawn": {
         "x": 400,
         "y": 460
@@ -1109,6 +1120,17 @@
             "y": 160,
             "width": 24,
             "height": 20
+          }
+        },
+        {
+          "texture": "computer",
+          "x": 400,
+          "bottom": 186,
+          "body": {
+            "x": 400,
+            "y": 150,
+            "width": 112,
+            "height": 72
           }
         }
       ]

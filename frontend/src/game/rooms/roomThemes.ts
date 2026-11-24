@@ -89,7 +89,7 @@ export const ROOM_THEMES: Record<RoomId, RoomTheme> = {
     door: { frame: '#c4bfb2', frameLight: '#ffffff', panel: '#e9e6dd', panelLight: '#f7f6f2', handle: '#9a927f', sign: '#b5ad9b' },
     page: { background: '#171818', card: '#222424', border: '#4a4c4a', accent: '#d9d4c7', muted: '#b3b0a8' },
     textures: { computer: 'dev-desk', chair: 'office-chair', plant: 'tall-plant' },
-    notes: { title: '실습\n연구실', body: '직접 만들고,\n눈으로 보고, 설명해요.', missionTitle: '원리 실험 준비 중', mission: '기술 면접 대비 실험 장치가 하나씩 들어올 곳이에요. 트랜잭션 격리, 인덱스, 스프링 원리, 동시성 순서로 만들어 갈 예정이에요.' },
+    notes: { title: '실습\n연구실', body: '방을 만들고,\n같이 유즈맵을 해요.', missionTitle: '유즈맵 대기실', mission: '들어오면 대기실 창이 열려요. 방을 만들거나 들어가서, 방장이 맵을 고르고 시작해요. 가운데 단말기에서 E로 대기실을 다시 열 수 있어요. 첫 맵은 협동 버그 잡기!' },
   },
   'office-3': {
     mood: '네온이 번쩍이는 보랏빛 오락실(월루 전용 휴게 공간)',

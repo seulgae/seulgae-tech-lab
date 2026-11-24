@@ -34,7 +34,7 @@ import { FISH_COLORS } from '../rooms/fishingLogic'
 const MY_DESK_SEAT = 'office-1-chair-2'
 const PANEL_SOUNDS: Partial<Record<string, EffectKey>> = {
   'pull-requests': 'kiosk', 'build-info': 'typing', 'server-status': 'beep', agenda: 'marker', bookshelf: 'page', 'admin-console': 'typing', 'admin-apply': 'kiosk',
-  'my-desk': 'typing', arcade: 'success', gamble: 'coin', guestbook: 'kiosk', 'food-cart': 'coin',
+  'my-desk': 'typing', usemap: 'kiosk', arcade: 'success', gamble: 'coin', guestbook: 'kiosk', 'food-cart': 'coin',
 }
 
 /**
