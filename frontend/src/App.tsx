@@ -13,12 +13,12 @@ import './App.css'
  * 픽셀 로비와 조작 안내를 반응형으로 배치하는 최상위 React 컴포넌트이다.
  *
  * @author seulgae
- * @version 1.1, 방 테마에 맞춘 페이지 색과 안내 문구
+ * @version 1.2, 야외 시작 화면에 맞춘 방 안내
  * @see "None"
  * @returns 게임 화면을 포함한 메인 영역
  */
 function App() {
-  const [roomId, setRoomId] = useState<RoomId>('lobby')
+  const [roomId, setRoomId] = useState<RoomId>('outdoor')
   const theme = ROOM_THEMES[roomId]
   // 로그인 회원이면 게임 이름표를 회원 닉네임으로 접속한다. 로그인 확인이 늦어도 2.5초 뒤에는 게임을 시작한다.
   const [gameReady, setGameReady] = useState(false)

@@ -38,10 +38,11 @@ test('모서리에서도 원형 거리로 범위를 제한한다', () => {
 
 // 렌더링과 물리 엔진을 대체해 장면의 입력·이벤트 흐름만 검증한다.
 // 실제 충돌과 React 패널 표시 여부는 브라우저에서 별도로 검증한다.
-function createScene(room = 'lobby') {
+function createScene(room = 'lobby', firstDay = false) {
   const uiEvents = new EventEmitter()
   const key = { _justDown: false }
   const state = { textFocused: false, resets: 0 }
+  uiEvents.on(LAB_EVENTS.openPanel, panel => { state.openPanel = panel })
   // 방 연출은 별도 모듈이므로 호출 기록만 남기는 대역을 쓴다.
   const fx = {
     calls: [], intercepting: false, hintText: undefined,
@@ -97,7 +98,9 @@ function createScene(room = 'lobby') {
     // 사운드: 재생한 효과음 이름만 기록한다. 발걸음 규칙은 실제 모듈을 쓴다.
     AudioManager: { for: () => ({ enterRoom: (room, phase) => { (state.rooms ??= []).push([room, phase]) } }) },
     playSfx: (key, options) => { (state.sounds ??= []).push(key) }, FootstepTracker, footstepSound, skyPhase,
-    PetBot: class { constructor() { state.pets = (state.pets ?? 0) + 1 } update() {} destroy() {} },
+    readIntroProgress: () => firstDay ? undefined : 'guided',
+    saveIntroProgress: progress => { state.introProgress = progress },
+    PetBot: class { constructor(_scene, _room, _player, options) { state.pets = (state.pets ?? 0) + 1; state.petOptions = options } update() {} destroy() {} },
     COIN_EVENT: 'lab:coin', OPEN_INVENTORY_EVENT: 'lab:open-inventory', FISH_COLORS: {}, inventoryStore: { refresh: async () => {} },
     applyRenderZoom: () => { state.zoomApplied = (state.zoomApplied ?? 0) + 1 },
     hasTextInputFocus: () => state.textFocused, closerTarget,
@@ -112,6 +115,32 @@ function createScene(room = 'lobby') {
   const runDelayed = () => { const pending = state.delayed ?? []; state.delayed = []; pending.forEach(fn => fn()) }
   return { scene, uiEvents, key, state, runDelayed }
 }
+
+test('첫 출근 안내는 로봇을 마중 보내고 정문으로 걸어 들어간 뒤에만 완료된다', () => {
+  const { scene, uiEvents, key, state } = createScene('outdoor', true)
+  assert.equal(state.openPanel, 'intro')
+  assert.equal(state.pets, undefined)
+  uiEvents.emit(LAB_EVENTS.closePanel)
+  uiEvents.emit(LAB_EVENTS.introChoice, false)
+  assert.equal(state.pets, 1)
+  assert.ok(state.petOptions.approachFrom)
+  assert.equal(state.introProgress, undefined)
+  key._justDown = true; scene.update()
+  assert.equal(state.changed, undefined)
+  scene.player.y = 500
+  key._justDown = true; scene.update()
+  assert.equal(state.changed, 'outdoor-to-lobby')
+  assert.equal(state.introProgress, 'guided')
+})
+
+test('첫 출근 안내를 건너뛰면 즉시 정문으로 입장하고 선택을 기록한다', () => {
+  const { uiEvents, state } = createScene('outdoor', true)
+  uiEvents.emit(LAB_EVENTS.closePanel)
+  uiEvents.emit(LAB_EVENTS.introChoice, true)
+  assert.equal(state.changed, 'outdoor-to-lobby')
+  assert.equal(state.introProgress, 'skipped')
+  assert.equal(state.pets, undefined)
+})
 
 test('채팅 입력 포커스는 이동과 컴퓨터 E를 막고 키 상태를 초기화한다', () => {
   const { scene, uiEvents, key, state } = createScene('development-lab')

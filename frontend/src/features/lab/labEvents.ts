@@ -5,6 +5,7 @@ export const LAB_EVENTS = {
   serverRack: 'lab:server-rack',
   /** 오락실 내기 오락기를 열 때 어떤 게임(상호작용 id)인지 먼저 알린다. */
   gamble: 'lab:gamble',
+  introChoice: 'lab:intro-choice',
   closePanel: 'lab:close-panel',
   tableTalk: 'lab:table-talk',
 } as const

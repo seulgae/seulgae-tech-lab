@@ -27,7 +27,7 @@ const OVERLAY_DEPTH = 880
 export const WALKABLE_DECK_DEPTH = -41
 const POPUP_DEPTH = 1001
 const ENDING_SIGN: RoomInteraction = {
-  id: 'outdoor-ending-sign', kind: 'ending-sign', label: '돌아가는 길',
+  id: 'outdoor-ending-sign', kind: 'ending-sign', label: '엔딩',
   x: 347, y: 264, width: 36, height: 22, range: 32,
 }
 

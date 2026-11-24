@@ -38,10 +38,15 @@ export default class PetBot {
   private blinkUntil = 0
   /** 말풍선을 그릴 때의 방향(꼬리 위치) */
   private bubbleSide = true
+  private welcomePending: boolean
+  private readonly automaticTips: boolean
 
-  constructor(scene: Phaser.Scene, roomId: RoomId, player: { x: number; y: number }) {
+  constructor(scene: Phaser.Scene, roomId: RoomId, player: { x: number; y: number },
+    options: { approachFrom?: { x: number; y: number }; automaticTips?: boolean } = {}) {
     this.scene = scene; this.roomId = roomId
-    const start = petTarget(player, true)
+    this.welcomePending = options.approachFrom !== undefined
+    this.automaticTips = options.automaticTips ?? true
+    const start = options.approachFrom ?? petTarget(player, true)
     this.x = start.x; this.y = start.y; this.lastPlayerX = player.x
     this.jet = scene.add.rectangle(this.x, this.y + 16, 6, 4, 0xffd23f, 0.9)
     this.sprite = scene.add.image(this.x, this.y, 'pet-robot').setScale(2)
@@ -83,7 +88,10 @@ export default class PetBot {
       this.blinkUntil = this.age + 140
       this.nextBlinkAt = this.age + 2600 + Math.random() * 2400
     } else if (this.blinkUntil && this.age >= this.blinkUntil) { this.sprite.setTexture('pet-robot'); this.blinkUntil = 0 }
-    if (this.age >= this.nextTipAt) this.say()
+    if (this.welcomePending && Math.hypot(this.x - target.x, this.y - target.y) < 14) {
+      this.welcomePending = false
+      this.say('첫 출근을 축하해요! 연구소까지 함께 가요.')
+    } else if (!this.welcomePending && this.automaticTips && this.age >= this.nextTipAt) this.say()
     if (this.bubble.visible) {
       // 펫이 반대쪽으로 넘어가면 꼬리도 다시 그린다.
       if (this.bubbleSide !== this.facingRight) this.drawBubble()
