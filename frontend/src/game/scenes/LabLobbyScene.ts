@@ -17,7 +17,7 @@ import { MULTIPLAYER_EVENTS } from '../../features/multiplayer/model/protocol'
 import type MultiplayerClient from '../../features/multiplayer/MultiplayerClient'
 import { MOBILE_INPUT } from '../input/mobileInput'
 import type { DirectionInput } from '../input/mobileInput'
-import { ROOMS, doorHint, nearestInteraction, roomObstacles } from '../maps/rooms'
+import { roomSeats, ROOMS, doorHint, nearestInteraction, roomObstacles } from '../maps/rooms'
 import type { RoomId, RoomInteraction, Seat } from '../maps/rooms'
 import { setRoomObstacles } from '../multiplayer/networkPosition'
 import { AudioManager, playSfx } from '../../audio/AudioManager'
@@ -30,6 +30,8 @@ import type { GroundItem } from '../../features/multiplayer/model/protocol'
 import { FISH_COLORS } from '../rooms/fishingLogic'
 
 /** 패널을 열 때 함께 나는 장비 소리(컴퓨터 타이핑, 키오스크, 화이트보드 마커 등) */
+/** 서비스 연구실 왼쪽 맨 아래 의자: 내 자리(앉으면 모니터가 켜진다) */
+const MY_DESK_SEAT = 'office-1-chair-2'
 const PANEL_SOUNDS: Partial<Record<string, EffectKey>> = {
   'pull-requests': 'kiosk', 'build-info': 'typing', 'server-status': 'beep', agenda: 'marker', bookshelf: 'page', 'admin-console': 'typing', 'admin-apply': 'kiosk',
   'my-desk': 'typing', arcade: 'success', gamble: 'coin', guestbook: 'kiosk', 'food-cart': 'coin',
@@ -338,6 +340,11 @@ export default class LabLobbyScene extends Phaser.Scene {
       this.toggleSeat(target as Seat)
       return
     }
+    // 내 자리 컴퓨터는 의자에 앉아서 켠다: 아직 안 앉았으면 먼저 앉히고(앉으면 모니터가 켜진다), 앉아 있으면 바로 켠다.
+    if (target.kind === 'my-desk' && this.player?.seat?.id !== MY_DESK_SEAT) {
+      const seat = roomSeats(this.activeRoom).find(item => item.id === MY_DESK_SEAT)
+      if (seat) { this.toggleSeat(seat); return }
+    }
     this.panelOpen = true
     this.resetChatInput()
     this.interactionHint?.setVisible(false)
@@ -461,6 +468,19 @@ export default class LabLobbyScene extends Phaser.Scene {
     this.sitRequestedAt = this.time.now
     // 회의실 의자에 앉으면 테이블 대화에 자동으로 참여한다.
     if (this.activeRoom === 'meeting-room') { this.seatTalk = true; this.setTableTalk(true, true) }
+    // 서비스 연구실 내 자리에 앉으면 잠깐 뒤 모니터(내 자리 컴퓨터)가 켜진다.
+    if (seat.id === MY_DESK_SEAT) this.time.delayedCall(400, () => { if (this.player?.seat?.id === MY_DESK_SEAT) this.openDesk() })
+  }
+
+  /** 내 자리 컴퓨터 모니터를 연다(자리에 앉은 채로). 장면 입력은 창이 닫힐 때까지 멈춘다. */
+  private openDesk() {
+    if (this.panelOpen || this.transition) return
+    this.panelOpen = true
+    this.resetChatInput()
+    this.interactionHint?.setVisible(false)
+    this.interactionHighlight?.setVisible(false)
+    playSfx('typing', { volume: 0.6 })
+    this.uiEvents.emit(LAB_EVENTS.openPanel, 'my-desk')
   }
 
   /** 서버가 3초(SEAT_CONFIRM_MS) 안에 앉음을 확인하지 않으면(멀거나 빈자리 아님) 일어난다. 일어나면 자동 테이블 대화도 끈다. */
