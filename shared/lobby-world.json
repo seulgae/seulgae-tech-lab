@@ -1112,17 +1112,6 @@
       ],
       "objects": [
         {
-          "texture": "plant",
-          "x": 690,
-          "bottom": 170,
-          "body": {
-            "x": 690,
-            "y": 160,
-            "width": 24,
-            "height": 20
-          }
-        },
-        {
           "texture": "computer",
           "x": 400,
           "bottom": 186,
@@ -1131,6 +1120,72 @@
             "y": 150,
             "width": 112,
             "height": 72
+          }
+        },
+        {
+          "texture": "lounge-sofa",
+          "x": 150,
+          "bottom": 330,
+          "body": {
+            "x": 150,
+            "y": 310,
+            "width": 96,
+            "height": 36
+          }
+        },
+        {
+          "texture": "lounge-sofa",
+          "x": 650,
+          "bottom": 330,
+          "body": {
+            "x": 650,
+            "y": 310,
+            "width": 96,
+            "height": 36
+          }
+        },
+        {
+          "texture": "lounge-sofa",
+          "x": 150,
+          "bottom": 470,
+          "body": {
+            "x": 150,
+            "y": 450,
+            "width": 96,
+            "height": 36
+          }
+        },
+        {
+          "texture": "lounge-sofa",
+          "x": 650,
+          "bottom": 470,
+          "body": {
+            "x": 650,
+            "y": 450,
+            "width": 96,
+            "height": 36
+          }
+        },
+        {
+          "texture": "plant",
+          "x": 56,
+          "bottom": 140,
+          "body": {
+            "x": 56,
+            "y": 130,
+            "width": 24,
+            "height": 20
+          }
+        },
+        {
+          "texture": "plant",
+          "x": 744,
+          "bottom": 140,
+          "body": {
+            "x": 744,
+            "y": 130,
+            "width": 24,
+            "height": 20
           }
         }
       ]
