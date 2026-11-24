@@ -1,3 +1,5 @@
+import { inventoryStore } from '../inventory/inventoryStore.ts'
+import { tiredMessage } from '../rules/rulesStore.ts'
 /**
  * 개인 기숙사 가구 API와 배치 규칙.
  * 규칙(벽 안쪽, 문 앞 비우기, 부딪히는 가구끼리 겹치지 않기)은 서버 DormServiceImpl과 같다. 화면은 미리 보여 주기만 하고 판정은 서버가 한다.
@@ -62,7 +64,24 @@ const changed = (view: DormView) => { window.dispatchEvent(new CustomEvent(DORM_
 
 export const fetchDorm = () => request('/api/dorm')
 export const buyFurniture = (code: string) => request('/api/dorm/buy', { code }, { 404: '없는 가구예요.', 409: '동전이 모자라거나 가구가 너무 많아요(최대 60개).' }).then(changed)
-export const placeFurniture = (id: string, x: number, y: number) => request('/api/dorm/place', { id, x, y }, { 404: '내 가구가 아니에요.', 409: '여기에는 놓을 수 없어요.' }).then(changed)
+export const placeFurniture = (id: string, x: number, y: number) => request('/api/dorm/place', { id, x, y },
+  { 404: '내 가구가 아니에요.', 409: '여기에는 놓을 수 없어요.', get 423() { return tiredMessage('FURNITURE_PLACE') } })
+  .then(view => { void inventoryStore.refresh(); return changed(view) })
+
+/** 침대 휴식 결과(서버 RestDTO) */
+export type RestResult = { recovered: boolean; hp: number; hpMax: number; fatigue: number; fatigueMax: number; everySec: number; hpGain: number; fatigueGain: number; unlimited: boolean }
+
+/**
+ * 놓인 침대에서 쉰다. 간격(everySec)마다 한 번 HP·기력이 오르고, 간격은 서버가 지킨다.
+ * @returns 휴식 결과
+ */
+export async function restInBed(): Promise<RestResult> {
+  const response = await fetch('/api/dorm/rest', { method: 'POST', headers: { Accept: 'application/json' } })
+  if (!response.ok) throw new Error(response.status === 401 ? '로그인한 연구원만 쉴 수 있어요.' : response.status === 409 ? '먼저 침대를 놓아 주세요.' : '쉬지 못했어요.')
+  const result = await response.json() as RestResult
+  if (result.recovered) void inventoryStore.refresh()
+  return result
+}
 export const storeFurniture = (id: string) => request('/api/dorm/store', { id }, { 404: '내 가구가 아니에요.' }).then(changed)
 
 /**

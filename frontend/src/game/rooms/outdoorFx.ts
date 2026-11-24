@@ -11,6 +11,7 @@ import {
 import type { Catch } from './fishingLogic'
 import { playSfx } from '../../audio/AudioManager'
 import { inventoryStore } from '../../features/inventory/inventoryStore'
+import { tiredMessage } from '../../features/rules/rulesStore'
 import { townsfolk } from '../npc/townsfolkFx.ts'
 import { OUTDOOR_NPCS } from '../npc/npcData.ts'
 
@@ -367,7 +368,8 @@ function fishingGame(ctx: Context, currentPhase: () => SkyPhase) {
     ctx.banner.show(message, fish.species.rarity === 'common' ? '#a7d98a' : '#ffd23f', 3000)
     // 로그인 회원이면 가방에 넣는다(I로 확인). 비회원은 이 브라우저 기록만 남는다.
     void inventoryStore.storeFish(fish.species.name, fish.cm).then(stored => {
-      if (stored) scene.time.delayedCall(3200, () => ctx.banner.show(`보관함에 ${fish.species.name}을(를) 넣었어요 · I로 폰 확인`, '#ffd23f', 2200))
+      if (stored === 'tired') scene.time.delayedCall(3200, () => ctx.banner.show(`놓아줬어요 · ${tiredMessage('FISH_CATCH')}`, '#f0a35e', 4200))
+      else if (stored) scene.time.delayedCall(3200, () => ctx.banner.show(`보관함에 ${fish.species.name}을(를) 넣었어요 · I로 폰 확인`, '#ffd23f', 2200))
     })
   }
 

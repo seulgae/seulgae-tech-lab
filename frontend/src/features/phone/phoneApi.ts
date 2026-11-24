@@ -1,3 +1,4 @@
+import { tiredMessage } from '../rules/rulesStore.ts'
 /**
  * 폰 앱 API: 은행(잔액·거래 내역·송금), 캘린더 할 일, SNS. 서버가 원본이고 규칙도 서버가 확인한다.
  */
@@ -76,7 +77,9 @@ export type StockView = { coins: number; stocks: StockQuote[]; holdings: StockHo
 export const STOCK_MAX_QUANTITY = 100
 
 export const fetchStocks = () => request<StockView>('/api/stocks')
-const stockMessages: Messages = { 400: `한 번에 1~${STOCK_MAX_QUANTITY}주까지 사고팔 수 있어요.`, 404: '없는 종목이에요.', 409: '잔액이나 가진 주식이 모자라요.', 429: '오늘은 더 거래할 수 없어요(하루 30번).' }
+const stockMessages: Messages = { 400: `한 번에 1~${STOCK_MAX_QUANTITY}주까지 사고팔 수 있어요.`, 404: '없는 종목이에요.', 409: '잔액이나 가진 주식이 모자라요.', 429: '오늘은 더 거래할 수 없어요(하루 30번).',
+  /* 기력 안내는 부를 때의 규칙 숫자로 */
+  get 423() { return tiredMessage('STOCK_TRADE') } }
 export const buyStock = (code: string, quantity: number) => request<StockView>('/api/stocks/buy', post({ code, quantity }), stockMessages)
 export const sellStock = (code: string, quantity: number) => request<StockView>('/api/stocks/sell', post({ code, quantity }), stockMessages)
 

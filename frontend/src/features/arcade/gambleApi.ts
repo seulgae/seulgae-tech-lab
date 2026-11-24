@@ -1,3 +1,4 @@
+import { tiredMessage } from '../rules/rulesStore.ts'
 /**
  * 오락실 내기 게임 API와 화면 연출 계산. 결과는 서버가 정하고 화면은 받은 값을 보여 주기만 한다.
  *
@@ -56,7 +57,7 @@ export async function playGamble(game: GambleGame, bet: number, pick: string): P
     method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json' }, body: JSON.stringify({ game, bet, pick }),
   })
   if (!response.ok) {
-    throw new Error({ 401: '로그인한 연구원만 동전을 걸 수 있어요.', 400: '건 돈과 고른 값을 다시 확인해 주세요.', 409: '동전이 모자라요.', 429: '오늘은 더 할 수 없어요(하루 5판). 내일 다시 와요.' }[response.status] ?? '요청에 실패했어요.')
+    throw new Error({ 401: '로그인한 연구원만 동전을 걸 수 있어요.', 400: '건 돈과 고른 값을 다시 확인해 주세요.', 409: '동전이 모자라요.', 423: tiredMessage('GAMBLE_BET'), 429: '오늘은 더 할 수 없어요(하루 5판). 내일 다시 와요.' }[response.status] ?? '요청에 실패했어요.')
   }
   return await response.json() as GambleResult
 }

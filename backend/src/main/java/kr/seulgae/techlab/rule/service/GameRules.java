@@ -5,6 +5,7 @@ import java.util.Optional;
 import java.util.function.LongSupplier;
 import kr.seulgae.techlab.badge.entity.Rank;
 import kr.seulgae.techlab.rule.entity.ActionCost;
+import kr.seulgae.techlab.rule.entity.GameValue;
 import kr.seulgae.techlab.rule.entity.Snack;
 import kr.seulgae.techlab.rule.repository.RuleRepository;
 import org.slf4j.Logger;
@@ -13,11 +14,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
- * 게임 규칙(행동 비용·간식·직급). 운영 DB 테이블을 1분마다 다시 읽어 메모리에 두고 쓴다(요청마다 DB를 읽지 않음).
- * DB를 읽지 못하면 마지막으로 읽은 값, 그것도 없으면 V23 시드와 같은 기본값을 쓴다.
+ * 게임 규칙(행동 비용·간식·직급·숫자 규칙). 운영 DB 테이블을 1분마다 다시 읽어 메모리에 두고 쓴다(요청마다 DB를 읽지 않음).
+ * DB를 읽지 못하면 마지막으로 읽은 값, 그것도 없으면 V23·V24 시드와 같은 기본값을 쓴다.
  *
  * @author 길태형
- * @version 1.0, 게임 규칙 테이블
+ * @version 1.1, 새 행동 비용·숫자 규칙(V24)
  * @see None
  */
 @Component
@@ -31,18 +32,29 @@ public class GameRules {
         new ActionCost(ActionCost.IDEA_POST, "아이디어 글 올리기", 3, 5, "내 자리 컴퓨터 아이디어 기획 게시판"),
         new ActionCost(ActionCost.QA_REGISTER, "QA 티켓 등록", 3, 5, "내 자리 컴퓨터 QA 게시판"),
         new ActionCost(ActionCost.QA_MOVE, "QA 단계 변경", 3, 5, "QA 티켓을 조치 중·조치 완료로"),
-        new ActionCost(ActionCost.ARCADE_PLAY, "오락실 한 판", 3, 5, "오락실 메인 오락기(벽돌 부수기 등)"));
+        new ActionCost(ActionCost.ARCADE_PLAY, "오락실 한 판", 3, 5, "오락실 메인 오락기(벽돌 부수기 등)"),
+        new ActionCost(ActionCost.GAMBLE_BET, "오락실 내기 한 판", 0, 3, "오락실 홀짝·사다리"),
+        new ActionCost(ActionCost.FISH_CATCH, "물고기 낚기", 0, 4, "낚은 물고기를 보관함에 넣을 때"),
+        new ActionCost(ActionCost.JAVA_ANSWER, "자바 연습 문제 풀기", 0, 2, "내 자리 컴퓨터 자바 연습(답 제출마다)"),
+        new ActionCost(ActionCost.STOCK_TRADE, "주식 거래", 0, 1, "폰 주식 앱 사기·팔기"),
+        new ActionCost(ActionCost.FURNITURE_PLACE, "가구 배치", 2, 0, "개인 기숙사에 가구 놓기"));
     public static final List<Snack> DEFAULT_SNACKS = List.of(
         new Snack("CAKE", "케이크", 3, 10, 0, "LOBBY"), new Snack("COFFEE", "커피", 2, 0, 5, "LOBBY"),
         new Snack("COLA", "콜라", 2, 0, 5, "VENDING"), new Snack("CIDER", "사이다", 2, 0, 5, "VENDING"),
-        new Snack("FANTA", "환타", 2, 0, 5, "VENDING"), new Snack("WATER", "물", 1, 0, 2, "VENDING"));
+        new Snack("FANTA", "환타", 2, 0, 5, "VENDING"), new Snack("WATER", "물", 1, 0, 2, "VENDING"),
+        new Snack("LUNCHBOX", "도시락", 6, 25, 0, "VENDING"), new Snack("ENERGY_DRINK", "에너지드링크", 5, 0, 20, "VENDING"));
+    /** 숫자 규칙 기본값(V24 시드와 같음) */
+    public static final List<GameValue> DEFAULT_VALUES = List.of(
+        new GameValue(GameValue.REST_EVERY_SEC, "침대 휴식 간격", 60, "침대에 누워 있으면 이 초마다 한 번 회복한다(초)"),
+        new GameValue(GameValue.REST_HP, "침대 휴식 HP 회복", 3, "한 번 회복할 때 오르는 HP"),
+        new GameValue(GameValue.REST_FATIGUE, "침대 휴식 기력 회복", 3, "한 번 회복할 때 오르는 기력"));
 
     /** 한 번에 읽은 규칙 묶음 */
-    public record Rules(List<ActionCost> actions, List<Snack> snacks, List<Rank> ranks) {}
+    public record Rules(List<ActionCost> actions, List<Snack> snacks, List<Rank> ranks, List<GameValue> values) {}
 
     private final RuleRepository repository;
     private final LongSupplier clock;
-    private volatile Rules current = new Rules(DEFAULT_ACTIONS, DEFAULT_SNACKS, Rank.DEFAULTS);
+    private volatile Rules current = new Rules(DEFAULT_ACTIONS, DEFAULT_SNACKS, Rank.DEFAULTS, DEFAULT_VALUES);
     private volatile long loadedAt = Long.MIN_VALUE / 2;
 
     @Autowired
@@ -56,6 +68,7 @@ public class GameRules {
             @Override public List<ActionCost> actionCosts() { return DEFAULT_ACTIONS; }
             @Override public List<Snack> snacks() { return DEFAULT_SNACKS; }
             @Override public List<Rank> ranks() { return Rank.DEFAULTS; }
+            @Override public List<GameValue> values() { return DEFAULT_VALUES; }
         });
     }
 
@@ -75,7 +88,10 @@ public class GameRules {
             var ranks = repository.ranks();
             /* 0회 직급이 없으면 직급을 정할 수 없으니 기본값을 쓴다 */
             if (ranks.isEmpty() || ranks.get(0).minWork() != 0) throw new IllegalStateException("tb_lab_rank needs a row with min_work = 0");
-            current = new Rules(List.copyOf(repository.actionCosts()), List.copyOf(repository.snacks()), List.copyOf(ranks));
+            /* 숫자 규칙은 표에 없는 코드를 기본값으로 채워 둔다(안내 화면에도 모두 보이게) */
+            var values = new java.util.ArrayList<>(repository.values());
+            for (GameValue fallback : DEFAULT_VALUES) if (values.stream().noneMatch(item -> item.code().equals(fallback.code()))) values.add(fallback);
+            current = new Rules(List.copyOf(repository.actionCosts()), List.copyOf(repository.snacks()), List.copyOf(ranks), List.copyOf(values));
         } catch (RuntimeException exception) {
             LOG.warn("Game rule tables could not be read; keeping previous values: {}", exception.getMessage());
         }
@@ -102,6 +118,16 @@ public class GameRules {
 
     /** @return 직급(낮은 직급부터) */
     public List<Rank> ranks() { return rules().ranks(); }
+
+    /**
+     * 숫자 규칙 값(표와 기본값 모두에 없으면 0).
+     *
+     * @param code 규칙 코드
+     * @return 값
+     */
+    public int value(String code) {
+        return rules().values().stream().filter(item -> item.code().equals(code)).mapToInt(GameValue::value).findFirst().orElse(0);
+    }
 
     /** @param work 누적 일 완료 수 @return 직급 */
     public Rank rankOf(int work) { return Rank.of(ranks(), work); }

@@ -5,7 +5,7 @@ import type { TechBook } from './techBooks'
  * 관리자실 가운데 슈퍼컴퓨터(쿼리 콘솔)에서 그대로 따라 할 수 있게 쓴다. 정적 데이터라 서버 호출이 없다.
  *
  * @author 길태형
- * @version 1.0, 게임 규칙 테이블 운영 도서관
+ * @version 1.1, 새 행동 비용·침대 휴식(V24)
  * @see None
  */
 export const ADMIN_BOOKS: readonly TechBook[] = [
@@ -22,6 +22,7 @@ export const ADMIN_BOOKS: readonly TechBook[] = [
           ['tb_lab_action_cost', '행동별 HP·기력 비용(글쓰기, QA, 오락실)', '1분 안'],
           ['tb_lab_snack', '간식·음료 가격과 회복량, 파는 곳', '1분 안'],
           ['tb_lab_rank', '직급 기준·10분 급여·HP·기력 최대치', '1분 안'],
+          ['tb_lab_game_rule', '숫자 규칙(침대 휴식 간격·회복량 등)', '1분 안'],
         ],
       } },
       { heading: '그 밖에 운영자가 고칠 수 있는 테이블', body: ['아래 테이블은 서버가 요청 때마다 읽어서 고치면 바로 반영돼요.'], table: {
@@ -70,6 +71,11 @@ export const ADMIN_BOOKS: readonly TechBook[] = [
           ['QA_REGISTER', 'QA 티켓 등록', '3', '5'],
           ['QA_MOVE', 'QA 단계 변경(조치 중·완료)', '3', '5'],
           ['ARCADE_PLAY', '오락실 한 판', '3', '5'],
+          ['GAMBLE_BET', '오락실 내기 한 판', '0', '3'],
+          ['FISH_CATCH', '물고기 낚기(보관함에 넣을 때)', '0', '4'],
+          ['JAVA_ANSWER', '자바 연습 답 제출', '0', '2'],
+          ['STOCK_TRADE', '주식 사기·팔기', '0', '1'],
+          ['FURNITURE_PLACE', '기숙사 가구 놓기', '2', '0'],
         ],
       } },
       { heading: '고치는 예', body: ['오락실을 기력 3만 들게(HP는 안 듦):'], code: "UPDATE lab.tb_lab_action_cost\n   SET hp_cost = 0, fatigue_cost = 3\n WHERE code = 'ARCADE_PLAY';" },
@@ -107,6 +113,8 @@ export const ADMIN_BOOKS: readonly TechBook[] = [
           ['CIDER', '사이다', '2', '0', '+5', 'VENDING'],
           ['FANTA', '환타', '2', '0', '+5', 'VENDING'],
           ['WATER', '물', '1', '0', '+2', 'VENDING'],
+          ['LUNCHBOX', '도시락', '6', '+25', '0', 'VENDING'],
+          ['ENERGY_DRINK', '에너지드링크', '5', '0', '+20', 'VENDING'],
         ],
       } },
       { heading: '고치는 예', body: ['커피를 3원에 기력 +8로:'], code: "UPDATE lab.tb_lab_snack\n   SET price = 3, fatigue_gain = 8\n WHERE code = 'COFFEE';" },
@@ -154,6 +162,38 @@ export const ADMIN_BOOKS: readonly TechBook[] = [
         'min_work = 0인 직급이 꼭 하나 있어야 해요. 없으면 서버가 표를 쓰지 않고 이전(또는 기본) 직급표를 그대로 써요.',
         'vitals_max는 승진하는 순간 회원 최대치로 들어가요(가득 채움). 이미 그 직급인 회원은 그대로라, 맞추려면 아래 쿼리를 함께 실행해요.',
       ], code: "UPDATE lab.tb_lab_member_inventory\n   SET hp_max = 150, fatigue_max = 150,\n       hp = LEAST(hp, 150), fatigue = LEAST(fatigue, 150)\n WHERE work_count >= 5 AND work_count < 10; -- 선임 구간" },
+    ],
+  },
+  {
+    id: 'admin-game-rule', title: '숫자 규칙', subtitle: 'tb_lab_game_rule · 키 → 값', color: '#4fb3a9',
+    pages: [
+      { heading: '하는 일', body: [
+        '코드에 있던 숫자 규칙을 하나씩 옮겨 오는 표예요. 코드가 code로 값을 찾고, 표에 없으면 기본값을 써요.',
+        '지금은 기숙사 침대 휴식 규칙이 들어 있어요. 폰 브라우저 생활 가이드(guide.lab)에도 이 값이 그대로 보여요.',
+      ] },
+      { heading: '열', body: [], table: {
+        head: ['열', '뜻', '값'],
+        rows: [
+          ['code', '규칙 코드(바꾸지 않음)', '대문자'],
+          ['name', '화면 이름', '1~40자'],
+          ['value', '값(단위는 description)', '0~100000'],
+          ['description', '단위와 뜻', '설명'],
+          ['sort_order', '표시 순서', '숫자'],
+        ],
+      } },
+      { heading: '지금 있는 규칙', body: [], table: {
+        head: ['code', '뜻', '기본값'],
+        rows: [
+          ['REST_EVERY_SEC', '침대에서 회복하는 간격(초)', '60'],
+          ['REST_HP', '한 번에 오르는 HP', '3'],
+          ['REST_FATIGUE', '한 번에 오르는 기력', '3'],
+        ],
+      } },
+      { heading: '고치는 예', body: ['침대 휴식을 30초마다 HP 5·기력 5로:'], code: "UPDATE lab.tb_lab_game_rule SET value = 30 WHERE code = 'REST_EVERY_SEC';\nUPDATE lab.tb_lab_game_rule SET value = 5 WHERE code IN ('REST_HP', 'REST_FATIGUE');" },
+      { heading: '주의', body: [
+        'REST_EVERY_SEC를 0으로 두면 서버가 1초로 바꿔 써요. 너무 짧으면 침대가 커피보다 좋아지니 균형을 봐요.',
+        '휴식 간격은 회원마다 마지막 회복 시각(tb_lab_member_inventory.last_rest_at)으로 서버가 지켜요.',
+      ] },
     ],
   },
   {

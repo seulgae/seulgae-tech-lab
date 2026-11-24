@@ -6,6 +6,7 @@ import kr.seulgae.techlab.auth.service.AuthService;
 import kr.seulgae.techlab.common.write.WriteRateLimiter;
 import kr.seulgae.techlab.dorm.dto.DormViewDTO;
 import kr.seulgae.techlab.dorm.dto.FurnitureRequestDTO;
+import kr.seulgae.techlab.dorm.dto.RestDTO;
 import kr.seulgae.techlab.dorm.service.DormService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -76,6 +77,15 @@ public class DormController {
     public DormViewDTO store(@RequestBody(required = false) FurnitureRequestDTO body, HttpServletRequest request) {
         return service.store(member(request), id(body));
     }
+
+    /**
+     * 침대 휴식(누워 있는 동안 간격마다 부른다. 간격은 서버가 지킨다).
+     *
+     * @param request HTTP 요청
+     * @return 회복 결과
+     */
+    @PostMapping("/rest")
+    public RestDTO rest(HttpServletRequest request) { return service.rest(member(request)); }
 
     private UUID member(HttpServletRequest request) {
         return auth.current(request).orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Login required")).id();

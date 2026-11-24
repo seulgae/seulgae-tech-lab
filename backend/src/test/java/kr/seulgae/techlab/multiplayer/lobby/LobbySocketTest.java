@@ -374,12 +374,15 @@ class LobbySocketTest {
         }
     }
 
-    /** 게임 규칙은 누구나 읽는다(화면이 비용·간식·직급 숫자를 여기서 받는다). */
+    /** 게임 규칙은 누구나 읽는다(화면이 비용·간식·직급·숫자 규칙을 여기서 받는다). 침대 휴식은 로그인 필요. */
     @Test void rulesArePublic() throws Exception {
+        var rest = http.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port() + "/api/dorm/rest")).POST(HttpRequest.BodyPublishers.noBody()).build(), HttpResponse.BodyHandlers.ofString());
+        assertEquals(401, rest.statusCode());
         var response = http.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port() + "/api/rules")).GET().build(), HttpResponse.BodyHandlers.ofString());
         assertEquals(200, response.statusCode());
         var body = JSON.readTree(response.body());
-        assertEquals(6, body.path("snacks").size());
+        assertEquals(8, body.path("snacks").size());
+        assertEquals(60, body.path("values").get(0).path("value").asInt(), "침대 휴식 간격");
         assertEquals("인턴", body.path("ranks").get(0).path("name").stringValue());
         assertEquals(5, body.path("actions").get(0).path("fatigueCost").asInt());
     }

@@ -44,6 +44,8 @@ test('가방: 비회원은 쓸 수 없고, 동전이 늘면 동전 연출 이벤
     assert.equal(await inventoryStore.payArcade(), 'broke')
     globalThis.fetch = async (url, options) => { assert.deepEqual(JSON.parse(options.body), { species: '붕어', cm: 23 }); return new Response('', { status: 409 }) }
     assert.equal(await inventoryStore.storeFish('붕어', 23), false, '가방이 꽉 차면 false')
+    globalThis.fetch = async () => new Response('', { status: 423 })
+    assert.equal(await inventoryStore.storeFish('붕어', 23), 'tired', '기력이 모자라면 tired')
   } finally { globalThis.fetch = original; globalThis.removeEventListener(COIN_EVENT, listener); delete globalThis.addEventListener; delete globalThis.removeEventListener; delete globalThis.dispatchEvent }
 })
 

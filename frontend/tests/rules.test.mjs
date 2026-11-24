@@ -26,3 +26,36 @@ test('서버 규칙을 받으면 바꾼 숫자가 화면 문구에 반영되고,
     assert.equal(costText('ARCADE_PLAY'), '기력 -2')
   } finally { globalThis.fetch = original; rulesStore.reset() }
 })
+
+test('숫자 규칙과 새 행동·간식 기본값(V24)이 있고, 서버가 values를 안 주면 기본값을 쓴다', async () => {
+  const { ruleValue } = await import('../src/features/rules/rulesStore.ts')
+  rulesStore.reset()
+  assert.equal(ruleValue('REST_EVERY_SEC'), 60)
+  assert.equal(costText('FURNITURE_PLACE'), 'HP -2')
+  assert.equal(costText('STOCK_TRADE'), '기력 -1')
+  assert.equal(snackOf('LUNCHBOX')?.hpGain, 25)
+  const original = globalThis.fetch
+  try {
+    const { values, ...withoutValues } = DEFAULT_RULES
+    assert.ok(values.length > 0)
+    globalThis.fetch = async () => Response.json(withoutValues)
+    await rulesStore.load()
+    assert.equal(ruleValue('REST_HP'), 3)
+  } finally { globalThis.fetch = original; rulesStore.reset() }
+})
+
+test('폰 브라우저 생활 가이드는 지금 규칙으로 표를 만든다', async () => {
+  const { openSite, GUIDE_ADDRESS, SITE_ADDRESSES } = await import('../src/features/phone/fakeWeb.ts')
+  assert.ok(SITE_ADDRESSES.includes(GUIDE_ADDRESS))
+  rulesStore.reset({ ...DEFAULT_RULES, actions: [{ code: 'GAMBLE_BET', name: '내기', hpCost: 0, fatigueCost: 9, description: '오락실' }] })
+  try {
+    const page = openSite('https://www.guide.lab/')
+    assert.equal(page.title, '연구소 생활 가이드')
+    const tables = page.blocks.filter(block => block.type === 'table')
+    assert.equal(tables.length, 3)
+    assert.deepEqual(tables[0].rows, [['내기', '기력 -9', '오락실']])
+    assert.ok(tables[1].rows.some(row => row[0] === '기숙사 침대에서 쉬기' && row[2] === '60초마다 HP +3 · 기력 +3'))
+    assert.deepEqual(tables[2].rows.at(-1), ['연구소장', '100일', '100원', '무제한'])
+    for (const table of tables) for (const row of table.rows) assert.equal(row.length, table.head.length)
+  } finally { rulesStore.reset() }
+})

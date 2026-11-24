@@ -14,7 +14,8 @@ import static org.junit.jupiter.api.Assertions.*;
  * @see "None"
  */
 class InventoryServiceTest {
-    private final InventoryService service = new InventoryServiceImpl(new InMemoryInventoryRepository());
+    private final InMemoryInventoryRepository store = new InMemoryInventoryRepository();
+    private final InventoryService service = new InventoryServiceImpl(store);
     private final UUID me = UUID.randomUUID(), friend = UUID.randomUUID();
 
     @Test void storesCaughtFishAndRejectsImpossibleOnes() {
@@ -23,6 +24,8 @@ class InventoryServiceTest {
         assertEquals(1, service.view(me).items().size());
         assertThrows(ResponseStatusException.class, () -> service.storeFish(me, "고래", 500), "없는 어종");
         assertThrows(ResponseStatusException.class, () -> service.storeFish(me, "피라미", 90), "어종 크기 범위 밖");
+        /* 한 마리에 기력 4가 드니, 가방 한도만 보려고 최대치를 넉넉히 올린다 */
+        store.raiseVitals(me, 999);
         for (int i = 1; i < InventoryService.MAX_ITEMS; i++) service.storeFish(me, "피라미", 10);
         assertThrows(ResponseStatusException.class, () -> service.storeFish(me, "피라미", 10), "가방이 꽉 참");
     }

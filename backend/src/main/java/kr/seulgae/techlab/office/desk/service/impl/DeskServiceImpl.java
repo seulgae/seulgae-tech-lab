@@ -16,6 +16,8 @@ import kr.seulgae.techlab.office.desk.dto.DeskViewDTO;
 import kr.seulgae.techlab.office.desk.dto.JavaAnswerDTO;
 import kr.seulgae.techlab.office.desk.service.DeskService;
 import org.springframework.beans.factory.annotation.Autowired;
+import kr.seulgae.techlab.rule.entity.ActionCost;
+import kr.seulgae.techlab.rule.service.VitalsGate;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,15 +37,17 @@ public class DeskServiceImpl implements DeskService {
     private final Clock clock;
 
     private final BadgeService badge;
+    /** 자바 연습 답 제출마다 드는 HP·기력(JAVA_ANSWER) */
+    private VitalsGate gate;
 
     @Autowired
-    public DeskServiceImpl(InventoryRepository inventory, BadgeService badge) { this(inventory, Clock.system(SEOUL), badge); }
+    public DeskServiceImpl(InventoryRepository inventory, BadgeService badge, VitalsGate gate) { this(inventory, Clock.system(SEOUL), badge); this.gate = gate; }
 
     public DeskServiceImpl(InventoryRepository inventory, Clock clock) { this(inventory, clock, new BadgeServiceImpl(inventory, clock)); }
 
     public DeskServiceImpl(InventoryRepository inventory) { this(inventory, Clock.system(SEOUL)); }
 
-    public DeskServiceImpl(InventoryRepository inventory, Clock clock, BadgeService badge) { this.inventory = inventory; this.clock = clock; this.badge = badge; }
+    public DeskServiceImpl(InventoryRepository inventory, Clock clock, BadgeService badge) { this.inventory = inventory; this.clock = clock; this.badge = badge; this.gate = VitalsGate.defaults(inventory); }
 
     @Override
     public DeskViewDTO view(UUID member) { return view(member, null); }
@@ -96,6 +100,9 @@ public class DeskServiceImpl implements DeskService {
         var problem = JavaProblems.ALL.stream().filter(entry -> entry.view().id().equals(problemId)).findFirst()
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Unknown problem"));
         if (format == null || format.isEmpty() || format.length() > FORMAT_MAX) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "format must be 1-" + FORMAT_MAX + " characters");
+        /* 답을 낼 때마다(맞든 틀리든) 기력이 든다(JAVA_ANSWER). 모자라면 423, 채점하지 않는다. */
+        gate.ensureFit(member, ActionCost.JAVA_ANSWER);
+        gate.spend(member, ActionCost.JAVA_ANSWER);
         String output;
         try { output = JavaProblems.render(format, problem.args()); }
         catch (IllegalFormatException exception) { return new JavaAnswerDTO(problemId, format, null, false, false, JavaProblems.explain(exception, problem.args())); }
