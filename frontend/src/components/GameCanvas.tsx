@@ -37,6 +37,7 @@ import type { ConnectionInfo, ChatMessage, ChatError } from '../features/multipl
 import MultiplayerClient from '../features/multiplayer/MultiplayerClient'
 import ChatPanel from '../features/multiplayer/components/ChatPanel'
 import MobileControls from './MobileControls'
+import EndingPanel from '../features/ending/EndingPanel'
 import { playSfx } from '../audio/AudioManager'
 import { authStore, useAuth } from '../features/auth/authStore'
 import { MOBILE_INPUT } from '../game/input/mobileInput'
@@ -230,6 +231,7 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
       {labPanel === 'inventory' && <PhonePanel client={getClient} onClose={closeLabPanel} />}
       {labPanel === 'guestbook' && <GuestbookPanel onClose={closeLabPanel} />}
       {labPanel === 'vending-machine' && <VendingPanel onClose={closeLabPanel} />}
+      {labPanel === 'ending' && <EndingPanel onClose={closeLabPanel} />}
       {labPanel === 'food-cart' && <FoodCartPanel onClose={closeLabPanel} />}
       {tradeOffer && <TradeOfferPanel offer={tradeOffer} onClose={closeTrade}
         onAnswer={itemId => { clientRef.current?.answerTrade(tradeOffer.tradeId, itemId); setTradeOffer(null) }} />}

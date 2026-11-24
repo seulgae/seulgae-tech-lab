@@ -56,6 +56,13 @@ export function playSpatialSfx(key: EffectKey, from: { x: number; y: number }, l
   latest?.spatial(key, from, listener, options)
 }
 
+// 크레딧이 재생되는 동안만 설정값을 건드리지 않고 방의 소리를 끈다.
+export function muteRoomAudio() {
+  const manager = latest
+  manager?.setCinematicMute(true)
+  return () => manager?.setCinematicMute(false)
+}
+
 export class AudioManager {
   private readonly game: GameLike
   private readonly timers: Timers
@@ -70,6 +77,7 @@ export class AudioManager {
   private settings: AudioSettings = getAudioSettings()
   private readonly unsubscribe: () => void
   private destroyed = false
+  private cinematicMute = false
 
   /** 게임마다 하나만 만든다. */
   static for(game: GameLike, timers?: Timers) {
@@ -104,8 +112,21 @@ export class AudioManager {
     this.crossTo('ambient', `amb:${scape.ambience}`, scape.ambienceGain, () => renderAmbience(scape.ambience))
   }
 
+  setCinematicMute(muted: boolean) {
+    this.cinematicMute = muted
+    this.applyVolumes()
+    if (!muted) return
+    for (const item of this.fading) {
+      this.timers.clear(item.timer)
+      this.safely(() => item.sound.destroy())
+    }
+    this.fading.clear()
+    for (const item of this.active) this.safely(() => item.sound.destroy())
+    this.active.clear()
+  }
+
   sfx(key: EffectKey, options: SfxOptions = {}) {
-    if (!this.ready()) return
+    if (!this.ready() || this.cinematicMute) return
     const volume = effectiveVolume(this.settings, 'sfx') * (options.volume ?? 1)
     if (volume <= 0.001) return
     const low = options.priority === 'low'
@@ -153,11 +174,11 @@ export class AudioManager {
 
   private ready() { return this.available && !this.destroyed && !this.game.sound.locked }
 
-  private volumeFor(category: AudioCategory, base: number) { return effectiveVolume(this.settings, category) * base }
+  private volumeFor(category: AudioCategory, base: number) { return this.cinematicMute ? 0 : effectiveVolume(this.settings, category) * base }
 
   private applyVolumes() {
     for (const [name, channel] of Object.entries(this.channels) as ['bgm' | 'ambient', Channel][]) {
-      if (channel.sound && channel.fade === null) this.safely(() => channel.sound!.setVolume(this.volumeFor(name, channel.base)))
+      if (channel.sound) this.safely(() => channel.sound!.setVolume(this.volumeFor(name, channel.base) * channel.level))
     }
   }
 
