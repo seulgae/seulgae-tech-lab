@@ -399,7 +399,7 @@ function treatTable(ctx: Context) {
   let busyUntil = 0
 
   /**
-   * 회원은 동전으로 산다(케이크 3원 HP +10, 커피 2원 스태미나 +5). 비회원은 예전처럼 무료로 즐기기만 한다.
+   * 회원은 동전으로 산다(케이크 3원 HP +10, 커피 2원 기력 +5). 비회원은 예전처럼 무료로 즐기기만 한다.
    * 동전이 모자라거나 이미 가득이면 먹지 않고 안내만 한다.
    */
   const buy = (kind: TreatKind) => {
@@ -410,7 +410,7 @@ function treatTable(ctx: Context) {
       // 응답 전에 방을 나가 소품이 정리됐으면 아무것도 하지 않는다.
       if (!props[kind].active) return
       if (result === 'broke') { playSfx('error', { volume: 0.5 }); ctx.banner.show(`동전이 부족해요 · ${snack.name} ${snack.price}원`, '#e05a6c', 1800); return }
-      if (result === 'full') { ctx.banner.show(kind === 'coffee' ? '스태미나가 가득해요 · 지금은 괜찮아요' : 'HP가 가득해요 · 배불러요', '#a7d98a', 1800); return }
+      if (result === 'full') { ctx.banner.show(kind === 'coffee' ? '기력이 가득해요 · 지금은 괜찮아요' : 'HP가 가득해요 · 배불러요', '#a7d98a', 1800); return }
       enjoy(kind, result === 'bought' ? `${snack.name} ${snack.price}원` : undefined)
     })
   }

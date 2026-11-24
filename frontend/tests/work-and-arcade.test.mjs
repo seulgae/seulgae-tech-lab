@@ -106,3 +106,55 @@ test('오락실 내기: 위쪽 오락기 넷이 홀짝·사다리·주사위·�
   assert.match(resultText({ game: 'SLOT', pick: '', bet: 10, numbers: [1, 1, 2], win: false, payout: 5, coins: 0, betsLeftToday: 1 }), /5원만/)
   assert.match(resultText({ game: 'ODD_EVEN', pick: 'ODD', bet: 4, numbers: [1, 1], win: false, payout: 0, coins: 0, betsLeftToday: 1 }), /4원을 잃었어요/)
 })
+
+test('오락실 게임 고르기: 벽돌 부수기·블록 쌓기·지렁이·하늘 순찰대', async () => {
+  const { ARCADE_GAMES } = await import('../src/features/arcade/arcadeGames.ts')
+  assert.deepEqual(ARCADE_GAMES.map(game => game.id), ['breakout', 'blocks', 'snake', 'sky'])
+})
+
+const keys = (patch = {}) => ({ left: false, right: false, up: false, down: false, action: false, ...patch })
+const input = (pressed = {}, held = {}) => ({ pressed: keys(pressed), held: keys(held) })
+const fixed = () => 0.5
+
+test('블록 쌓기: 꽉 찬 줄을 지우고, 벽 밖으로는 못 옮기며, 바로 떨어뜨리면 바닥에 붙는다', async () => {
+  const { blockStack, emptyBoard, fits, lock, COLS, ROWS } = await import('../src/features/arcade/blockStack.ts')
+  const board = emptyBoard()
+  for (let x = 0; x < COLS; x++) if (x < 4 || x > 7) board[ROWS - 1][x] = 0
+  const flat = { kind: 0, cells: [[0, 0], [-1, 0], [1, 0], [2, 0]], x: 5, y: ROWS - 1 }
+  const { board: after, cleared } = lock(board, flat)
+  assert.equal(cleared, 1); assert.ok(after[ROWS - 1].every(cell => cell === -1))
+  assert.equal(fits(emptyBoard(), { ...flat, x: 1, y: 0 }, -1, 0), false, '왼쪽 벽')
+  let state = blockStack.step(blockStack.create(fixed), 0.016, input({ action: true }), fixed).state
+  assert.equal(state.phase, 'playing')
+  const dropped = blockStack.step(state, 0.016, input({ action: true }), fixed)
+  assert.ok(dropped.events.includes('hit'))
+  assert.ok(dropped.state.board[ROWS - 1].some(cell => cell >= 0), '바닥에 붙음')
+  assert.ok(dropped.state.score > 0)
+})
+
+test('지렁이: 사과를 먹으면 길어지고, 반대 방향으로는 못 돌며, 벽에 부딪히면 끝', async () => {
+  const { snake, turn } = await import('../src/features/arcade/snake.ts')
+  assert.deepEqual(turn({ x: 1, y: 0 }, input({ left: true })), { x: 1, y: 0 })
+  assert.deepEqual(turn({ x: 1, y: 0 }, input({ up: true })), { x: 0, y: -1 })
+  let state = { ...snake.step(snake.create(fixed), 0, input({ action: true }), fixed).state }
+  state = { ...state, apple: { x: 9, y: 12 } }
+  let ate = { state, events: [] }
+  for (let i = 0; i < 5 && !ate.events.includes('score'); i++) ate = snake.step(ate.state, 0.05, input(), fixed)
+  assert.ok(ate.events.includes('score')); assert.equal(ate.state.body.length, 4)
+  let walking = { ...ate.state, apple: { x: 0, y: 0 } }
+  let over = false
+  for (let i = 0; i < 400 && !over; i++) { const result = snake.step(walking, 0.05, input(), fixed); walking = result.state; over = result.state.phase === 'over' }
+  assert.ok(over, '오른쪽 벽에 부딪힘')
+})
+
+test('하늘 순찰대: 자동 사격으로 적기를 떨어뜨리고, 적기와 부딪히면 목숨이 준다', async () => {
+  const { skyPatrol } = await import('../src/features/arcade/skyPatrol.ts')
+  let state = skyPatrol.step(skyPatrol.create(fixed), 0, input({ action: true }), fixed).state
+  state = { ...state, spawn: 99, enemies: [{ x: 160, y: 150, vx: 0, vy: 0, hp: 1, fire: 99 }] }
+  let scored = false
+  for (let i = 0; i < 30 && !scored; i++) { const result = skyPatrol.step(state, 0.03, input(), fixed); state = result.state; scored = result.events.includes('score') }
+  assert.ok(scored); assert.equal(state.score >= 50, true)
+  state = { ...state, bullets: [], reload: 99, enemies: [{ x: state.plane.x, y: state.plane.y, vx: 0, vy: 0, hp: 1, fire: 99 }] }
+  const hit = skyPatrol.step(state, 0.016, input(), fixed)
+  assert.ok(hit.events.includes('hit')); assert.equal(hit.state.lives, 2)
+})

@@ -30,3 +30,18 @@
 @media (prefers-reduced-motion: reduce) {
   .gamble-stage.rolling .gamble-die, .gamble-stage.rolling .gamble-reel, .gamble-ladder-path { animation: none; stroke-dashoffset: 0; }
 }
+
+/* 메인 오락기: 게임 고르기 카드와 모바일 화면 버튼 */
+.arcade-header-actions { display: flex; gap: 6px; }
+.arcade-menu { list-style: none; margin: 12px 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.research-panel .arcade-menu button { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; width: 100%; min-height: 110px; padding: 14px; border-radius: 12px; border: 2px solid var(--accent); background: #0b0618; color: #f5f3ff; text-align: left; cursor: pointer; box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 35%, transparent); }
+.research-panel .arcade-menu button:hover, .research-panel .arcade-menu button:focus-visible { background: #1a1030; transform: translateY(-2px); }
+.arcade-menu-icon { font-size: 26px; }
+.arcade-menu strong { font-size: 16px; color: var(--accent); }
+.arcade-menu small { color: #c4b5fd; font-size: 12px; }
+.arcade-screen.retro-screen { cursor: crosshair; }
+.arcade-pad { display: none; justify-content: center; gap: 8px; margin-top: 8px; }
+.research-panel .arcade-pad button { width: 48px; height: 44px; border-radius: 10px; border: 1px solid #a78bfa; background: #1a1030; color: #f5f3ff; font-size: 16px; touch-action: none; user-select: none; }
+.research-panel .arcade-pad button:last-child { background: #f472b6; color: #12081f; font-weight: 800; }
+@media (pointer: coarse) { .arcade-pad { display: flex; } }
+@media (max-width: 480px) { .arcade-menu { grid-template-columns: 1fr; } .arcade-menu button { min-height: 0; } }

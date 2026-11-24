@@ -9,11 +9,11 @@ export type Vitals = { hp: number; hpMax: number; fatigue: number; fatigueMax: n
 export type InventoryState = { loaded: boolean; available: boolean; coins: number; items: InventoryItem[]; rewardsLeftToday: number } & Vitals
 type InventoryView = { coins: number; items: InventoryItem[]; rewardsLeftToday: number } & Partial<Vitals>
 export const COIN_EVENT = 'lab:coin'
-/** HP·스태미나가 바뀌면 게임 장면에 변화량을 띄우는 window 이벤트(detail: { hp, fatigue }) */
+/** HP·기력이 바뀌면 게임 장면에 변화량을 띄우는 window 이벤트(detail: { hp, fatigue }) */
 export const VITALS_EVENT = 'lab:vitals'
-/** 일·오락 한 번에 드는 HP·스태미나, 간식 가격과 회복량(서버 InventoryService와 같은 값) */
+/** 일·오락 한 번에 드는 HP·기력, 간식 가격과 회복량(서버 InventoryService와 같은 값) */
 export const WORK_COST = { hp: 3, fatigue: 5 }
-/** 자판기 음료 가격과 스태미나 회복량. 구매 즉시 마신다. */
+/** 자판기 음료 가격과 기력 회복량. 구매 즉시 마신다. */
 export const DRINKS = {
   COLA: { price: 2, hp: 0, fatigue: 5, name: '콜라' },
   CIDER: { price: 2, hp: 0, fatigue: 5, name: '사이다' },
@@ -23,9 +23,9 @@ export const DRINKS = {
 export type DrinkKind = keyof typeof DRINKS
 export const SNACKS = { ...DRINKS, CAKE: { price: 3, hp: 10, fatigue: 0, name: '케이크' }, COFFEE: { price: 2, hp: 0, fatigue: 5, name: '커피' } } as const
 export type SnackKind = keyof typeof SNACKS
-/** HP·스태미나가 모자라 일·오락을 할 수 없을 때 서버 응답(423)과 안내 */
+/** HP·기력이 모자라 일·오락을 할 수 없을 때 서버 응답(423)과 안내 */
 export const TIRED_STATUS = 423
-export const TIRED_MESSAGE = '기운이 없어요. 로비 데스크에서 케이크(HP +10)나 커피(스태미나 +5)로 회복하세요.'
+export const TIRED_MESSAGE = '기운이 없어요. 로비 데스크에서 케이크(HP +10)나 커피(기력 +5)로 회복하세요.'
 export const INVENTORY_KEY = 'I'
 /** 화면 위 가방 버튼이 게임 장면에 "가방 열기"를 요청하는 window 이벤트 */
 export const OPEN_INVENTORY_EVENT = 'lab:open-inventory'
@@ -50,10 +50,10 @@ function apply(view: InventoryView) {
   if (hp !== 0 || fatigue !== 0) globalThis.dispatchEvent?.(new CustomEvent(VITALS_EVENT, { detail: { hp, fatigue } }))
 }
 
-/** 변화량 표시 문구(예: "HP -3 · 스태미나 -5") */
+/** 변화량 표시 문구(예: "HP -3 · 기력 -5") */
 export function vitalsText(change: { hp: number; fatigue: number }) {
   const sign = (n: number) => (n > 0 ? `+${n}` : `${n}`)
-  return [change.hp ? `HP ${sign(change.hp)}` : '', change.fatigue ? `스태미나 ${sign(change.fatigue)}` : ''].filter(Boolean).join(' · ')
+  return [change.hp ? `HP ${sign(change.hp)}` : '', change.fatigue ? `기력 ${sign(change.fatigue)}` : ''].filter(Boolean).join(' · ')
 }
 
 export const inventoryStore = {
@@ -78,7 +78,7 @@ export const inventoryStore = {
       return true
     } catch { return false }
   },
-  /** 오락실 한 판(1원, HP -3, 스태미나 -5). 'paid' 냈음, 'free' 비회원 무료, 'broke' 동전 부족, 'tired' 기운 부족 */
+  /** 오락실 한 판(1원, HP -3, 기력 -5). 'paid' 냈음, 'free' 비회원 무료, 'broke' 동전 부족, 'tired' 기운 부족 */
   async payArcade(): Promise<'paid' | 'free' | 'broke' | 'tired'> {
     try {
       const response = await call('/api/inventory/arcade', { method: 'POST' })

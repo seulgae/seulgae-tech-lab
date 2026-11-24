@@ -60,7 +60,7 @@ class InventoryServiceTest {
         service.ensureFit(me);
         service.spendWork(me);
         assertEquals(47, service.view(me).hp(), "일하면 HP -3");
-        assertEquals(45, service.view(me).fatigue(), "일하면 스태미나 -5");
+        assertEquals(45, service.view(me).fatigue(), "일하면 기력 -5");
 
         var full = assertThrows(ResponseStatusException.class, () -> service.buySnack(friend, "CAKE"));
         assertEquals(InventoryService.ALREADY_FULL, full.getStatusCode(), "가득이면 사지 않는다(동전도 그대로)");
@@ -73,7 +73,7 @@ class InventoryServiceTest {
         assertEquals(50, cake.hp(), "HP +10이지만 최대 50에서 멈춘다");
         assertEquals(7, cake.coins(), "케이크 3원");
         var coffee = service.buySnack(me, "COFFEE");
-        assertEquals(50, coffee.fatigue(), "커피 스태미나 +5");
+        assertEquals(50, coffee.fatigue(), "커피 기력 +5");
         assertEquals(5, coffee.coins(), "커피 2원");
         assertThrows(ResponseStatusException.class, () -> service.buySnack(me, "BEER"));
 
@@ -82,11 +82,11 @@ class InventoryServiceTest {
         var afterGame = service.view(me);
         assertEquals(coinsBefore - 1, afterGame.coins());
         assertEquals(47, afterGame.hp(), "오락도 HP -3");
-        assertEquals(45, afterGame.fatigue(), "오락도 스태미나 -5");
+        assertEquals(45, afterGame.fatigue(), "오락도 기력 -5");
     }
 
     @Test void tooTiredMembersCannotWorkOrPlayUntilTheyRest() {
-        for (int i = 0; i < 10; i++) service.spendWork(me); // 스태미나 50 → 0
+        for (int i = 0; i < 10; i++) service.spendWork(me); // 기력 50 → 0
         assertEquals(0, service.view(me).fatigue());
         assertEquals(20, service.view(me).hp());
         var tired = assertThrows(ResponseStatusException.class, () -> service.ensureFit(me));

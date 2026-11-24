@@ -20,8 +20,8 @@ import org.springframework.web.server.ResponseStatusException;
 /**
  * 인벤토리 규칙(일지 #7): 낚은 물고기 보관, 버리기(방 바닥)·줍기, 동전.
  * 사무실 게시물 하나에 10원(도배 방지로 하루 10번까지), 오락실 게임 한 판에 1원.
- * HP·스태미나(일지 #10): 기본 최대 50. 사무실 게시판 일·오락 한 번에 HP -3, 스태미나 -5.
- * 로비 데스크 케이크(3원)는 HP +10, 커피(2원)는 스태미나 +5. 모자라면 일·오락을 할 수 없다.
+ * HP·기력(일지 #10): 기본 최대 50. 사무실 게시판 일·오락 한 번에 HP -3, 기력 -5.
+ * 로비 데스크 케이크(3원)는 HP +10, 커피(2원)는 기력 +5. 모자라면 일·오락을 할 수 없다.
  *
  * @author seulgae
  * @version 1.1, 자판기 음료 구매와 서버 가격 검증
@@ -88,7 +88,7 @@ public class InventoryServiceImpl implements InventoryService {
         return store.changeCoins(member, WORK_POST_REWARD, WORK_POST).isPresent() ? WORK_POST_REWARD : 0;
     }
 
-    /** 오락실 한 판. HP·스태미나가 모자라면 423, 동전이 없으면 409(둘 다 아무것도 바꾸지 않음). @return 남은 동전 */
+    /** 오락실 한 판. HP·기력이 모자라면 423, 동전이 없으면 409(둘 다 아무것도 바꾸지 않음). @return 남은 동전 */
     @Transactional
     public int playArcade(UUID member) {
         ensureFit(member);
@@ -98,7 +98,7 @@ public class InventoryServiceImpl implements InventoryService {
         return coins;
     }
 
-    /** 일·오락을 할 수 있을 만큼 HP·스태미나가 남았는지 확인한다. 모자라면 423. */
+    /** 일·오락을 할 수 있을 만큼 HP·기력이 남았는지 확인한다. 모자라면 423. */
     public void ensureFit(UUID member) {
         var vitals = store.vitals(member);
         if (vitals.hp() < WORK_HP_COST || vitals.fatigue() < WORK_FATIGUE_COST) {
@@ -106,7 +106,7 @@ public class InventoryServiceImpl implements InventoryService {
         }
     }
 
-    /** 사무실 게시판에서 일한 뒤 HP -3, 스태미나 -5(모자라면 빼지 않는다). */
+    /** 사무실 게시판에서 일한 뒤 HP -3, 기력 -5(모자라면 빼지 않는다). */
     @Transactional
     public void spendWork(UUID member) { spend(member); }
 
@@ -116,8 +116,8 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     /**
-     * 로비 간식·음료를 서버 가격으로 구매한다. 탄산음료 2원 스태미나 +5, 물 1원 스태미나 +2.
-     * 케이크 3원 HP +10, 커피 2원 스태미나 +5이며 회복은 최대치에서 멈춘다.
+     * 로비 간식·음료를 서버 가격으로 구매한다. 탄산음료 2원 기력 +5, 물 1원 기력 +2.
+     * 케이크 3원 HP +10, 커피 2원 기력 +5이며 회복은 최대치에서 멈춘다.
      * 이미 가득이면 422(돈을 받지 않음), 동전이 모자라면 409.
      * @param member 구매 회원
      * @param kind 서버가 허용한 간식·음료 코드
