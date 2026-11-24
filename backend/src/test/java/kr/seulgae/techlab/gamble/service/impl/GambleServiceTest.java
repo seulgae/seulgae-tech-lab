@@ -29,7 +29,7 @@ class GambleServiceTest {
         assertThatThrownBy(() -> service.play(me, "LADDER", 1, "3")).hasMessageContaining("400");
         var result = service.play(me, "DICE", 10, "3");
         assertThat(result.coins()).isEqualTo(result.payout());
-        assertThat(result.betsLeftToday()).isEqualTo(49);
+        assertThat(result.betsLeftToday()).isEqualTo(9);
         assertThat(inventory.coins(me)).isEqualTo(result.payout());
     }
 

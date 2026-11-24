@@ -18,7 +18,7 @@ import kr.seulgae.techlab.gamble.dto.GambleResultDTO;
  * @see None
  */
 public interface GambleService {
-    int MIN_BET = 1, MAX_BET = 20, DAILY_BETS = 50;
+    int MIN_BET = 1, MAX_BET = 20, DAILY_BETS = 10;
     /** 공통코드 COIN_REASON */
     String BET = "GAMBLE_BET", WIN = "GAMBLE_WIN";
 

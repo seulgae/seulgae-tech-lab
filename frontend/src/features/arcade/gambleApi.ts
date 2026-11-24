@@ -40,7 +40,7 @@ export async function playGamble(game: GambleGame, bet: number, pick: string): P
     method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json' }, body: JSON.stringify({ game, bet, pick }),
   })
   if (!response.ok) {
-    throw new Error({ 401: '로그인한 연구원만 동전을 걸 수 있어요.', 400: '건 돈과 고른 값을 다시 확인해 주세요.', 409: '동전이 모자라요.', 429: '오늘은 더 할 수 없어요(하루 50판). 내일 다시 와요.' }[response.status] ?? '요청에 실패했어요.')
+    throw new Error({ 401: '로그인한 연구원만 동전을 걸 수 있어요.', 400: '건 돈과 고른 값을 다시 확인해 주세요.', 409: '동전이 모자라요.', 429: '오늘은 더 할 수 없어요(하루 10판). 내일 다시 와요.' }[response.status] ?? '요청에 실패했어요.')
   }
   return await response.json() as GambleResult
 }

@@ -31,10 +31,10 @@ public class WorkItemController {
         this.service = service; this.limiter = limiter; this.auth = auth; this.inventory = inventory;
     }
 
-    /** 일하기 전: 회원은 HP 3·스태미나 5가 남아 있어야 한다(모자라면 423). */
+    /** 일하기 전: 회원은 HP 3·기력 5가 남아 있어야 한다(모자라면 423). */
     private void ensureFit(UUID author) { if (author != null) inventory.ensureFit(author); }
 
-    /** 회원이 게시물을 등록하면 HP -3, 스태미나 -5, 동전 10원(하루 10번까지, 도배 방지) */
+    /** 회원이 게시물을 등록하면 HP -3, 기력 -5, 동전 10원(하루 10번까지, 도배 방지) */
     private void reward(UUID author) {
         if (author == null) return;
         try { inventory.spendWork(author); } catch (org.springframework.web.server.ResponseStatusException ignored) { /* 동시에 여러 글을 올려 모자라졌으면 넘어간다 */ }

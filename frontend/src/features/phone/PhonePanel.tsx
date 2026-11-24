@@ -60,7 +60,7 @@ export default function PhonePanel({ client, onClose }: { client: () => Multipla
             <h2 id="phone-title" className="phone-sr">슬개폰</h2>
             {inventory.available ? (
               <section className="phone-widget" aria-label="내 상태">
-                {([['HP', inventory.hp, inventory.hpMax, 'hp'], ['스태미나', inventory.fatigue, inventory.fatigueMax, 'fatigue']] as const).map(([label, value, max, key]) => (
+                {([['HP', inventory.hp, inventory.hpMax, 'hp'], ['기력', inventory.fatigue, inventory.fatigueMax, 'fatigue']] as const).map(([label, value, max, key]) => (
                   <div key={key} className={`inventory-vital vital-${key}`}>
                     <span>{label}</span>
                     <span className="inventory-bar" role="meter" aria-label={label} aria-valuemin={0} aria-valuemax={max} aria-valuenow={value}>
@@ -69,7 +69,7 @@ export default function PhonePanel({ client, onClose }: { client: () => Multipla
                     <strong>{value}/{max}</strong>
                   </div>
                 ))}
-                <small>일·오락 한 번에 HP -3, 스태미나 -5 · 게시물 보상 오늘 {inventory.rewardsLeftToday}번 남음</small>
+                <small>일·오락 한 번에 HP -3, 기력 -5 · 게시물 보상 오늘 {inventory.rewardsLeftToday}번 남음</small>
               </section>
             ) : (
               <section className="phone-widget phone-login" aria-label="로그인">
