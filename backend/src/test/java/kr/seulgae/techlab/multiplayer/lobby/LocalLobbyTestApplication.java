@@ -28,10 +28,6 @@ import kr.seulgae.techlab.meeting.agendas.repository.*;
 import kr.seulgae.techlab.meeting.agendas.service.impl.*;
 import kr.seulgae.techlab.multiplayer.lobby.config.*;
 import kr.seulgae.techlab.multiplayer.lobby.domain.*;
-import kr.seulgae.techlab.office.work.controller.*;
-import kr.seulgae.techlab.office.work.repository.impl.*;
-import kr.seulgae.techlab.office.work.repository.*;
-import kr.seulgae.techlab.office.work.service.impl.*;
 import kr.seulgae.techlab.phone.controller.*;
 import kr.seulgae.techlab.phone.repository.impl.*;
 import kr.seulgae.techlab.phone.repository.*;
@@ -57,9 +53,6 @@ import kr.seulgae.techlab.lobby.guestbook.repository.GuestbookRepository;
 import kr.seulgae.techlab.lobby.guestbook.repository.impl.InMemoryGuestbookRepository;
 import kr.seulgae.techlab.inventory.controller.InventoryController;
 import kr.seulgae.techlab.inventory.repository.InventoryRepository;
-import kr.seulgae.techlab.office.work.repository.impl.InMemoryWorkItemRepository;
-import kr.seulgae.techlab.office.work.controller.WorkItemController;
-import kr.seulgae.techlab.office.work.repository.WorkItemRepository;
 import kr.seulgae.techlab.meeting.agendas.entity.MeetingAgenda;
 import kr.seulgae.techlab.meeting.agendas.controller.MeetingAgendaController;
 import kr.seulgae.techlab.meeting.agendas.repository.MeetingAgendaRepository;
@@ -87,7 +80,7 @@ import org.springframework.context.annotation.Import;
 @EnableAutoConfiguration(excludeName = "org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration")
 @Import({LobbyWebSocketConfig.class, LobbySocketHandler.class, LobbyRoom.class, LobbyWorld.class, LobbyChat.class,
     ApiExceptionHandler.class, LabStatusController.class, MeetingAgendaController.class, MeetingAgendaServiceImpl.class, WriteRateLimiter.class,
-    AuthSettings.class, AuthServiceImpl.class, AuthController.class, KakaoClient.class, WorkItemController.class, WorkItemServiceImpl.class,
+    AuthSettings.class, AuthServiceImpl.class, AuthController.class, KakaoClient.class,
     InventoryController.class, InventoryServiceImpl.class, GuestbookController.class, GuestbookServiceImpl.class, kr.seulgae.techlab.admin.service.impl.AdminAccessImpl.class,
     kr.seulgae.techlab.auth.service.impl.LevelServiceImpl.class, kr.seulgae.techlab.auth.controller.LevelController.class,
     kr.seulgae.techlab.inventory.service.impl.BankServiceImpl.class, kr.seulgae.techlab.inventory.controller.BankController.class,
@@ -98,16 +91,24 @@ import org.springframework.context.annotation.Import;
     kr.seulgae.techlab.dorm.service.impl.DormServiceImpl.class, kr.seulgae.techlab.dorm.controller.DormController.class,
     kr.seulgae.techlab.savings.service.impl.SavingsServiceImpl.class, kr.seulgae.techlab.savings.controller.SavingsController.class,
     kr.seulgae.techlab.stock.service.impl.StockServiceImpl.class, kr.seulgae.techlab.stock.controller.StockController.class,
-    kr.seulgae.techlab.gamble.service.impl.GambleServiceImpl.class, kr.seulgae.techlab.gamble.controller.GambleController.class})
+    kr.seulgae.techlab.gamble.service.impl.GambleServiceImpl.class, kr.seulgae.techlab.gamble.controller.GambleController.class,
+    kr.seulgae.techlab.office.common.WorkReward.class,
+    kr.seulgae.techlab.office.idea.service.impl.IdeaPostServiceImpl.class, kr.seulgae.techlab.office.idea.controller.IdeaPostController.class,
+    kr.seulgae.techlab.office.qa.service.impl.QaTicketServiceImpl.class, kr.seulgae.techlab.office.qa.controller.QaTicketController.class,
+    kr.seulgae.techlab.office.desk.service.impl.DeskServiceImpl.class, kr.seulgae.techlab.office.desk.controller.DeskController.class})
 public class LocalLobbyTestApplication {
     private static final OffsetDateTime CREATED_AT = OffsetDateTime.parse("2026-11-15T12:00:00+09:00");
 
     /** 테스트 클래스 경로에서만 실행되며 운영 JAR에는 포함되지 않는다. */
     public static void main(String[] args) { SpringApplication.run(LocalLobbyTestApplication.class, args); }
 
-    /** 사무실 업무 게시판(DB 없는 로컬 실행) */
+    /** 아이디어 기획 게시판(DB 없는 로컬 실행) */
     @Bean
-    WorkItemRepository fixtureWorkStore() { return new InMemoryWorkItemRepository(); }
+    kr.seulgae.techlab.office.idea.repository.IdeaPostRepository fixtureIdeaStore() { return new kr.seulgae.techlab.office.board.InMemoryOfficeBoards.Ideas(); }
+
+    /** QA 게시판(DB 없는 로컬 실행) */
+    @Bean
+    kr.seulgae.techlab.office.qa.repository.QaTicketRepository fixtureQaStore() { return new kr.seulgae.techlab.office.board.InMemoryOfficeBoards.Tickets(); }
 
     /** 인벤토리(DB 없는 로컬 실행) */
     @Bean

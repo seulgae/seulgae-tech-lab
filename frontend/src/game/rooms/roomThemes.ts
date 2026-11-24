@@ -79,7 +79,7 @@ export const ROOM_THEMES: Record<RoomId, RoomTheme> = {
     door: { frame: '#5a3f2a', frameLight: '#c4a57a', panel: '#9c7a55', panelLight: '#b8936a', handle: '#e7d29a', sign: '#5a6f8c' },
     page: { background: '#1b1814', card: '#28221b', border: '#5c4d3b', accent: '#e8c48a', muted: '#c8b89f' },
     textures: { computer: 'office-desk', chair: 'office-chair', rack: 'bookshelf', equipment: 'workbench', plant: 'tall-plant' },
-    notes: { title: '서비스 연구실', body: 'QA부터 운영까지\n한 방에서 이어져요.', missionTitle: 'QA → 유지보수 → 운영', mission: '왼쪽 열 맨 위 컴퓨터에 QA를 등록하면 가운데 유지보수 컴퓨터로, 조치가 끝나면 맨 아래 운영업무 컴퓨터로 넘어가요. 글 하나에 동전 10원! 오른쪽 열 연구원들은 일하다가 가끔 버럭해요. 연구원에게 E로 말을 걸어 보세요.' },
+    notes: { title: '서비스 연구실', body: '아이디어를 모으고\n버그를 고치는 곳.', missionTitle: '아이디어 · QA · 내 자리', mission: '왼쪽 열 맨 아래가 내 자리 컴퓨터예요. 바탕화면 아이콘으로 메일(오늘 할 업무), 아이디어 기획 게시판, QA 게시판(등록 → 조치 중 → 조치 완료), 개발(자바 printf 연습)을 열어요. 다른 자리에서는 연구원들이 일하고 있어요. 글 하나에 동전 10원!' },
   },
   'office-2': {
     mood: '기술 원리를 직접 만들어 보고 눈으로 확인하는 하얀 실습 연구실',

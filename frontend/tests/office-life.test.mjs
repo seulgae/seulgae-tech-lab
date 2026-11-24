@@ -34,8 +34,8 @@ test('사무실 여섯 인물은 모두 서로 다른 외형의 연구원이다'
   assert.deepEqual(desks.slice(3).map(o=>o.body.y),[150,300,450])
 })
 
-test('오른쪽 작업석 연구원 셋은 앉아서 일하다가 가끔 화가 나서 한마디 한다(채용 화면 없음)', () => {
-  assert.equal(OFFICE_DESK_WORKERS.length, 3)
+test('작업석 연구원 넷(오른쪽 셋, 왼쪽 가운데 QA 자리)은 앉아서 일하다가 가끔 화가 나서 한마디 한다', () => {
+  assert.equal(OFFICE_DESK_WORKERS.length, 4)
   for (const worker of OFFICE_DESK_WORKERS) {
     assert.equal(worker.seated, true, worker.id)
     assert.ok(worker.angry.length >= 5 && worker.talk.length >= 2, worker.id)

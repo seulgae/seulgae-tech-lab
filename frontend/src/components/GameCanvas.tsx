@@ -16,8 +16,7 @@ import AgendaPanel from '../features/boards/AgendaPanel'
 import BookPanel from '../features/books/BookPanel'
 import SqlConsolePanel from '../features/admin/SqlConsolePanel'
 import AdminApplyPanel from '../features/admin/AdminApplyPanel'
-import WorkBoardPanel from '../features/work/WorkBoardPanel'
-import { WORK_BOARDS } from '../features/work/workApi'
+import MyDeskPanel from '../features/office/MyDeskPanel'
 import ArcadePanel from '../features/arcade/ArcadePanel'
 import GamblePanel from '../features/arcade/GamblePanel'
 import { GAMBLE_MACHINES } from '../features/arcade/gambleApi'
@@ -61,7 +60,6 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
   const [controlsReset, setControlsReset] = useState(0)
   const [labPanel, setLabPanel] = useState<RoomPanelKind | null>(null)
   /** 서비스 연구실에서 연 업무 게시판 컴퓨터 */
-  const [workBoardId, setWorkBoardId] = useState('')
   const [gambleId, setGambleId] = useState('')
   const [rackId, setRackId] = useState('')
   const [tableTalk, setTableTalk] = useState(false)
@@ -132,8 +130,6 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
     const openPulls = () => setPullsOpen(true)
     uiEvents.on(PULLS_EVENTS.openPulls, openPulls)
     const openLabPanel = (kind: RoomPanelKind) => setLabPanel(kind)
-    const pickWorkBoard = (id: string) => setWorkBoardId(id)
-    uiEvents.on(LAB_EVENTS.workBoard, pickWorkBoard)
     uiEvents.on(LAB_EVENTS.serverRack, setRackId)
     uiEvents.on(LAB_EVENTS.gamble, setGambleId)
     uiEvents.on(LAB_EVENTS.openPanel, openLabPanel)
@@ -181,7 +177,6 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
       uiEvents.emit(MULTIPLAYER_EVENTS.dispose)
       uiEvents.off(PULLS_EVENTS.openPulls, openPulls)
       uiEvents.off(LAB_EVENTS.openPanel, openLabPanel)
-      uiEvents.off(LAB_EVENTS.workBoard, pickWorkBoard)
       uiEvents.off(LAB_EVENTS.serverRack, setRackId)
       uiEvents.off(LAB_EVENTS.gamble, setGambleId)
       uiEvents.off(LAB_EVENTS.tableTalk, setTableTalk)
@@ -213,7 +208,7 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
       {labPanel === 'bookshelf' && <BookPanel onClose={closeLabPanel} />}
       {labPanel === 'admin-console' && <SqlConsolePanel onClose={closeLabPanel} />}
       {labPanel === 'admin-apply' && <AdminApplyPanel onClose={closeLabPanel} />}
-      {labPanel === 'work-board' && WORK_BOARDS[workBoardId] && <WorkBoardPanel board={WORK_BOARDS[workBoardId]!} onClose={closeLabPanel} />}
+      {labPanel === 'my-desk' && <MyDeskPanel onClose={closeLabPanel} />}
       {labPanel === 'arcade' && <ArcadePanel onClose={closeLabPanel} />}
       {labPanel === 'gamble' && GAMBLE_MACHINES[gambleId] && <GamblePanel game={GAMBLE_MACHINES[gambleId]!} onClose={closeLabPanel} />}
       {labPanel === 'inventory' && <PhonePanel client={getClient} onClose={closeLabPanel} />}
