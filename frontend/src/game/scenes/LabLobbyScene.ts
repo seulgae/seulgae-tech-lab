@@ -3,7 +3,7 @@ import Player from '../Player'
 import createLobbyMap from '../LobbyMap'
 import { PULLS_EVENTS } from '../../features/pulls/pullsApi'
 import { LAB_EVENTS } from '../../features/lab/labEvents'
-import { hasTextInputFocus, isNearObject } from '../interaction'
+import { closerTarget, hasTextInputFocus, isNearObject } from '../interaction'
 import { createPixelAssets } from '../assets/pixelAssets'
 import { createRoomAssets } from '../assets/roomAssets'
 import { createRoomFx } from '../rooms/RoomFx'
@@ -287,7 +287,9 @@ export default class LabLobbyScene extends Phaser.Scene {
     const door = ROOMS[this.activeRoom].doors.find(d => Math.hypot(this.player!.x - d.x, this.player!.y - d.y) <= 56)
     // 출입구가 우선이며, E 한 번에 한 대상만 실행한다.
     // 바닥 아이템이 바로 발밑에 있으면 줍기가 먼저다.
-    const target = door ? undefined : this.nearestPickup() ?? this.nearestMoving() ?? nearestInteraction(this.activeRoom, this.player.x, this.player.y)
+    // 움직이는 대상(NPC 등)과 고정 대상(의자·컴퓨터)이 둘 다 범위 안이면 가장자리까지 더 가까운 쪽을 고른다.
+    // (예전에는 NPC가 늘 먼저라, 내 자리 의자 앞에서도 근처 연구원에게 말 걸기가 잡혔다.)
+    const target = door ? undefined : this.nearestPickup() ?? closerTarget(this.player.x, this.player.y, this.nearestMoving(), nearestInteraction(this.activeRoom, this.player.x, this.player.y))
     this.syncSeat()
     // 테이블 범위를 벗어나면 서버 거부를 기다리지 않고 근거리 대화를 끈다. 회의실 의자에 앉아 있는 동안은 유지한다.
     if (this.tableTalk && target?.kind !== 'table-talk' && !this.seatTalk) this.setTableTalk(false)
