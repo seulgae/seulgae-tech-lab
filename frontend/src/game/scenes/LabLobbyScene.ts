@@ -175,11 +175,12 @@ export default class LabLobbyScene extends Phaser.Scene {
     this.footsteps.reset()
     this.fx = createRoomFx(this, this.activeRoom, {
       openPanel: kind => {
-        if (this.panelOpen || this.transition) return
+        if (this.panelOpen || this.transition || !this.player) return false
         this.panelOpen = true
         this.resetChatInput()
         playSfx('panel-open', { volume: 0.6 })
         this.uiEvents.emit(LAB_EVENTS.openPanel, kind)
+        return true
       },
       from: data.from, client: this.client, plants, player: () => this.player && { x: this.player.x, y: this.player.y }, obstacles,
     })

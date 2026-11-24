@@ -9,7 +9,8 @@ import { nextDelay } from './roomEventLogic'
 export type Options = {
   /** 이 연출이 그리는 방(공용 연출이 방 테마를 고를 때 쓴다) */
   /** 방 연출이 화면 패널을 연다(예: 서버실 로봇 → 블로그 안내 창) */
-  openPanel?: (kind: RoomPanelKind) => void
+  /** @returns 열었으면 true(방 이동 중이거나 다른 창이 열려 있으면 false) */
+  openPanel?: (kind: RoomPanelKind) => boolean | void
   room?: RoomId
   from?: RoomId; client: MultiplayerClient; plants?: Map<string, Phaser.GameObjects.Image>
   /** 먹고 마시기·책 꺼내기 연출이 따라갈 내 캐릭터 위치 */

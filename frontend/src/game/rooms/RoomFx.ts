@@ -489,8 +489,16 @@ function officeFx(ctx: Context): RoomHandlers {
 /** 실습 연구실(로비 오른쪽 위): 유즈맵 대기실. 들어오면 잠깐 뒤 대기실 창이 자동으로 열리고, 가운데 단말기에서 다시 열 수 있다. */
 function practiceLabFx(ctx: Context): RoomHandlers {
   const ambience = officeFx(ctx)
-  ctx.scene.time.delayedCall(700, () => ctx.options.openPanel?.('usemap'))
-  return { destroy: () => ambience.destroy?.() }
+  /* 방 이동(페이드·서버 확인)이 끝나기 전에는 창을 열 수 없어서, 열릴 때까지 0.5초마다 다시 시도한다(최대 15초). */
+  let tries = 0, stopped = false
+  const tryOpen = () => {
+    if (stopped) return
+    const opened = ctx.options.openPanel?.('usemap')
+    if (opened === true || ++tries >= 30) return
+    ctx.scene.time.delayedCall(500, tryOpen)
+  }
+  ctx.scene.time.delayedCall(700, tryOpen)
+  return { destroy: () => { stopped = true; ambience.destroy?.() } }
 }
 
 /** 개인 기숙사(로비 오른쪽 아래): 사무실 조명·시계 위에 내 가구(dormFx) */
