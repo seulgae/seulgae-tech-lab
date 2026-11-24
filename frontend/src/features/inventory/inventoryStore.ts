@@ -25,7 +25,32 @@ export const SNACKS = { ...DRINKS, CAKE: { price: 3, hp: 10, fatigue: 0, name: '
 export type SnackKind = keyof typeof SNACKS
 /** HP·기력이 모자라 일·오락을 할 수 없을 때 서버 응답(423)과 안내 */
 export const TIRED_STATUS = 423
-export const TIRED_MESSAGE = '기운이 없어요. 로비 데스크에서 케이크(HP +10)나 커피(기력 +5)로 회복하세요.'
+export const TIRED_MESSAGE = '기력이나 HP가 모자라요(한 번에 HP 3·기력 5 필요). 로비 데스크에서 커피(기력 +5)나 케이크(HP +10)로 채워요.'
+/** 오락실 메인 오락기 하루 판 수(네 게임 합쳐, 서버 InventoryService.DAILY_ARCADE_PLAYS와 같은 값) */
+export const ARCADE_DAILY_PLAYS = 5
+export type ArcadePay = 'paid' | 'free' | 'broke' | 'tired' | 'limit'
+
+/**
+ * 오락실 동전 넣기 결과 안내 문구.
+ *
+ * @param result 결과
+ * @param playsLeft 오늘 남은 판(모르면 null)
+ * @returns 안내 한 줄
+ */
+export function arcadeNotice(result: ArcadePay, playsLeft: number | null): string {
+  const left = playsLeft === null ? '' : ` · 오늘 ${playsLeft}판 남음`
+  return {
+    paid: `동전 1원을 넣었어요(HP -3, 기력 -5)${left}. 행운을 빌어요!`,
+    free: '비회원은 무료로 즐겨요.',
+    broke: '동전이 부족해요. 사무실 게시판에 글을 등록하면 10원을 받아요.',
+    tired: TIRED_MESSAGE,
+    limit: `오늘 오락실 ${ARCADE_DAILY_PLAYS}판을 다 했어요. 내일 다시 와요!`,
+  }[result]
+}
+
+/** 시작 전 안내: 한 판 값과 오늘 남은 판 */
+export const arcadeIntro = (playsLeft: number | null) =>
+  `회원은 한 판에 1원(HP -3, 기력 -5), 하루 ${ARCADE_DAILY_PLAYS}판${playsLeft === null ? '' : ` · 오늘 ${playsLeft}판 남음`}. Space·탭으로 시작해요.`
 export const INVENTORY_KEY = 'I'
 /** 화면 위 가방 버튼이 게임 장면에 "가방 열기"를 요청하는 window 이벤트 */
 export const OPEN_INVENTORY_EVENT = 'lab:open-inventory'
@@ -78,17 +103,27 @@ export const inventoryStore = {
       return true
     } catch { return false }
   },
-  /** 오락실 한 판(1원, HP -3, 기력 -5). 'paid' 냈음, 'free' 비회원 무료, 'broke' 동전 부족, 'tired' 기운 부족 */
-  async payArcade(): Promise<'paid' | 'free' | 'broke' | 'tired'> {
+  /** 오락실 한 판(1원, HP -3, 기력 -5, 하루 5판). 'paid' 냈음, 'free' 비회원 무료, 'broke' 동전 부족, 'tired' 기력 부족, 'limit' 오늘 다 함 */
+  async payArcade(): Promise<ArcadePay> {
     try {
       const response = await call('/api/inventory/arcade', { method: 'POST' })
       if (response.status === 401) return 'free'
       if (response.status === 409) return 'broke'
       if (response.status === TIRED_STATUS) return 'tired'
+      if (response.status === 429) return 'limit'
       if (!response.ok) return 'free'
       await inventoryStore.refresh()
       return 'paid'
     } catch { return 'free' }
+  },
+  /** 오늘 남은 오락실 판 수(비회원·연결 문제면 null) */
+  async arcadePlaysLeft(): Promise<number | null> {
+    try {
+      const response = await call('/api/inventory/arcade')
+      if (!response.ok) return null
+      const body = await response.json() as { playsLeftToday?: unknown }
+      return typeof body.playsLeftToday === 'number' ? body.playsLeftToday : null
+    } catch { return null }
   },
   /**
    * 포장마차에 물고기를 판다(저녁 6시~자정). 받은 동전만큼 동전 연출이 나온다.

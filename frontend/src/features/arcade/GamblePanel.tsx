@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { playSfx } from '../../audio/AudioManager'
 import { inventoryStore, useInventory } from '../inventory/inventoryStore'
 import { useAuth, LOGIN_URL } from '../auth/authStore'
-import { GAMES, LADDER_ROWS, MAX_BET, MIN_BET, SLOT_SYMBOLS, ladderPath, playGamble, resultText } from './gambleApi'
+import { DAILY_BETS, GAMES, LADDER_ROWS, MAX_BET, MIN_BET, SLOT_SYMBOLS, fetchBetsLeft, ladderPath, playGamble, resultText } from './gambleApi'
 import type { GambleGame, GambleResult } from './gambleApi'
 import '../../components/panel.css'
 import './arcade.css'
@@ -29,8 +29,10 @@ export default function GamblePanel({ game, onClose }: { game: GambleGame; onClo
   const [result, setResult] = useState<GambleResult | null>(null)
   const [rolling, setRolling] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [betsLeft, setBetsLeft] = useState<number | null>(null)
 
   useEffect(() => { const dialog = dialogRef.current; dialog?.showModal(); void inventoryStore.refresh(); return () => dialog?.close() }, [])
+  useEffect(() => { void fetchBetsLeft().then(setBetsLeft) }, [])
 
   const play = async () => {
     if (rolling) return
@@ -42,6 +44,7 @@ export default function GamblePanel({ game, onClose }: { game: GambleGame; onClo
       /* 서버 결과가 빨리 와도 연출 시간만큼 기다렸다 보여 준다. */
       await new Promise(resolve => window.setTimeout(resolve, Math.max(0, REVEAL_MS - (performance.now() - started))))
       setResult(next)
+      setBetsLeft(next.betsLeftToday)
       playSfx(next.win ? 'success' : 'error', { volume: 0.6 })
       void inventoryStore.refresh()
     } catch (cause) {
@@ -58,7 +61,7 @@ export default function GamblePanel({ game, onClose }: { game: GambleGame; onClo
         </div>
         <button type="button" className="research-close" onClick={onClose}>닫기</button>
       </header>
-      <p className="arcade-notice">{info.rule}. 게임 동전으로만 하는 놀이예요.</p>
+      <p className="arcade-notice">{info.rule}. 내기 게임은 넷 합쳐 하루 {DAILY_BETS}판, 게임 동전으로만 하는 놀이예요.</p>
 
       {!auth.member ? (
         <p className="gamble-login">로그인한 연구원만 동전을 걸 수 있어요. <a className="auth-kakao" href={LOGIN_URL}>카카오 로그인</a></p>
@@ -81,9 +84,9 @@ export default function GamblePanel({ game, onClose }: { game: GambleGame; onClo
             <label htmlFor="gamble-bet">걸 돈</label>
             <input id="gamble-bet" type="range" min={MIN_BET} max={MAX_BET} value={bet} disabled={rolling} onChange={event => setBet(Number(event.target.value))} />
             <strong>🪙 {bet}</strong>
-            <button type="button" className="gamble-go" disabled={rolling || inventory.coins < bet} onClick={() => void play()}>{rolling ? '…' : '돌리기'}</button>
+            <button type="button" className="gamble-go" disabled={rolling || inventory.coins < bet || betsLeft === 0} onClick={() => void play()}>{rolling ? '…' : '돌리기'}</button>
           </div>
-          <p className="research-footer">내 동전 {inventory.coins.toLocaleString('ko-KR')}원{result ? ` · 오늘 ${result.betsLeftToday}판 남음` : ''} · 잃어도 웃을 수 있을 만큼만! ESC로 닫아요.</p>
+          <p className="research-footer">내 동전 {inventory.coins.toLocaleString('ko-KR')}원{betsLeft === null ? '' : betsLeft === 0 ? ' · 오늘은 다 했어요. 내일 다시 와요' : ` · 오늘 ${betsLeft}판 남음`} · 잃어도 웃을 수 있을 만큼만! ESC로 닫아요.</p>
         </>
       )}
     </dialog>

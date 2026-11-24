@@ -88,15 +88,19 @@ public class InventoryServiceImpl implements InventoryService {
         return store.changeCoins(member, WORK_POST_REWARD, WORK_POST).isPresent() ? WORK_POST_REWARD : 0;
     }
 
-    /** 오락실 한 판. HP·기력이 모자라면 423, 동전이 없으면 409(둘 다 아무것도 바꾸지 않음). @return 남은 동전 */
+    /** 오락실 한 판. 오늘 5판을 다 했으면 429, HP·기력이 모자라면 423, 동전이 없으면 409(모두 아무것도 바꾸지 않음). @return 남은 동전 */
     @Transactional
     public int playArcade(UUID member) {
+        if (arcadePlaysLeft(member) <= 0) throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Daily arcade limit");
         ensureFit(member);
         int coins = store.changeCoins(member, -ARCADE_COST, ARCADE_PLAY)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Not enough coins"));
         spend(member);
         return coins;
     }
+
+    /** 오늘 남은 오락실 판 수(네 게임 합쳐 하루 5판) */
+    public int arcadePlaysLeft(UUID member) { return Math.max(0, DAILY_ARCADE_PLAYS - store.countToday(member, ARCADE_PLAY)); }
 
     /** 일·오락을 할 수 있을 만큼 HP·기력이 남았는지 확인한다. 모자라면 423. */
     public void ensureFit(UUID member) {

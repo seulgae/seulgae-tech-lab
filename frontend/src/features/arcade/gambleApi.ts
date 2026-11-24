@@ -10,6 +10,8 @@ export type GambleResult = { game: GambleGame; pick: string; bet: number; number
 
 export const MIN_BET = 1
 export const MAX_BET = 20
+/** 내기 게임(넷 합쳐) 하루 판 수(서버 GambleService.DAILY_BETS와 같은 값) */
+export const DAILY_BETS = 5
 export const LADDER_ROWS = 6
 export const SLOT_SYMBOLS = ['7', '🍒', '🍋', '🔔', '⭐'] as const
 
@@ -27,6 +29,20 @@ export const GAMBLE_MACHINES: Record<string, GambleGame> = {
 }
 
 /**
+ * 오늘 남은 내기 판 수.
+ *
+ * @returns 남은 판(비회원·연결 문제면 null)
+ */
+export async function fetchBetsLeft(): Promise<number | null> {
+  try {
+    const response = await fetch('/api/gamble', { headers: { Accept: 'application/json' } })
+    if (!response.ok) return null
+    const body = await response.json() as { betsLeftToday?: unknown }
+    return typeof body.betsLeftToday === 'number' ? body.betsLeftToday : null
+  } catch { return null }
+}
+
+/**
  * 한 판 한다.
  *
  * @param game 게임
@@ -40,7 +56,7 @@ export async function playGamble(game: GambleGame, bet: number, pick: string): P
     method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json' }, body: JSON.stringify({ game, bet, pick }),
   })
   if (!response.ok) {
-    throw new Error({ 401: '로그인한 연구원만 동전을 걸 수 있어요.', 400: '건 돈과 고른 값을 다시 확인해 주세요.', 409: '동전이 모자라요.', 429: '오늘은 더 할 수 없어요(하루 10판). 내일 다시 와요.' }[response.status] ?? '요청에 실패했어요.')
+    throw new Error({ 401: '로그인한 연구원만 동전을 걸 수 있어요.', 400: '건 돈과 고른 값을 다시 확인해 주세요.', 409: '동전이 모자라요.', 429: '오늘은 더 할 수 없어요(하루 5판). 내일 다시 와요.' }[response.status] ?? '요청에 실패했어요.')
   }
   return await response.json() as GambleResult
 }
