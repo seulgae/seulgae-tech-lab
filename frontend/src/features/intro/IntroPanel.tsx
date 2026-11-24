@@ -35,9 +35,9 @@ export default function IntroPanel({ onChoice }: { onChoice: (skip: boolean) => 
         이제 나의 개발자 인생이 시작되는 거야.<br />
         이제 연구소로 들어가 볼까!!
       </p>
-      <p id="intro-question">튜토리얼을 건너뛰시겠습니까?</p>
+      <p id="intro-question" className="intro-question">튜토리얼을 건너뛰시겠습니까?</p>
       <div className="intro-actions">
-        <button type="button" className="research-close intro-guide" autoFocus onClick={() => choose(false)}>아니요, 안내받기</button>
+        <button type="button" className="research-close intro-guide" autoFocus onClick={() => choose(false)}>아니요, 안내 받기</button>
         <button type="button" className="research-close" onClick={() => choose(true)}>네, 건너뛰기</button>
       </div>
     </dialog>
