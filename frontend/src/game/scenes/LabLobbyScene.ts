@@ -218,6 +218,7 @@ export default class LabLobbyScene extends Phaser.Scene {
         this.uiEvents.emit(LAB_EVENTS.openPanel, kind)
         return true
       },
+      welcomeNewResearcher: data.from === 'outdoor' && this.introProgress === 'guided',
       from: data.from, client: this.client, plants, player: () => this.player && { x: this.player.x, y: this.player.y }, obstacles,
     })
     const firstDay = !data.from && this.activeRoom === 'outdoor' && !this.introProgress

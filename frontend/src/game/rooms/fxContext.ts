@@ -12,6 +12,7 @@ export type Options = {
   /** @returns 열었으면 true(방 이동 중이거나 다른 창이 열려 있으면 false) */
   openPanel?: (kind: RoomPanelKind) => boolean | void
   room?: RoomId
+  welcomeNewResearcher?: boolean
   from?: RoomId; client: MultiplayerClient; plants?: Map<string, Phaser.GameObjects.Image>
   /** 먹고 마시기·책 꺼내기 연출이 따라갈 내 캐릭터 위치 */
   player?: () => { x: number; y: number } | undefined

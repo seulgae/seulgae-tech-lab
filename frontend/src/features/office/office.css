@@ -74,9 +74,16 @@
 .desk-hints { margin-top: 8px; color: #4b5563; }
 @media (max-width: 640px) {
   .desk-window { left: 14px; top: 90px; }
-  .desk-icons { flex-direction: row; width: auto; }
+  .desk-icons { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); width: auto; gap: 2px; }
+  .research-panel .desk-icons button { min-width: 0; padding: 5px 2px; font-size: 10px; overflow-wrap: anywhere; }
+  .desk-icon { font-size: 26px; }
   .desk-problems { width: 96px; }
 }
+
+.desk-handover details + details { border-top: 1px solid #dfe5ec; }
+.desk-handover summary { padding: 9px 0; cursor: pointer; font-weight: 700; }
+.desk-handover ol { margin: 0 0 10px; padding-left: 20px; line-height: 1.65; }
+.desk-handover li + li { margin-top: 5px; }
 
 /* 내 자리 컴퓨터의 게시판 창: 게시판 본래의 어두운 색으로 */
 .desk-window.desk-board { background: #20383a; color: #e4e5cd; }

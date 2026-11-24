@@ -7,20 +7,22 @@ import { tiredMessage } from '../rules/rulesStore'
 import { answerJava, claimDailyReward, fetchDesk, javaString } from './officeApi'
 import type { DeskView, JavaAnswer, JavaProblem } from './officeApi'
 import { IdeaBoard } from './IdeaBoard'
+import HandoverWindow from './HandoverWindow'
 import { QaBoard } from './QaBoard'
 import '../../components/panel.css'
 import './office.css'
 
-type Window = 'mail' | 'idea' | 'qa' | 'dev' | null
+type Window = 'mail' | 'handover' | 'idea' | 'qa' | 'dev' | null
 
 /** 바탕화면 아이콘(메일·개발은 회원 전용, 게시판은 누구나 읽는다) */
 const ICONS: readonly { id: Exclude<Window, null>; icon: string; label: string; memberOnly: boolean }[] = [
   { id: 'mail', icon: '📧', label: '메일', memberOnly: true },
+  { id: 'handover', icon: '📄', label: '인수인계서', memberOnly: false },
   { id: 'idea', icon: '💡', label: '아이디어', memberOnly: false },
   { id: 'qa', icon: '🐞', label: 'QA', memberOnly: false },
   { id: 'dev', icon: '☕', label: '개발', memberOnly: true },
 ]
-const TITLES: Record<Exclude<Window, null>, string> = { mail: '📧 메일', idea: '💡 아이디어 기획 게시판', qa: '🐞 QA 게시판', dev: '☕ 개발' }
+const TITLES: Record<Exclude<Window, null>, string> = { mail: '📧 메일', handover: '📄 인수인계서', idea: '💡 아이디어 기획 게시판', qa: '🐞 QA 게시판', dev: '☕ 개발' }
 
 /**
  * 서비스 연구실 왼쪽 맨 아래 컴퓨터: 내 자리. 모니터 바탕화면에서 아이콘을 눌러 창을 연다.
@@ -28,9 +30,9 @@ const TITLES: Record<Exclude<Window, null>, string> = { mail: '📧 메일', ide
  * 메일: 오늘 해야 할 업무(게임 안에서 실제로 하는 일)가 자동으로 체크되고, 다 하면 보상을 받는다.
  * 개발: 자바 printf 형식 문자열을 채워 실행하면 서버가 실제 String.format으로 출력해 채점한다.
  *
- * @author 길태형
- * @version 1.0, 내 자리 컴퓨터
- * @see None
+ * @author seulgae
+ * @version 1.1, 내 자리 컴퓨터에 인수인계서 추가
+ * @see "None"
  * @param props 닫기 콜백
  * @returns 모니터 모달
  */
@@ -78,6 +80,7 @@ export default function MyDeskPanel({ onClose }: { onClose: () => void }) {
               <p className="desk-window-body">로그인하면 메일과 개발 연습을 쓸 수 있어요. <a className="auth-kakao" href={LOGIN_URL}>카카오 로그인</a></p>
             </section>
           )}
+          {opened === 'handover' && <HandoverWindow onClose={() => setOpened(null)} />}
           {opened === 'mail' && desk && <MailWindow desk={desk} onDesk={setDesk} onClose={() => setOpened(null)} />}
           {opened === 'dev' && desk && <DevWindow desk={desk} onDesk={setDesk} onClose={() => setOpened(null)} />}
           {(opened === 'idea' || opened === 'qa') && (
@@ -93,7 +96,7 @@ export default function MyDeskPanel({ onClose }: { onClose: () => void }) {
           <span>{clock.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span>
         </div>
       </div>
-      <p className="research-footer">아이콘을 눌러 창을 열어요. ESC로 창 닫기, 한 번 더 누르면 자리에서 일어나요.</p>
+      <p className="research-footer">아이콘을 눌러 창을 열어요. ESC로 창을 닫고, 컴퓨터 화면을 닫은 뒤 이동하면 자리에서 일어나요.</p>
     </dialog>
   )
 }
