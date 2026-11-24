@@ -160,7 +160,11 @@ function DevWindow({ desk, onDesk, onClose }: { desk: DeskView; onDesk: (desk: D
         setSolved(set => new Set(set).add(problem.id)); playSfx('success', { volume: 0.6 })
         if (answer.rewarded) { void inventoryStore.refresh(); onDesk({ ...desk, javaRewardsToday: desk.javaRewardsToday + 1 }) }
       } else playSfx('error', { volume: 0.4 })
-    } catch { setResult({ problemId: problem.id, format, output: null, correct: false, rewarded: false, error: '실행하지 못했어요. 잠시 후 다시 해 보세요.' }) }
+    } catch (cause) {
+      const status = cause instanceof BoardError ? cause.status : 0
+      setResult({ problemId: problem.id, format, output: null, correct: false, rewarded: false,
+        error: status === 429 ? '너무 빨리 실행했어요. 1초 뒤에 다시 눌러 주세요.' : status === 401 ? '로그인이 풀렸어요. 다시 로그인해 주세요.' : status === 400 ? '형식 문자열은 1~100자로 써 주세요.' : '실행하지 못했어요. 잠시 후 다시 해 보세요.' })
+    }
     finally { setBusy(false) }
   }
 
@@ -175,6 +179,7 @@ function DevWindow({ desk, onDesk, onClose }: { desk: DeskView; onDesk: (desk: D
         </ol>
         <div className="desk-editor">
           <p className="desk-task">{problem.description}</p>
+          <p className="desk-note">형식 문자열에는 <strong>출력될 문장 전체</strong>를 쓰고, 값이 들어갈 자리에만 %s·%d 같은 서식을 넣어요. 예: <code>"이름: %s"</code></p>
           {/* 코드 편집기: printf의 형식 문자열 칸만 고친다 */}
           <pre className="desk-code"><code>
             <span className="kw">public class</span> Main {'{\n'}
