@@ -53,6 +53,8 @@ public class DeskController {
 
     /**
      * 자바 printf 답 확인.
+     * 글쓰기 제한(WriteRateLimiter: 연달아 5번, 이후 12초에 1번)은 걸지 않는다. 연습은 여러 번 고쳐 실행하는 게 정상이고,
+     * 동전 보상은 서비스가 하루 3번으로 막는다. 대신 회원당 1초에 한 번만 받아 연타만 막는다.
      *
      * @param body 문제와 형식 문자열
      * @param request HTTP 요청
@@ -61,9 +63,16 @@ public class DeskController {
     @PostMapping("/java")
     public JavaAnswerDTO answer(@RequestBody(required = false) JavaAnswerDTO body, HttpServletRequest request) {
         UUID member = member(request);
-        limiter.check(request);
+        long now = System.nanoTime();
+        Long last = lastRun.put(member, now);
+        if (last != null && now - last < 1_000_000_000L) throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Too fast");
         return service.answer(member, body == null ? null : body.problemId(), body == null ? null : body.format());
     }
+
+    /* 회원별 마지막 실행 시각(연타 방지). 오래된 항목은 1만 명을 넘으면 비운다. */
+    private final java.util.Map<UUID, Long> lastRun = java.util.Collections.synchronizedMap(new java.util.LinkedHashMap<>(16, 0.75f, true) {
+        @Override protected boolean removeEldestEntry(java.util.Map.Entry<UUID, Long> eldest) { return size() > 10_000; }
+    });
 
     private UUID member(HttpServletRequest request) {
         return auth.current(request).orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Login required")).id();
