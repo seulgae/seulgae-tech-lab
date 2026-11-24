@@ -1,0 +1,85 @@
+.research-panel.work-panel { width: min(640px, calc(100vw - 32px)); }
+.work-help { margin: 6px 0 0; font-size: 12px; color: #b9c6bd; line-height: 1.5; }
+.work-message { margin: 10px 0; padding: 6px 10px; border: 1px dashed #d8bd87; font-size: 13px; color: #f1e2bf; }
+.work-heading { margin: 18px 0 8px; font-size: 14px; color: #d8bd87; }
+.work-heading span { font: 11px monospace; padding: 1px 6px; border: 1px solid #4d6b62; color: #e4e5cd; }
+.work-empty { font-size: 13px; color: #aab9a3; }
+.work-list { margin: 0; padding: 0; list-style: none; }
+.work-list li { border-bottom: 1px solid #344e46; }
+.research-panel .work-list button { width: 100%; padding: 9px 4px; border: 0; background: transparent; color: #e4e5cd; text-align: left; font-size: 14px; }
+.work-list small, .work-thread small { margin-left: 6px; font-size: 11px; color: #9aa89d; }
+.work-badge { display: inline-block; margin-right: 6px; padding: 1px 6px; font-size: 11px; color: #20383a; background: #d8bd87; }
+.status-RESOLVED .work-badge { background: #9fe0a0; }
+.status-IN_PROGRESS .work-badge { background: #8fc4d9; }
+.work-form { display: grid; gap: 8px; margin: 14px 0; }
+.work-form label { display: grid; gap: 4px; font-size: 12px; color: #d8bd87; }
+.work-form input, .work-form textarea { padding: 8px; border: 1px solid #4d6b62; background: #1a2f31; color: #f1f6f4; font: inherit; font-size: 14px; }
+.work-form textarea { min-height: 72px; resize: vertical; }
+.work-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.work-ticket { margin: 12px 0; padding: 12px; border: 1px solid #4d6b62; background: #1a2f31; }
+.work-ticket h3 { margin: 6px 0; color: #f1f6f4; }
+.work-body { margin: 0 0 10px; padding: 8px 10px; background: rgba(255, 255, 255, .04); font-size: 14px; line-height: 1.6; white-space: pre-wrap; color: #e4e5cd; }
+.work-body p { margin: 6px 0; }
+
+/* QA: 상태 걸러 보기와 진행 단계 */
+.qa-filter { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 8px; }
+.research-panel .qa-filter button { padding: 4px 10px; border: 1px solid #4d6b62; background: transparent; color: #e4e5cd; font-size: 12px; }
+.research-panel .qa-filter button[aria-checked="true"] { background: #d8bd87; color: #20383a; font-weight: 700; }
+.qa-steps { display: flex; gap: 4px; margin: 0 0 6px; padding: 0; list-style: none; font-size: 11px; }
+.qa-steps li { flex: 1; padding: 3px; text-align: center; background: #344e46; color: #9aa89d; }
+.qa-steps li.done { background: #d8bd87; color: #20383a; font-weight: 700; }
+
+/* 내 자리 컴퓨터: 모니터, 바탕화면, 창 */
+.research-panel.desk-panel { width: min(760px, calc(100vw - 32px)); }
+.desk-monitor { margin-top: 12px; padding: 12px 12px 0; border-radius: 12px; background: #1b1b22; box-shadow: inset 0 0 0 3px #2c2c36; }
+.desk-screen { position: relative; min-height: 380px; padding: 14px; border-radius: 6px 6px 0 0; background: linear-gradient(160deg, #1f4f7a, #2f7a8f 60%, #4f9a7a); overflow: hidden; }
+.desk-icons { display: flex; flex-direction: column; gap: 14px; width: 76px; }
+.research-panel .desk-icons button { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px; border: 0; border-radius: 8px; background: transparent; color: #fff; font-size: 12px; text-shadow: 0 1px 2px #000; }
+.research-panel .desk-icons button:hover, .research-panel .desk-icons button:focus-visible { background: rgba(255, 255, 255, .18); }
+.desk-icon { position: relative; font-size: 34px; line-height: 1; }
+.desk-icon b { position: absolute; top: -4px; right: -10px; min-width: 18px; padding: 1px 4px; border-radius: 9px; background: #e5484d; font: 700 11px sans-serif; color: #fff; text-shadow: none; }
+.desk-taskbar { display: flex; justify-content: space-between; padding: 6px 10px; background: #11151c; color: #c9d6e2; font: 12px monospace; border-radius: 0 0 6px 6px; }
+.desk-login, .desk-error { padding: 14px; background: rgba(0, 0, 0, .45); color: #fff; border-radius: 8px; }
+.desk-window { position: absolute; top: 14px; left: 100px; right: 14px; bottom: 14px; display: flex; flex-direction: column; border-radius: 8px; background: #f7f8fa; color: #1d2430; box-shadow: 0 10px 30px rgba(0, 0, 0, .45); overflow: hidden; }
+.desk-window > header { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: #dfe5ec; font-size: 13px; font-weight: 700; }
+.research-panel .desk-window > header button { padding: 0 8px; border: 0; background: transparent; color: #1d2430; font-size: 14px; }
+.desk-window-body { padding: 12px 14px; overflow: auto; font-size: 13px; }
+.desk-mail-from { margin: 0 0 10px; padding-bottom: 8px; border-bottom: 1px solid #dfe5ec; color: #4b5563; }
+.desk-tasks { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.desk-tasks li { display: flex; gap: 8px; padding: 8px 10px; border-radius: 6px; background: #fff; border: 1px solid #e5e7eb; }
+.desk-tasks li > span:first-child { font-size: 16px; }
+.desk-tasks li span small { display: block; color: #6b7280; font-size: 11px; }
+.desk-tasks li.done { background: #ecfdf3; border-color: #86efac; }
+.desk-tasks li.done > span:last-child { text-decoration: line-through; color: #4b5563; }
+.desk-note { margin: 8px 0; color: #6b7280; font-size: 12px; }
+.desk-ok { margin: 8px 0; color: #15803d; font-weight: 700; }
+.research-panel .desk-primary { padding: 7px 14px; border: 0; border-radius: 6px; background: #2563eb; color: #fff; font-weight: 700; }
+.research-panel .desk-primary:disabled { background: #9ca3af; }
+.desk-dev-body { display: flex; min-height: 0; flex: 1; }
+.desk-problems { width: 128px; margin: 0; padding: 8px 0; list-style: none; background: #e9edf2; overflow: auto; }
+.research-panel .desk-problems button { width: 100%; padding: 6px 10px; border: 0; background: transparent; color: #1d2430; text-align: left; font-size: 12px; }
+.research-panel .desk-problems button[aria-pressed="true"] { background: #fff; font-weight: 700; }
+.desk-editor { flex: 1; padding: 10px 12px; overflow: auto; font-size: 13px; }
+.desk-task { margin: 0 0 8px; }
+.desk-code { margin: 0; padding: 10px; border-radius: 6px; background: #1e1e2a; color: #e5e7eb; font: 13px/1.6 'D2Coding', Consolas, monospace; white-space: pre; overflow-x: auto; }
+.desk-code .kw { color: #c792ea; }
+.desk-format { min-width: 10ch; max-width: 100%; padding: 0 4px; border: 1px solid #ffd23f; border-radius: 3px; background: #2b2b3a; color: #c3e88d; font: inherit; }
+.desk-run { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+.desk-run small { color: #6b7280; }
+.desk-console { padding: 8px 10px; border-radius: 6px; background: #111827; color: #e5e7eb; font: 12px/1.6 monospace; }
+.desk-console p { margin: 2px 0; }
+.desk-console span { display: inline-block; width: 64px; color: #9ca3af; }
+.desk-console code { white-space: pre; color: #a7f3d0; }
+.desk-console-error { color: #fca5a5; }
+.desk-hints { margin-top: 8px; color: #4b5563; }
+@media (max-width: 640px) {
+  .desk-window { left: 14px; top: 90px; }
+  .desk-icons { flex-direction: row; width: auto; }
+  .desk-problems { width: 96px; }
+}
+
+/* 내 자리 컴퓨터의 게시판 창: 게시판 본래의 어두운 색으로 */
+.desk-window.desk-board { background: #20383a; color: #e4e5cd; }
+.desk-window.desk-board > header { background: #2f4d4a; color: #f1e2bf; }
+.research-panel .desk-window.desk-board > header button { color: #f1e2bf; }
+.desk-window.desk-board .work-help { margin-top: 0; }

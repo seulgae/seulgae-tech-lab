@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { BREAKOUT_HIGH_SCORE_KEY, FIELD, PADDLE, brickScore, createBricks, newGame, stepBreakout } from '../src/features/arcade/breakout.ts'
-import { WORK_BOARDS, addMaintenance, addOperation, codeName, createQa, fetchBoard } from '../src/features/work/workApi.ts'
+import { OFFICE_COMPUTERS, QA_NEXT, answerJava, claimDailyReward, createIdea, createQa, fetchQa, javaString, moveQa } from '../src/features/office/officeApi.ts'
 import { ROOMS, nearestInteraction, roomObjects } from '../src/game/maps/rooms.ts'
 
 const idle = { left: false, right: false, pointerX: null, launch: false }
@@ -19,12 +19,10 @@ test('서비스 연구실은 좌우 두 열에 책상 셋씩(책상마다 의자
   assert.equal(partitions.length, 6, '책상마다 통로 쪽 파티션')
   for (const partition of partitions) assert.ok(chairs.every(chair => partition.body.y + partition.body.height / 2 < chair.body.y - chair.body.height / 2 || partition.body.y - partition.body.height / 2 > chair.body.y + chair.body.height / 2 || Math.abs(partition.x - chair.x) > 40), '의자 줄은 통로에서 들어갈 수 있게 열어 둔다')
   assert.equal(ROOMS['office-1'].name, '서비스 연구실')
-  assert.deepEqual(WORK_BOARDS, { 'service-qa': 'QA', 'service-maintenance': 'MAINTENANCE', 'service-operation': 'OPERATION' })
-  // 왼쪽 열 위에서부터 QA·유지보수·운영(책상 바로 아래 의자 옆에 서면 잡힌다)
-  for (const [y, id] of [[210, 'service-qa'], [360, 'service-maintenance'], [510, 'service-operation']]) {
-    const target = nearestInteraction('office-1', 145, y)
-    assert.equal(target?.kind, 'work-board'); assert.equal(target?.id, id, '컴퓨터마다 자기 게시판')
-  }
+  // 왼쪽 맨 아래만 내 자리 컴퓨터(아이디어·QA 게시판은 그 바탕화면 아이콘), 나머지 자리는 연구원들이 일한다.
+  assert.deepEqual(ROOMS['office-1'].interactions.map(item => item.id), ['service-my-desk', 'office-water'], '컴퓨터는 내 자리 하나, 정수기')
+  assert.equal(nearestInteraction('office-1', 145, 510)?.kind, OFFICE_COMPUTERS['service-my-desk'])
+  assert.equal(nearestInteraction('office-1', 145, 210), undefined, '아이디어 자리는 게시판이 아니다')
   assert.equal(ROOMS['office-2'].name, '실습 연구실')
   assert.equal(ROOMS['office-4'].name, '개인 기숙사')
   for (const room of ['office-2', 'office-4']) {
@@ -34,27 +32,33 @@ test('서비스 연구실은 좌우 두 열에 책상 셋씩(책상마다 의자
   assert.deepEqual(ROOMS.lobby.doors.find(door => door.target === 'office-3') && [ROOMS.lobby.doors.find(door => door.target === 'office-3').x, ROOMS.lobby.doors.find(door => door.target === 'office-3').y], [70, 520], '오락실은 로비 왼쪽 아래 문')
   assert.equal(ROOMS['office-3'].doors[0].target, 'lobby')
   assert.equal(nearestInteraction('office-3', 400, 290)?.kind, 'arcade')
-  assert.equal(codeName([{ group: 'WORK_STATUS', code: 'RESOLVED', name: '조치 완료', sortOrder: 3 }], 'RESOLVED'), '조치 완료')
-  assert.equal(codeName([], 'APPROVED'), 'APPROVED')
+  assert.deepEqual(QA_NEXT.REGISTERED, { status: 'IN_PROGRESS', label: '조치 중으로' })
+  assert.equal(QA_NEXT.RESOLVED, undefined, '조치 완료 다음은 없다')
+  assert.equal(javaString('%s "님"'), '"%s \\"님\\""', '따옴표는 역슬래시로')
+  assert.equal(javaString('a\\b'), '"a\\\\b"', '역슬래시는 두 번')
 })
 
-test('업무 API 요청 형식: 게시판 조회, QA 등록, 조치(완료 여부), 점검(승인 여부)', async () => {
+test('서비스 연구실 API 요청 형식: 아이디어·QA 등록, QA 단계 변경, 오늘 업무 보상, 자바 채점', async () => {
   const original = globalThis.fetch
   const seen = []
-  globalThis.fetch = async (url, options = {}) => { seen.push([url, options.method ?? 'GET', options.body && JSON.parse(options.body)]); return new Response('{}', { headers: { 'Content-Type': 'application/json' } }) }
+  globalThis.fetch = async (url, options = {}) => { seen.push([url, options.method ?? 'GET', options.body && JSON.parse(options.body)]); return new Response('[]', { headers: { 'Content-Type': 'application/json' } }) }
   try {
-    await fetchBoard('MAINTENANCE')
-    await createQa('제목', '내용')
-    await addMaintenance('a/b', '조치', '가이드', true)
-    await addOperation('a/b', '점검', false)
+    await createIdea(' 낚시 대회 ', ' 주말마다 ')
+    await fetchQa()
+    await createQa('버그', '내용')
+    await moveQa('a/b', 'IN_PROGRESS')
+    await claimDailyReward()
+    await answerJava('sum', '%d + %d = %d')
     assert.deepEqual(seen, [
-      ['/api/work-items?board=MAINTENANCE', 'GET', undefined],
-      ['/api/work-items/qa', 'POST', { title: '제목', content: '내용' }],
-      ['/api/work-items/a%2Fb/maintenance', 'POST', { content: '조치', guide: '가이드', done: true }],
-      ['/api/work-items/a%2Fb/operation', 'POST', { content: '점검', approved: false }],
+      ['/api/ideas', 'POST', { title: '낚시 대회', content: '주말마다' }],
+      ['/api/qa', 'GET', undefined],
+      ['/api/qa', 'POST', { title: '버그', content: '내용' }],
+      ['/api/qa/a%2Fb/status', 'POST', { status: 'IN_PROGRESS' }],
+      ['/api/desk/claim', 'POST', undefined],
+      ['/api/desk/java', 'POST', { problemId: 'sum', format: '%d + %d = %d' }],
     ])
     globalThis.fetch = async () => new Response('', { status: 409 })
-    await assert.rejects(addOperation('x', '점검', true), error => error.status === 409)
+    await assert.rejects(moveQa('x', 'RESOLVED'), error => error.status === 409)
   } finally { globalThis.fetch = original }
 })
 

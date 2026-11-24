@@ -829,29 +829,9 @@
       "name": "서비스 연구실",
       "interactions": [
         {
-          "id": "service-qa",
-          "kind": "work-board",
-          "label": "QA 게시판",
-          "x": 190,
-          "y": 150,
-          "width": 112,
-          "height": 72,
-          "range": 40
-        },
-        {
-          "id": "service-maintenance",
-          "kind": "work-board",
-          "label": "유지보수 게시판",
-          "x": 190,
-          "y": 300,
-          "width": 112,
-          "height": 72,
-          "range": 40
-        },
-        {
-          "id": "service-operation",
-          "kind": "work-board",
-          "label": "운영업무 게시판",
+          "id": "service-my-desk",
+          "kind": "my-desk",
+          "label": "내 자리 컴퓨터",
           "x": 190,
           "y": 450,
           "width": 112,
