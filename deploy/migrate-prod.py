@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Explicit production migration up to the latest schema (V24). Never called by deploy/start/rollback.
+"""Explicit production migration up to the latest schema (V25). Never called by deploy/start/rollback.
 
-Supported paths: empty DB or V1-V23 -> V24. A verified pg_dump backup is taken first;
+Supported paths: empty DB or V1-V24 -> V25. A verified pg_dump backup is taken first;
 there is no automatic DB rollback.
 
 Expand-then-use: a schema change first ships in a release whose db_schema range already includes the
-new version (for V24: 23..24), so it deploys on the old schema. This script then migrates while that
-release keeps running, and only afterwards does code that needs the new schema (24..24) get merged.
+new version (for V25: 24..25), so it deploys on the old schema. This script then migrates while that
+release keeps running, and only afterwards does code that needs the new schema (25..25) get merged.
 """
 import fcntl
 import os
@@ -17,7 +17,7 @@ import sys
 import tempfile
 import ops
 
-LATEST_SCHEMA = 24
+LATEST_SCHEMA = 25
 
 
 def migration_plan(version, release, running=None):

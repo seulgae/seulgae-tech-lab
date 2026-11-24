@@ -99,7 +99,7 @@ export const ROOM_THEMES: Record<RoomId, RoomTheme> = {
     door: { frame: '#090414', frameLight: '#f472b6', panel: '#2a1748', panelLight: '#3d2466', handle: '#ffd23f', sign: '#38bdf8' },
     page: { background: '#0c0616', card: '#170c28', border: '#4c2a7a', accent: '#f472b6', muted: '#c4b5fd' },
     textures: { computer: 'arcade-machine', chair: 'arcade-stool', rack: 'arcade-cabinet', equipment: 'claw-machine', plant: 'tall-plant' },
-    notes: { title: '오락실', body: '잠깐 쉬어 가요.\n최고 점수에 도전!', missionTitle: '벽돌 부수기', mission: '가운데 큰 오락기에서 E를 누르면 벽돌 부수기를 할 수 있어요. 최고 점수는 이 브라우저에 남아요.' },
+    notes: { title: '오락 연구실', body: '잠깐 쉬어 가요.\n최고 점수에 도전!', missionTitle: '벽돌 부수기', mission: '가운데 큰 오락기에서 E를 누르면 벽돌 부수기를 할 수 있어요. 최고 점수는 이 브라우저에 남아요.' },
   },
   'office-4': {
     mood: '내 가구로 꾸미는 개인 기숙사 방',

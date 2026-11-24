@@ -27,7 +27,7 @@ test('서비스 연구실은 좌우 두 열에 책상 셋씩(책상마다 의자
   assert.equal(ROOMS['office-4'].name, '개인 기숙사')
   assert.equal(ROOMS['office-4'].interactions.length, 0, '개인 기숙사는 가구로만 꾸민다')
   assert.deepEqual(ROOMS['office-2'].interactions.map(item => item.kind), ['usemap'], '협동 연구실 가운데 단말기는 유즈맵 대기실')
-  assert.equal(ROOMS['office-3'].name, '오락실')
+  assert.equal(ROOMS['office-3'].name, '오락 연구실')
   assert.deepEqual(ROOMS.lobby.doors.find(door => door.target === 'office-3') && [ROOMS.lobby.doors.find(door => door.target === 'office-3').x, ROOMS.lobby.doors.find(door => door.target === 'office-3').y], [70, 520], '오락실은 로비 왼쪽 아래 문')
   assert.equal(ROOMS['office-3'].doors[0].target, 'lobby')
   assert.equal(nearestInteraction('office-3', 400, 290)?.kind, 'arcade')
