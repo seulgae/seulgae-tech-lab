@@ -83,3 +83,8 @@
 .desk-window.desk-board > header { background: #2f4d4a; color: #f1e2bf; }
 .research-panel .desk-window.desk-board > header button { color: #f1e2bf; }
 .desk-window.desk-board .work-help { margin-top: 0; }
+
+/* 티켓 목록 버튼 스타일(투명·전체 폭)이 펼친 티켓 안 "조치 중으로·조치 완료로" 버튼까지 덮지 않게 따로 준다. */
+.research-panel .work-list .work-actions button { width: auto; padding: 7px 16px; border: 1px solid #7fa36f; border-radius: 4px; background: #5b7f4f; color: #f4f8ef; font-size: 13px; font-weight: 700; text-align: center; cursor: pointer; }
+.research-panel .work-list .work-actions button:hover:not(:disabled) { background: #6c9560; }
+.research-panel .work-list .work-actions button:disabled { opacity: .5; cursor: default; }
