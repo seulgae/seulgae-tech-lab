@@ -87,5 +87,9 @@ class OfficeBoardsTest {
         assertThat(desk.answer(me, "sum", "%d %q").error()).isNotBlank();
         assertThat(desk.answer(me, "width", "%999999d").error()).contains("두 자리");
         assertThatThrownBy(() -> desk.answer(me, "nope", "%d")).hasMessageContaining("404");
+        /* 이름을 직접 쓰고 %d로 받으면 첫 인자(문자열)가 %d에 들어가 형식 오류: 쉬운 설명을 붙인다 */
+        var mistake = desk.answer(me, "menu", "커피    |   %d원");
+        assertThat(mistake.error()).startsWith("IllegalFormatConversionException").contains("%d 자리에 문자열 값").contains("1번 \"커피\"(문자열), 2번 2(정수)");
+        assertThat(desk.answer(me, "sum", "%d %d %d %d").error()).contains("인자는 3개");
     }
 }
