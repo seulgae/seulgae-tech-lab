@@ -61,7 +61,7 @@ export default function ArcadePanel({ onClose }: { onClose: () => void }) {
       {game === 'blocks' && <RetroScreen game={blockStack} />}
       {game === 'snake' && <RetroScreen game={snake} />}
       {game === 'sky' && <RetroScreen game={skyPatrol} />}
-      {!game && <p className="research-footer">방향키·Enter로 골라도 돼요. 회원은 한 판에 1원(HP -3, 기력 -5), 비회원은 무료예요. ESC로 닫아요.</p>}
+      {!game && <p className="research-footer">방향키·Enter로 골라도 돼요. 회원은 한 판에 1원(HP -3, 기력 -5)이고 네 게임 합쳐 하루 5판까지, 비회원은 무료예요. ESC로 닫아요.</p>}
     </dialog>
   )
 }

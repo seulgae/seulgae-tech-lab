@@ -19,6 +19,8 @@ public interface InventoryService {
     int WORK_POST_REWARD = 10, DAILY_REWARD_LIMIT = 10, ARCADE_COST = 1, MAX_ITEMS = 40, MAX_GROUND_ITEMS = 30;
     /** 일·오락 한 번에 드는 HP와 기력 */
     int WORK_HP_COST = 3, WORK_FATIGUE_COST = 5;
+    /** 오락실 메인 오락기(네 게임 합쳐) 하루 판 수 */
+    int DAILY_ARCADE_PLAYS = 5;
     /** 간식: 공통코드 COIN_REASON(CAKE, COFFEE), 가격과 회복량 */
     String CAKE = "CAKE", COFFEE = "COFFEE";
     int CAKE_PRICE = 3, CAKE_HP = 10, COFFEE_PRICE = 2, COFFEE_FATIGUE = 5;
@@ -51,8 +53,11 @@ public interface InventoryService {
     /** 사무실 게시물 보상. 하루 한도를 넘으면 0원이다. @return 실제로 받은 동전 */
     int rewardWorkPost(UUID member);
 
-    /** 오락실 한 판. HP·기력이 모자라면 423, 동전이 없으면 409(둘 다 아무것도 바꾸지 않음). @return 남은 동전 */
+    /** 오락실 한 판. 오늘 5판을 다 했으면 429, HP·기력이 모자라면 423, 동전이 없으면 409(모두 아무것도 바꾸지 않음). @return 남은 동전 */
     int playArcade(UUID member);
+
+    /** 오늘 남은 오락실 판 수 */
+    int arcadePlaysLeft(UUID member);
 
     /** 일·오락을 할 수 있을 만큼 HP·기력이 남았는지 확인한다. 모자라면 423. */
     void ensureFit(UUID member);

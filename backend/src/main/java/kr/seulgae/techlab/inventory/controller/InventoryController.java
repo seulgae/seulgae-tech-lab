@@ -126,9 +126,17 @@ public class InventoryController {
     @PostMapping("/plant")
     public PlantResultDTO shakePlant(HttpServletRequest request) { return service.shakePlant(member(request)); }
 
-    /** 오락실 한 판(동전 1원, HP -3, 기력 -5). 지치면 423, 동전 부족 409. @return {"coins": 남은 동전} */
+    /** 오늘 남은 오락실 판 수. @return {"playsLeftToday": n} */
+    @GetMapping("/arcade")
+    public Map<String, Integer> arcadeStatus(HttpServletRequest request) {
+        return Map.of("playsLeftToday", service.arcadePlaysLeft(member(request)));
+    }
+
+    /** 오락실 한 판(동전 1원, HP -3, 기력 -5, 하루 5판). 5판을 다 했으면 429, 지치면 423, 동전 부족 409. @return {"coins": 남은 동전, "playsLeftToday": 남은 판} */
     @PostMapping("/arcade")
     public Map<String, Integer> playArcade(HttpServletRequest request) {
-        return Map.of("coins", service.playArcade(member(request)));
+        var member = member(request);
+        int coins = service.playArcade(member);
+        return Map.of("coins", coins, "playsLeftToday", service.arcadePlaysLeft(member));
     }
 }

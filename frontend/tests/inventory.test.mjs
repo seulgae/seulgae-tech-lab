@@ -129,3 +129,12 @@ test('자판기 네 음료는 종류만 전송하고 실제 잔액·회복은 �
     }
   } finally { globalThis.fetch = original }
 })
+
+test('오락실 안내: 하루 5판, 남은 판, 다 했을 때와 기력이 모자랄 때 문구', async () => {
+  const { ARCADE_DAILY_PLAYS, arcadeIntro, arcadeNotice } = await import('../src/features/inventory/inventoryStore.ts')
+  assert.equal(ARCADE_DAILY_PLAYS, 5)
+  assert.match(arcadeIntro(3), /하루 5판 · 오늘 3판 남음/)
+  assert.match(arcadeNotice('paid', 4), /오늘 4판 남음/)
+  assert.match(arcadeNotice('limit', null), /5판을 다 했어요/)
+  assert.match(arcadeNotice('tired', null), /기력이나 HP가 모자라요/)
+})

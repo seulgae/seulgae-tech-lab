@@ -212,4 +212,17 @@ class InventoryServiceTest {
             assertEquals(full, service.view(member));
         }
     }
+
+    /** 오락실은 네 게임 합쳐 하루 5판: 6판째는 429이고 동전·기력은 그대로 */
+    @Test void arcadeAllowsFivePlaysPerDay() {
+        service.rewardWorkPost(me);
+        for (int i = 0; i < InventoryService.DAILY_ARCADE_PLAYS; i++) {
+            assertEquals(InventoryService.DAILY_ARCADE_PLAYS - i, service.arcadePlaysLeft(me));
+            service.playArcade(me);
+        }
+        assertEquals(0, service.arcadePlaysLeft(me));
+        var before = service.view(me);
+        assertEquals(429, assertThrows(ResponseStatusException.class, () -> service.playArcade(me)).getStatusCode().value());
+        assertEquals(before, service.view(me));
+    }
 }

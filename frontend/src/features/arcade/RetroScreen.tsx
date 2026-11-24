@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { playSfx } from '../../audio/AudioManager'
-import { TIRED_MESSAGE, inventoryStore } from '../inventory/inventoryStore'
+import { arcadeIntro, arcadeNotice, inventoryStore } from '../inventory/inventoryStore'
 import { NO_KEYS, SCREEN } from './retroGame'
 import type { Keys, Phase, RetroGame } from './retroGame'
 
@@ -22,7 +22,9 @@ const readHigh = (key: string) => { try { return Number(localStorage.getItem(key
 export default function RetroScreen<S extends { phase: Phase; score: number }>({ game }: { game: RetroGame<S> }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const pad = useRef<{ held: Keys; pressed: Keys }>({ held: { ...NO_KEYS }, pressed: { ...NO_KEYS } })
-  const [notice, setNotice] = useState('Space·탭으로 시작해요. 회원은 한 판에 1원, HP -3, 기력 -5예요.')
+  const [notice, setNotice] = useState(arcadeIntro(null))
+  /* 처음 열 때 오늘 남은 판 수를 안내에 넣는다(비회원은 그대로) */
+  useEffect(() => { void inventoryStore.arcadePlaysLeft().then(left => { if (left !== null) setNotice(arcadeIntro(left)) }) }, [])
   const [hud, setHud] = useState({ score: 0, stat: '', high: readHigh(game.highKey) })
 
   useEffect(() => {
@@ -67,10 +69,9 @@ export default function RetroScreen<S extends { phase: Phase; score: number }>({
           paying = true
           void inventoryStore.payArcade().then(result => {
             paying = false
-            if (result === 'broke') { setNotice('동전이 부족해요. 사무실 게시판에 글을 등록하면 10원을 받아요.'); playSfx('error', { volume: 0.5 }); return }
-            if (result === 'tired') { setNotice(TIRED_MESSAGE); playSfx('error', { volume: 0.5 }); return }
+            if (result === 'broke' || result === 'tired' || result === 'limit') { setNotice(arcadeNotice(result, null)); playSfx('error', { volume: 0.5 }); return }
             paid = true; input.pressed.action = true
-            setNotice(result === 'paid' ? '동전 1원을 넣었어요(HP -3, 기력 -5). 행운을 빌어요!' : '비회원은 무료로 즐겨요.')
+            void inventoryStore.arcadePlaysLeft().then(left => setNotice(arcadeNotice(result, result === 'paid' ? left : null)))
           })
         }
       }
