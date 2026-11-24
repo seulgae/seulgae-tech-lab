@@ -12,6 +12,8 @@ import { ROOM_THEMES } from '../rooms/roomThemes'
 import { applyRenderZoom, crispText } from '../render/renderScale'
 import LobbyMultiplayer from '../multiplayer/LobbyMultiplayer'
 import PetBot from '../pet/PetBot'
+import { readIntroProgress, saveIntroProgress } from '../../features/intro/introProgress'
+import type { IntroProgress } from '../../features/intro/introProgress'
 import { SPAWN } from '../maps/lobbyLayout'
 import { MULTIPLAYER_EVENTS } from '../../features/multiplayer/model/protocol'
 import type MultiplayerClient from '../../features/multiplayer/MultiplayerClient'
@@ -30,6 +32,10 @@ import type { GroundItem } from '../../features/multiplayer/model/protocol'
 import { FISH_COLORS } from '../rooms/fishingLogic'
 
 /** 패널을 열 때 함께 나는 장비 소리(컴퓨터 타이핑, 키오스크, 화이트보드 마커 등) */
+/** 호숫가 동쪽에서 정문까지 곧장 걸을 수 있는 첫 출근 위치다. */
+const FIRST_DAY_SPAWN = { x: 400, y: 280 }
+const FIRST_DAY_BOT = { x: 467, y: 315 }
+const RESEARCH_ENTRANCE = 'outdoor-to-lobby'
 /** 서비스 연구실 왼쪽 맨 아래 의자: 내 자리(앉으면 모니터가 켜진다) */
 const MY_DESK_SEAT = 'office-1-chair-2'
 const PANEL_SOUNDS: Partial<Record<string, EffectKey>> = {
@@ -54,6 +60,8 @@ export default class LabLobbyScene extends Phaser.Scene {
   private activeRoom: RoomId = 'lobby'
   private transition = false
   private pet?: PetBot
+  private introProgress = readIntroProgress()
+  private introGuiding = false
   private roomSubscription?: () => void
   private restartPending = false
   private interactionHint?: Phaser.GameObjects.Text
@@ -135,6 +143,34 @@ export default class LabLobbyScene extends Phaser.Scene {
     if (this.panelOpen) playSfx('panel-close', { volume: 0.6 })
     this.panelOpen = false
   }
+  /** 안내를 시작하면 봇이 길 쪽에서 다가온다. 건너뛰면 정문으로 바로 입장한다. */
+  private readonly chooseIntro = (skip: boolean) => {
+    if (this.introProgress || this.introGuiding || this.activeRoom !== 'outdoor' || !this.player) return
+    if (skip && this.openDoor(RESEARCH_ENTRANCE)) {
+      this.finishIntro('skipped')
+      return
+    }
+    this.introGuiding = true
+    this.pet = new PetBot(this, 'outdoor', this.player, { approachFrom: FIRST_DAY_BOT })
+    crispText(this, 400, 394, '↓ 연구소 정문 · 가까이서 E', {
+      fontSize: '13px', fontStyle: 'bold', color: '#fff2d2',
+      backgroundColor: '#243f43', padding: { x: 8, y: 5 },
+    }).setOrigin(0.5).setDepth(990)
+  }
+
+  private finishIntro(progress: IntroProgress) {
+    this.introProgress = progress
+    this.introGuiding = false
+    saveIntroProgress(progress)
+  }
+
+  private openDoor(id: string) {
+    if (!this.client.changeRoom(id)) return false
+    this.openingDoor = id
+    this.fx?.doors.open(id)
+    return true
+  }
+
   private readonly stopMultiplayer = () => {
     this.multiplayer?.destroy()
     this.multiplayer = undefined
@@ -184,13 +220,16 @@ export default class LabLobbyScene extends Phaser.Scene {
       },
       from: data.from, client: this.client, plants, player: () => this.player && { x: this.player.x, y: this.player.y }, obstacles,
     })
-    // 처음엔 로비 가운데, 문으로 들어오면 그 방의 스폰(서버 없이 옮기므로 클라이언트가 정한다)
-    const spawn = data.from ? ROOMS[this.activeRoom].spawn : SPAWN
+    const firstDay = !data.from && this.activeRoom === 'outdoor' && !this.introProgress
+    const defaultSpawn = data.from || this.activeRoom !== 'lobby' ? ROOMS[this.activeRoom].spawn : SPAWN
+    const spawn = firstDay ? FIRST_DAY_SPAWN : defaultSpawn
     this.player = new Player(this, spawn.x, spawn.y)
     this.physics.add.collider(this.player, obstacles)
     this.multiplayer = new LobbyMultiplayer(this, this.player, this.client)
     // 곁을 따라다니며 방마다 할 일을 알려 주는 미니 로봇(내 화면에만 보인다)
-    this.pet = new PetBot(this, this.activeRoom, this.player)
+    if (!firstDay) {
+      this.pet = new PetBot(this, this.activeRoom, this.player, { automaticTips: this.introProgress !== 'skipped' })
+    }
     this.roomSubscription = this.client.subscribe({ room: (roomId, pending) => {
       this.transition = pending || roomId !== this.activeRoom
       if (this.transition) { this.resetChatInput(); this.setTableTalk(false) }
@@ -233,6 +272,11 @@ export default class LabLobbyScene extends Phaser.Scene {
 
     this.uiEvents.on(PULLS_EVENTS.closePulls, this.closePanel)
     this.uiEvents.on(LAB_EVENTS.closePanel, this.closePanel)
+    this.uiEvents.on(LAB_EVENTS.introChoice, this.chooseIntro)
+    if (firstDay) {
+      this.panelOpen = true
+      this.uiEvents.emit(LAB_EVENTS.openPanel, 'intro')
+    }
     this.uiEvents.on('chat:focus', this.resetChatInput)
     this.uiEvents.on(MOBILE_INPUT.move, this.moveTouch)
     this.uiEvents.on(MOBILE_INPUT.interact, this.interactTouch)
@@ -266,6 +310,7 @@ export default class LabLobbyScene extends Phaser.Scene {
       this.uiEvents.off(MULTIPLAYER_EVENTS.dispose, this.stopMultiplayer)
       this.uiEvents.off(PULLS_EVENTS.closePulls, this.closePanel)
       this.uiEvents.off(LAB_EVENTS.closePanel, this.closePanel)
+      this.uiEvents.off(LAB_EVENTS.introChoice, this.chooseIntro)
       this.uiEvents.off('chat:focus', this.resetChatInput)
     })
   }
@@ -323,9 +368,8 @@ export default class LabLobbyScene extends Phaser.Scene {
         this.floatText('관리자만 들어갈 수 있어요')
         return
       }
-      if (this.client.changeRoom(door.id)) {
-        this.openingDoor = door.id
-        this.fx?.doors.open(door.id)
+      if (this.openDoor(door.id) && this.introGuiding && door.id === RESEARCH_ENTRANCE) {
+        this.finishIntro('guided')
       }
       return
     }

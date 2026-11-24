@@ -37,6 +37,7 @@ import type { ConnectionInfo, ChatMessage, ChatError } from '../features/multipl
 import MultiplayerClient from '../features/multiplayer/MultiplayerClient'
 import ChatPanel from '../features/multiplayer/components/ChatPanel'
 import MobileControls from './MobileControls'
+import IntroPanel from '../features/intro/IntroPanel'
 import EndingPanel from '../features/ending/EndingPanel'
 import { playSfx } from '../audio/AudioManager'
 import { authStore, useAuth } from '../features/auth/authStore'
@@ -47,7 +48,7 @@ import type { DirectionInput } from '../game/input/mobileInput'
  * Phaser 게임의 생성·정리와 연구 기록 패널의 이벤트 연결을 관리한다.
  *
  * @author seulgae
- * @version 1.1, 로비 자판기 패널 연결
+ * @version 1.2, 야외 첫 출근과 튜토리얼 선택 연결
  * @see "None"
  * @returns 게임 캔버스와 조건부 연구 기록 패널
  */
@@ -106,6 +107,12 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
     containerRef.current?.focus({ preventScroll: true })
   }
 
+  /** 시작 안내의 선택을 장면에 전달하고 패널을 닫는다. */
+  const chooseIntro = (skip: boolean) => {
+    closeLabPanel()
+    eventRef.current?.emit(LAB_EVENTS.introChoice, skip)
+  }
+
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
@@ -128,7 +135,7 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
         setTradeNotice(tradeMessage(status.status, status.reason))
         if (status.status === 'accepted') { playSfx('success', { volume: 0.6 }); void inventoryStore.refresh() }
       },
-    }, { isAdmin: () => authStore.get().admin })
+    }, { isAdmin: () => authStore.get().admin, initialRoom: 'outdoor' })
     clientRef.current = client
     // 처음부터 가방(동전·HP·기력)을 읽어 둔다. 그래야 첫 간식·오락부터 변화량이 캐릭터 위에 뜬다.
     void inventoryStore.refresh()
@@ -231,6 +238,7 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
       {labPanel === 'inventory' && <PhonePanel client={getClient} onClose={closeLabPanel} />}
       {labPanel === 'guestbook' && <GuestbookPanel onClose={closeLabPanel} />}
       {labPanel === 'vending-machine' && <VendingPanel onClose={closeLabPanel} />}
+      {labPanel === 'intro' && <IntroPanel onChoice={chooseIntro} />}
       {labPanel === 'ending' && <EndingPanel onClose={closeLabPanel} />}
       {labPanel === 'food-cart' && <FoodCartPanel onClose={closeLabPanel} />}
       {tradeOffer && <TradeOfferPanel offer={tradeOffer} onClose={closeTrade}

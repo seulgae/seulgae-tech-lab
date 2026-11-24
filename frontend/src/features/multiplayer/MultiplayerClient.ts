@@ -36,7 +36,7 @@ type Callbacks = { room?: (roomId: RoomId, pending: boolean) => void; snapshot?:
  * @see "None"
  */
 export default class MultiplayerClient {
-  private roomId: RoomId = 'lobby'
+  private roomId: RoomId
   /** 회의실에 있어 서버 연결을 유지해야 하는지 */
   private online = false
   /** 회의실 문을 열고 연결을 기다리는 중인지(연결되면 회의실로 들어간다) */
@@ -84,7 +84,12 @@ export default class MultiplayerClient {
   /** 지금 로그인한 회원이 관리자인지 묻는 함수(화면의 로그인 상태). 문을 열 때마다 묻는다. */
   private readonly isAdmin?: () => boolean
 
-  constructor(callbacks: Callbacks = {}, options: { isAdmin?: () => boolean } = {}) { this.listeners.add(callbacks); this.isAdmin = options.isAdmin }
+  constructor(callbacks: Callbacks = {}, options: { isAdmin?: () => boolean; initialRoom?: 'lobby' | 'outdoor' } = {}) {
+    this.listeners.add(callbacks)
+    this.isAdmin = options.isAdmin
+    this.roomId = options.initialRoom ?? 'lobby'
+    this.info.roomId = this.roomId
+  }
 
   /** Scene은 구독만 교체하고 React 게임 컴포넌트가 소켓 수명을 소유한다. */
   /**
