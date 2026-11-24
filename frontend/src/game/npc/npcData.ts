@@ -158,6 +158,48 @@ export const LOBBY_NPCS: readonly NpcDef[] = [
 
 ]
 
+/**
+ * 오락실 단골 다섯: 돈을 잃고 절망하거나 따고 신나는 사람들. 오락기·책상·소파를 피해 걷거나 제자리에 서 있다.
+ *
+ * @author 길태형
+ * @version 1.0, 오락실 단골 NPC
+ * @see None
+ */
+export const ARCADE_NPCS: readonly NpcDef[] = [
+  {
+    id: 'npc-arcade-allin', kind: 'man', name: '올인 아저씨', fixed: true, facesRight: true,
+    path: [{ x: 90, y: 480 }], speed: 0, pause: [3000, 6000],
+    talk: ['한 판만… 딱 한 판만 더 하면 본전이야.', '자네도 홀짝 해 봤나? 다음엔 무조건 짝이야.', '월급날까지 며칠 남았더라…'],
+    mutter: ['아… 또 홀이야…', '내 동전… 내 동전 돌려줘…', '이번 달 커피값까지 다 날렸네…', '다음 판은 진짜 온다. 느낌이 와.'],
+  },
+  {
+    id: 'npc-arcade-jackpot', kind: 'researcher-man', name: '대박난 연구원',
+    path: [{ x: 270, y: 370 }, { x: 530, y: 370 }, { x: 520, y: 470 }, { x: 280, y: 470 }],
+    speed: 58, pause: [800, 1800],
+    talk: ['방금 사다리 세 번 연속 맞혔어요! 오늘 제 날이에요!', '커피 쏩니다! 아, 커피는 2원이구나…', '감이 왔을 때 멈춰야… 아니 한 판만 더!'],
+    mutter: ['대박!! 두 배다 두 배!', '하하, 오늘은 뭘 해도 된다!', '이 기세로 주식도 사 볼까?', '역시 짝이었어! 내 촉!'],
+  },
+  {
+    id: 'npc-arcade-sigh', kind: 'researcher-silver', name: '한숨 쉬는 선배', fixed: true,
+    path: [{ x: 290, y: 250 }], speed: 0, pause: [3000, 6000],
+    talk: ['후배야, 여기 오래 있지 마라. 시간도 동전도 녹는다.', '적금이나 들 걸 그랬어…', '나도 처음엔 재미로 시작했지.'],
+    mutter: ['하아…', '사다리가 왜 꼭 반대로 내려가지…', '적금 깨서 왔는데…', '집에 뭐라고 하지…'],
+  },
+  {
+    id: 'npc-arcade-lucky', kind: 'researcher-curly', name: '신난 인턴', fixed: true,
+    path: [{ x: 710, y: 480 }], speed: 0, pause: [3000, 6000],
+    talk: ['처음 왔는데 벌써 땄어요! 원래 이렇게 쉬운 거예요?', '언니, 이거 어떻게 하는 거예요? 아 이미 땄다!', '초심자의 행운이래요!'],
+    mutter: ['꺄! 또 맞았다!', '이거 완전 내 적성인데?', '오늘 점심은 내가 쏜다!', '어? 이번엔 졌네… 괜찮아 다시!'],
+  },
+  {
+    id: 'npc-arcade-elder', kind: 'elder', name: '사다리 할아버지',
+    path: [{ x: 270, y: 140 }, { x: 530, y: 140 }],
+    speed: 34, pause: [2500, 5000],
+    talk: ['젊은이, 사다리는 말이야… 그냥 운이야, 운.', '나 때는 동전 하나로 하루 종일 놀았어.', '잃어도 웃을 수 있을 만큼만 하게나.'],
+    mutter: ['허허, 오늘은 영 안 풀리는구먼.', '왼쪽이었어야 했는데…', '그래도 재밌으면 됐지, 허허.', '어이쿠! 이번엔 맞혔다!'],
+  },
+]
+
 export const DEV_LAB_NPCS: readonly NpcDef[] = [
   {
     id: 'npc-professor', kind: 'professor', name: '괴짜 박사님',

@@ -46,12 +46,12 @@ test('가방: 비회원은 쓸 수 없고, 동전이 늘면 동전 연출 이벤
   } finally { globalThis.fetch = original; globalThis.removeEventListener(COIN_EVENT, listener); delete globalThis.addEventListener; delete globalThis.removeEventListener; delete globalThis.dispatchEvent }
 })
 
-test('HP·피로도: 간식 구매 결과를 구분하고, 바뀐 만큼 변화 이벤트를 보내며, 지치면 오락실을 시작하지 않는다', async () => {
+test('HP·스태미나: 간식 구매 결과를 구분하고, 바뀐 만큼 변화 이벤트를 보내며, 지치면 오락실을 시작하지 않는다', async () => {
   const { VITALS_EVENT, SNACKS, WORK_COST, vitalsText } = await import('../src/features/inventory/inventoryStore.ts')
   assert.deepEqual(WORK_COST, { hp: 3, fatigue: 5 })
   assert.equal(SNACKS.CAKE.price, 3); assert.equal(SNACKS.CAKE.hp, 10)
   assert.equal(SNACKS.COFFEE.price, 2); assert.equal(SNACKS.COFFEE.fatigue, 5)
-  assert.equal(vitalsText({ hp: -3, fatigue: -5 }), 'HP -3 · 피로도 -5')
+  assert.equal(vitalsText({ hp: -3, fatigue: -5 }), 'HP -3 · 스태미나 -5')
   assert.equal(vitalsText({ hp: 10, fatigue: 0 }), 'HP +10')
 
   const original = globalThis.fetch

@@ -63,7 +63,7 @@ export default class LabLobbyScene extends Phaser.Scene {
   private ground: GroundItem[] = []
   private groundSubscription?: () => void
   private readonly openInventoryFromButton = () => { if (!this.panelOpen && !this.transition) this.openInventory() }
-  /** HP·피로도 변화량을 캐릭터 위에 띄운다(줄면 붉게, 늘면 초록). */
+  /** HP·스태미나 변화량을 캐릭터 위에 띄운다(줄면 붉게, 늘면 초록). */
   private readonly showVitals = (event: Event) => {
     const change = (event as CustomEvent<{ hp: number; fatigue: number }>).detail
     if (!change || !this.player) return

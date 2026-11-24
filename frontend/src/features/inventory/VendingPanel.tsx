@@ -44,7 +44,7 @@ export default function VendingPanel({ onClose }: { onClose: () => void }) {
       playSfx('coin', { volume: 0.6 })
       return
     }
-    setMessage({ guest: '로그인 후 동전으로 구매할 수 있어요.', broke: '동전이 부족해요.', full: '이미 피로도가 최대치예요. 동전은 쓰지 않았어요.', error: '구매 결과를 확인하지 못했어요. 잔액을 확인한 뒤 다시 이용해 주세요.' }[result])
+    setMessage({ guest: '로그인 후 동전으로 구매할 수 있어요.', broke: '동전이 부족해요.', full: '이미 스태미나가 최대치예요. 동전은 쓰지 않았어요.', error: '구매 결과를 확인하지 못했어요. 잔액을 확인한 뒤 다시 이용해 주세요.' }[result])
     void inventoryStore.refresh()
   }
 
@@ -55,18 +55,18 @@ export default function VendingPanel({ onClose }: { onClose: () => void }) {
         <button type="button" className="research-close" onClick={onClose} autoFocus>닫기</button>
       </header>
       <p className="inventory-note" role="status">{message}</p>
-      <p className="inventory-note">내 동전 <strong>{inventory.available ? `${inventory.coins}원` : '—'}</strong> · 피로도 {inventory.fatigue}/{inventory.fatigueMax}</p>
+      <p className="inventory-note">내 동전 <strong>{inventory.available ? `${inventory.coins}원` : '—'}</strong> · 스태미나 {inventory.fatigue}/{inventory.fatigueMax}</p>
       {inventory.loaded && !inventory.available && <p className="inventory-note"><a className="auth-kakao" href={LOGIN_URL}>카카오 로그인</a> 후 구매해 주세요.</p>}
       <div className="vending-drinks">
         {(Object.keys(DRINKS) as DrinkKind[]).map(kind => (
           <button type="button" className={`vending-drink vending-${kind.toLowerCase()}`} key={kind} disabled={!inventory.available || busy !== null} onClick={() => void buy(kind)}>
             <span className="vending-can" aria-hidden="true">{kind === 'WATER' ? '물' : '톡!'}</span>
             <strong>{DRINKS[kind].name} · {DRINKS[kind].price}원</strong>
-            <small>{busy === kind ? '꺼내는 중…' : `피로도 +${DRINKS[kind].fatigue}`}</small>
+            <small>{busy === kind ? '꺼내는 중…' : `스태미나 +${DRINKS[kind].fatigue}`}</small>
           </button>
         ))}
       </div>
-      <p className="research-footer">구매 즉시 마셔요. 피로도가 최대치면 동전을 받지 않아요. ESC로 닫아요.</p>
+      <p className="research-footer">구매 즉시 마셔요. 스태미나가 최대치면 동전을 받지 않아요. ESC로 닫아요.</p>
     </dialog>
   )
 }
