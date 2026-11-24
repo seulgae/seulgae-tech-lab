@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { LOGIN_URL, useAuth } from '../auth/authStore'
 import type MultiplayerClient from '../multiplayer/MultiplayerClient'
 import { inventoryStore, useInventory } from '../inventory/inventoryStore'
+import { costText, useRules } from '../rules/rulesStore'
 import { playSfx } from '../../audio/AudioManager'
 import { clockText } from './phoneTime'
 import { PHONE_APPS } from './phoneApps'
@@ -33,6 +34,7 @@ import './phone.css'
 export default function PhonePanel({ client, onClose }: { client: () => MultiplayerClient | null; onClose: () => void }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const inventory = useInventory()
+  const rules = useRules()
   const auth = useAuth()
   const [app, setApp] = useState<PhoneAppId | null>(null)
   const [clock, setClock] = useState(() => clockText())
@@ -70,7 +72,7 @@ export default function PhonePanel({ client, onClose }: { client: () => Multipla
                     <strong>{inventory.unlimited ? '∞' : `${value}/${max}`}</strong>
                   </div>
                 ))}
-                <small>일·오락 한 번에 HP -3, 기력 -5 · 게시물 보상 오늘 {inventory.rewardsLeftToday}번 남음</small>
+                <small>일·오락 한 번에 {costText('ARCADE_PLAY', rules)} · 게시물 보상 오늘 {inventory.rewardsLeftToday}번 남음</small>
               </section>
             ) : (
               <section className="phone-widget phone-login" aria-label="로그인">

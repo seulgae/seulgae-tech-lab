@@ -9,6 +9,7 @@ import { snake } from './snake'
 import { skyPatrol } from './skyPatrol'
 import '../../components/panel.css'
 import './arcade.css'
+import { costText, useRules } from '../rules/rulesStore'
 
 /**
  * 3번 오락실 메인 오락기: 게임 고르기 화면에서 벽돌 부수기·블록 쌓기·지렁이 사과 먹기·하늘 순찰대 중 하나를 고른다.
@@ -23,6 +24,7 @@ import './arcade.css'
 export default function ArcadePanel({ onClose }: { onClose: () => void }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [game, setGame] = useState<ArcadeGameId | null>(null)
+  const rules = useRules()
   const current = ARCADE_GAMES.find(entry => entry.id === game)
 
   useEffect(() => { const dialog = dialogRef.current; dialog?.showModal(); return () => dialog?.close() }, [])
@@ -61,7 +63,7 @@ export default function ArcadePanel({ onClose }: { onClose: () => void }) {
       {game === 'blocks' && <RetroScreen game={blockStack} />}
       {game === 'snake' && <RetroScreen game={snake} />}
       {game === 'sky' && <RetroScreen game={skyPatrol} />}
-      {!game && <p className="research-footer">방향키·Enter로 골라도 돼요. 회원은 한 판에 1원(HP -3, 기력 -5)이고 네 게임 합쳐 하루 5판까지, 비회원은 무료예요. ESC로 닫아요.</p>}
+      {!game && <p className="research-footer">방향키·Enter로 골라도 돼요. 회원은 한 판에 1원({costText('ARCADE_PLAY', rules)})이고 네 게임 합쳐 하루 5판까지, 비회원은 무료예요. ESC로 닫아요.</p>}
     </dialog>
   )
 }

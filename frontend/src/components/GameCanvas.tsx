@@ -27,6 +27,7 @@ import TradeOfferPanel from '../features/inventory/TradeOfferPanel'
 import VendingPanel from '../features/inventory/VendingPanel'
 import FoodCartPanel from '../features/inventory/FoodCartPanel'
 import { inventoryStore } from '../features/inventory/inventoryStore'
+import { rulesStore } from '../features/rules/rulesStore'
 import { SALARY_TICK_MS, tickSalary } from '../features/badge/badgeApi'
 import type { TradeOffer } from '../features/multiplayer/model/protocol'
 import GuestbookPanel from '../features/guestbook/GuestbookPanel'
@@ -130,6 +131,8 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
     clientRef.current = client
     // 처음부터 가방(동전·HP·기력)을 읽어 둔다. 그래야 첫 간식·오락부터 변화량이 캐릭터 위에 뜬다.
     void inventoryStore.refresh()
+    // 게임 규칙(행동 비용·간식·직급)을 운영 DB에서 받아 둔다. 실패하면 기본값을 쓴다.
+    void rulesStore.load()
     // 접속해 있는 동안 1분마다 급여 차례를 확인한다(지급은 서버가 10분에 한 번). 받으면 가방을 다시 읽어 동전이 튀어 오른다.
     const payday = () => {
       if (!authStore.get().member) return
@@ -217,7 +220,7 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
         onMove={moveMobile} onInteract={interactMobile} />
       {pullsOpen && <PullsPanel onClose={closePulls} />}
       {labPanel === 'agenda' && <AgendaPanel onClose={closeLabPanel} />}
-      {labPanel === 'bookshelf' && <BookPanel onClose={closeLabPanel} />}
+      {labPanel === 'bookshelf' && <BookPanel onClose={closeLabPanel} admin={connection.roomId === 'control-room'} />}
       {labPanel === 'admin-console' && <SqlConsolePanel onClose={closeLabPanel} />}
       {labPanel === 'admin-apply' && <AdminApplyPanel onClose={closeLabPanel} />}
       {labPanel === 'my-desk' && <MyDeskPanel onClose={closeLabPanel} />}

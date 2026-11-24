@@ -57,8 +57,8 @@ class InventoryServiceTest {
         assertEquals(50, start.hp()); assertEquals(50, start.hpMax());
         assertEquals(50, start.fatigue()); assertEquals(50, start.fatigueMax());
 
-        service.ensureFit(me);
-        service.spendWork(me);
+        service.ensureFit(me, "ARCADE_PLAY");
+        service.spendWork(me, "ARCADE_PLAY");
         assertEquals(47, service.view(me).hp(), "일하면 HP -3");
         assertEquals(45, service.view(me).fatigue(), "일하면 기력 -5");
 
@@ -86,17 +86,17 @@ class InventoryServiceTest {
     }
 
     @Test void tooTiredMembersCannotWorkOrPlayUntilTheyRest() {
-        for (int i = 0; i < 10; i++) service.spendWork(me); // 기력 50 → 0
+        for (int i = 0; i < 10; i++) service.spendWork(me, "ARCADE_PLAY"); // 기력 50 → 0
         assertEquals(0, service.view(me).fatigue());
         assertEquals(20, service.view(me).hp());
-        var tired = assertThrows(ResponseStatusException.class, () -> service.ensureFit(me));
+        var tired = assertThrows(ResponseStatusException.class, () -> service.ensureFit(me, "ARCADE_PLAY"));
         assertEquals(InventoryService.TIRED, tired.getStatusCode());
         service.rewardWorkPost(me);
         int coins = service.view(me).coins();
         assertEquals(InventoryService.TIRED, assertThrows(ResponseStatusException.class, () -> service.playArcade(me)).getStatusCode());
         assertEquals(coins, service.view(me).coins(), "지쳐서 못 하면 동전도 그대로");
         service.buySnack(me, "COFFEE");
-        service.ensureFit(me);
+        service.ensureFit(me, "ARCADE_PLAY");
     }
 
     @Test void picksOnlyItemsNearTheReportedPosition() {
@@ -196,7 +196,7 @@ class InventoryServiceTest {
     @Test void vendingDrinksUseServerPricesAndNeverChargeRejectedPurchases() {
         for (String kind : new String[]{"COLA", "CIDER", "FANTA", "WATER"}) {
             UUID member = UUID.randomUUID();
-            service.spendWork(member);
+            service.spendWork(member, "ARCADE_PLAY");
             assertEquals(409, assertThrows(ResponseStatusException.class, () -> service.buySnack(member, kind)).getStatusCode().value());
             assertEquals(45, service.view(member).fatigue());
             service.rewardWorkPost(member);

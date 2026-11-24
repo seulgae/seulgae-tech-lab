@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { costText, tiredMessage } from '../rules/rulesStore.ts'
 
 /**
  * 가방(인벤토리) 상태. 로그인 회원만 쓸 수 있고, 서버(/api/inventory)가 원본이다.
@@ -12,21 +13,10 @@ type InventoryView = { coins: number; items: InventoryItem[]; rewardsLeftToday: 
 export const COIN_EVENT = 'lab:coin'
 /** HP·기력이 바뀌면 게임 장면에 변화량을 띄우는 window 이벤트(detail: { hp, fatigue }) */
 export const VITALS_EVENT = 'lab:vitals'
-/** 일·오락 한 번에 드는 HP·기력, 간식 가격과 회복량(서버 InventoryService와 같은 값) */
-export const WORK_COST = { hp: 3, fatigue: 5 }
-/** 자판기 음료 가격과 기력 회복량. 구매 즉시 마신다. */
-export const DRINKS = {
-  COLA: { price: 2, hp: 0, fatigue: 5, name: '콜라' },
-  CIDER: { price: 2, hp: 0, fatigue: 5, name: '사이다' },
-  FANTA: { price: 2, hp: 0, fatigue: 5, name: '환타' },
-  WATER: { price: 1, hp: 0, fatigue: 2, name: '물' },
-} as const
-export type DrinkKind = keyof typeof DRINKS
-export const SNACKS = { ...DRINKS, CAKE: { price: 3, hp: 10, fatigue: 0, name: '케이크' }, COFFEE: { price: 2, hp: 0, fatigue: 5, name: '커피' } } as const
-export type SnackKind = keyof typeof SNACKS
-/** HP·기력이 모자라 일·오락을 할 수 없을 때 서버 응답(423)과 안내 */
+/** 간식·음료 코드(가격·회복량·행동 비용은 운영 DB 규칙: features/rules/rulesStore) */
+export type SnackKind = string
+/** HP·기력이 모자라 일·오락을 할 수 없을 때 서버 응답(423). 안내는 tiredMessage(행동 코드) */
 export const TIRED_STATUS = 423
-export const TIRED_MESSAGE = '기력이나 HP가 모자라요(한 번에 HP 3·기력 5 필요). 로비 데스크에서 커피(기력 +5)나 케이크(HP +10)로 채워요.'
 /** 오락실 메인 오락기 하루 판 수(네 게임 합쳐, 서버 InventoryService.DAILY_ARCADE_PLAYS와 같은 값) */
 export const ARCADE_DAILY_PLAYS = 5
 export type ArcadePay = 'paid' | 'free' | 'broke' | 'tired' | 'limit'
@@ -41,17 +31,17 @@ export type ArcadePay = 'paid' | 'free' | 'broke' | 'tired' | 'limit'
 export function arcadeNotice(result: ArcadePay, playsLeft: number | null): string {
   const left = playsLeft === null ? '' : ` · 오늘 ${playsLeft}판 남음`
   return {
-    paid: `동전 1원을 넣었어요(HP -3, 기력 -5)${left}. 행운을 빌어요!`,
+    paid: `동전 1원을 넣었어요(${costText('ARCADE_PLAY')})${left}. 행운을 빌어요!`,
     free: '비회원은 무료로 즐겨요.',
     broke: '동전이 부족해요. 사무실 게시판에 글을 등록하면 10원을 받아요.',
-    tired: TIRED_MESSAGE,
+    tired: tiredMessage('ARCADE_PLAY'),
     limit: `오늘 오락실 ${ARCADE_DAILY_PLAYS}판을 다 했어요. 내일 다시 와요!`,
   }[result]
 }
 
 /** 시작 전 안내: 한 판 값과 오늘 남은 판 */
 export const arcadeIntro = (playsLeft: number | null) =>
-  `회원은 한 판에 1원(HP -3, 기력 -5), 하루 ${ARCADE_DAILY_PLAYS}판${playsLeft === null ? '' : ` · 오늘 ${playsLeft}판 남음`}. Space·탭으로 시작해요.`
+  `회원은 한 판에 1원(${costText('ARCADE_PLAY')}), 하루 ${ARCADE_DAILY_PLAYS}판${playsLeft === null ? '' : ` · 오늘 ${playsLeft}판 남음`}. Space·탭으로 시작해요.`
 export const INVENTORY_KEY = 'I'
 /** 화면 위 가방 버튼이 게임 장면에 "가방 열기"를 요청하는 window 이벤트 */
 export const OPEN_INVENTORY_EVENT = 'lab:open-inventory'
@@ -106,7 +96,7 @@ export const inventoryStore = {
       return true
     } catch { return false }
   },
-  /** 오락실 한 판(1원, HP -3, 기력 -5, 하루 5판). 'paid' 냈음, 'free' 비회원 무료, 'broke' 동전 부족, 'tired' 기력 부족, 'limit' 오늘 다 함 */
+  /** 오락실 한 판(1원, HP·기력은 ARCADE_PLAY 규칙, 하루 5판). 'paid' 냈음, 'free' 비회원 무료, 'broke' 동전 부족, 'tired' 기력 부족, 'limit' 오늘 다 함 */
   async payArcade(): Promise<ArcadePay> {
     try {
       const response = await call('/api/inventory/arcade', { method: 'POST' })

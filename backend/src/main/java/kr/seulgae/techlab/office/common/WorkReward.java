@@ -25,16 +25,16 @@ public class WorkReward {
      * @param author 회원(비회원이면 null, 확인하지 않음)
      * @exception ResponseStatusException 모자라면 423
      */
-    public void ensureFit(UUID author) { if (author != null) inventory.ensureFit(author); }
+    public void ensureFit(UUID author, String action) { if (author != null) inventory.ensureFit(author, action); }
 
     /**
      * 일한 뒤 비용을 빼고 보상을 준다.
      *
      * @param author 회원(비회원이면 null, 아무것도 하지 않음)
      */
-    public void reward(UUID author) {
+    public void reward(UUID author, String action) {
         if (author == null) return;
-        try { inventory.spendWork(author); } catch (ResponseStatusException ignored) { /* 동시에 여러 번 일해 모자라졌으면 넘어간다 */ }
+        try { inventory.spendWork(author, action); } catch (ResponseStatusException ignored) { /* 동시에 여러 번 일해 모자라졌으면 넘어간다 */ }
         inventory.rewardWorkPost(author);
     }
 }

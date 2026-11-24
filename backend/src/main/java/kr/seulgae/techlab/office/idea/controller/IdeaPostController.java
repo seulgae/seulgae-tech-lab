@@ -50,9 +50,9 @@ public class IdeaPostController {
     public IdeaPost create(@RequestBody(required = false) IdeaRequestDTO body, HttpServletRequest request) {
         var author = auth.writer(request).orElse(null);
         limiter.check(request);
-        work.ensureFit(author);
+        work.ensureFit(author, kr.seulgae.techlab.rule.entity.ActionCost.IDEA_POST);
         var created = service.create(body == null ? null : body.title(), body == null ? null : body.content(), author);
-        work.reward(author);
+        work.reward(author, kr.seulgae.techlab.rule.entity.ActionCost.IDEA_POST);
         return created;
     }
 }

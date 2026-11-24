@@ -17,7 +17,8 @@ import {
 import { SKY_PALETTES, clockAngles, clockLabel, skyPhase } from './timeOfDay'
 import { AGENDAS_CHANGED, fetchAgendas } from '../../features/boards/boardsApi'
 import { playSfx } from '../../audio/AudioManager'
-import { SNACKS, inventoryStore } from '../../features/inventory/inventoryStore'
+import { inventoryStore } from '../../features/inventory/inventoryStore'
+import { snackOf } from '../../features/rules/rulesStore'
 import { adminRoomFx } from './adminRoomFx'
 import { outdoorFx } from './outdoorFx'
 import { townsfolk } from '../npc/townsfolkFx.ts'
@@ -399,14 +400,15 @@ function treatTable(ctx: Context) {
   let busyUntil = 0
 
   /**
-   * 회원은 동전으로 산다(케이크 3원 HP +10, 커피 2원 기력 +5). 비회원은 예전처럼 무료로 즐기기만 한다.
+   * 회원은 동전으로 산다(가격·회복량은 운영 규칙 tb_lab_snack). 비회원은 예전처럼 무료로 즐기기만 한다.
    * 동전이 모자라거나 이미 가득이면 먹지 않고 안내만 한다.
    */
   const buy = (kind: TreatKind) => {
     if (scene.time.now < busyUntil) return
     busyUntil = scene.time.now + 900
-    const snack = kind === 'coffee' ? SNACKS.COFFEE : SNACKS.CAKE
-    void inventoryStore.buySnack(kind === 'coffee' ? 'COFFEE' : 'CAKE').then(result => {
+    const code = kind === 'coffee' ? 'COFFEE' : 'CAKE'
+    const snack = snackOf(code) ?? { name: kind === 'coffee' ? '커피' : '케이크', price: 0 }
+    void inventoryStore.buySnack(code).then(result => {
       // 응답 전에 방을 나가 소품이 정리됐으면 아무것도 하지 않는다.
       if (!props[kind].active) return
       if (result === 'broke') { playSfx('error', { volume: 0.5 }); ctx.banner.show(`동전이 부족해요 · ${snack.name} ${snack.price}원`, '#e05a6c', 1800); return }

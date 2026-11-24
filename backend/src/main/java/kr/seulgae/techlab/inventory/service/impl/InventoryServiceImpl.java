@@ -4,6 +4,9 @@ import kr.seulgae.techlab.inventory.dto.*;
 import kr.seulgae.techlab.inventory.entity.*;
 import kr.seulgae.techlab.inventory.service.*;
 import kr.seulgae.techlab.inventory.repository.*;
+import kr.seulgae.techlab.rule.entity.ActionCost;
+import kr.seulgae.techlab.rule.entity.Snack;
+import kr.seulgae.techlab.rule.service.GameRules;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -45,7 +48,11 @@ public class InventoryServiceImpl implements InventoryService {
     private final LongSupplier clock;
     private final Map<UUID, Long> lastShake = new ConcurrentHashMap<>();
 
+    private GameRules rules = GameRules.defaults();
+
     @Autowired
+    public InventoryServiceImpl(InventoryRepository store, GameRules rules) { this(store, new java.security.SecureRandom(), System::currentTimeMillis); this.rules = rules; }
+
     public InventoryServiceImpl(InventoryRepository store) { this(store, new java.security.SecureRandom(), System::currentTimeMillis); }
 
     /** 테스트용: 추첨과 시계를 바꿔 끼운다. */
@@ -92,41 +99,43 @@ public class InventoryServiceImpl implements InventoryService {
     @Transactional
     public int playArcade(UUID member) {
         if (arcadePlaysLeft(member) <= 0) throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Daily arcade limit");
-        ensureFit(member);
+        ensureFit(member, ActionCost.ARCADE_PLAY);
         int coins = store.changeCoins(member, -ARCADE_COST, ARCADE_PLAY)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Not enough coins"));
-        spend(member);
+        spend(member, ActionCost.ARCADE_PLAY);
         return coins;
     }
 
     /** 오늘 남은 오락실 판 수(네 게임 합쳐 하루 5판) */
     public int arcadePlaysLeft(UUID member) { return Math.max(0, DAILY_ARCADE_PLAYS - store.countToday(member, ARCADE_PLAY)); }
 
-    /** 일·오락을 할 수 있을 만큼 HP·기력이 남았는지 확인한다. 모자라면 423. */
-    public void ensureFit(UUID member) {
+    /** 이 행동을 할 만큼 HP·기력이 남았는지 확인한다(비용은 tb_lab_action_cost). 모자라면 423. */
+    public void ensureFit(UUID member, String action) {
         if (unlimited(member)) return;
+        var cost = rules.action(action);
         var vitals = store.vitals(member);
-        if (vitals.hp() < WORK_HP_COST || vitals.fatigue() < WORK_FATIGUE_COST) {
+        if (vitals.hp() < cost.hpCost() || vitals.fatigue() < cost.fatigueCost()) {
             throw new ResponseStatusException(TIRED, "Too tired: eat cake or drink coffee in the lobby");
         }
     }
 
-    /** 사무실 게시판에서 일한 뒤 HP -3, 기력 -5(모자라면 빼지 않는다). */
+    /** 행동을 한 뒤 비용(tb_lab_action_cost)을 뺀다(모자라면 빼지 않는다). */
     @Transactional
-    public void spendWork(UUID member) { spend(member); }
+    public void spendWork(UUID member, String action) { spend(member, action); }
 
     /** 연구소장은 HP·기력이 무제한이라 일·오락에서 줄지 않는다. */
-    private boolean unlimited(UUID member) { return kr.seulgae.techlab.badge.entity.Rank.of(store.workCount(member)).unlimited(); }
+    private boolean unlimited(UUID member) { return rules.rankOf(store.workCount(member)).unlimited(); }
 
-    private void spend(UUID member) {
+    private void spend(UUID member, String action) {
         if (unlimited(member)) return;
-        store.changeVitals(member, -WORK_HP_COST, -WORK_FATIGUE_COST)
+        var cost = rules.action(action);
+        if (cost.hpCost() == 0 && cost.fatigueCost() == 0) return;
+        store.changeVitals(member, -cost.hpCost(), -cost.fatigueCost())
             .orElseThrow(() -> new ResponseStatusException(TIRED, "Too tired: eat cake or drink coffee in the lobby"));
     }
 
     /**
-     * 로비 간식·음료를 서버 가격으로 구매한다. 탄산음료 2원 기력 +5, 물 1원 기력 +2.
-     * 케이크 3원 HP +10, 커피 2원 기력 +5이며 회복은 최대치에서 멈춘다.
+     * 로비 간식·음료를 운영 DB(tb_lab_snack) 가격으로 구매한다. 회복은 최대치에서 멈춘다.
      * 이미 가득이면 422(돈을 받지 않음), 동전이 모자라면 409.
      * @param member 구매 회원
      * @param kind 서버가 허용한 간식·음료 코드
@@ -134,21 +143,15 @@ public class InventoryServiceImpl implements InventoryService {
      */
     @Transactional
     public InventoryViewDTO buySnack(UUID member, String kind) {
-        boolean cake = CAKE.equals(kind);
-        int price = switch (kind == null ? "" : kind) {
-            case CAKE -> CAKE_PRICE;
-            case COFFEE, "COLA", "CIDER", "FANTA" -> 2;
-            case "WATER" -> 1;
-            default -> 0;
-        };
-        if (price == 0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown snack");
+        /* 가격·회복량은 운영 DB tb_lab_snack. 회복하는 값이 모두 가득이면 돈을 받지 않는다. */
+        Snack snack = rules.snack(kind == null ? "" : kind).orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown snack"));
         var vitals = store.lockVitals(member);
-        if (cake ? vitals.hp() >= vitals.hpMax() : vitals.fatigue() >= vitals.fatigueMax()) {
-            throw new ResponseStatusException(ALREADY_FULL, "Already full");
-        }
-        store.changeCoins(member, -price, kind)
+        boolean hpFull = snack.hpGain() == 0 || vitals.hp() >= vitals.hpMax();
+        boolean fatigueFull = snack.fatigueGain() == 0 || vitals.fatigue() >= vitals.fatigueMax();
+        if (hpFull && fatigueFull) throw new ResponseStatusException(ALREADY_FULL, "Already full");
+        store.changeCoins(member, -snack.price(), snack.code())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Not enough coins"));
-        store.changeVitals(member, cake ? CAKE_HP : 0, cake ? 0 : ("WATER".equals(kind) ? 2 : COFFEE_FATIGUE));
+        store.changeVitals(member, snack.hpGain(), snack.fatigueGain());
         return view(member);
     }
 

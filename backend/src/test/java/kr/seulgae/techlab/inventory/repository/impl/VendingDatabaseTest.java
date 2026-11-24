@@ -36,7 +36,7 @@ class VendingDatabaseTest {
         var pool = Executors.newFixedThreadPool(2);
         try {
             for (String kind : new String[]{"COLA", "CIDER", "FANTA", "WATER"}) {
-                tx.executeWithoutResult(status -> { service.rewardWorkPost(member); service.spendWork(member); service.buySnack(member, kind); });
+                tx.executeWithoutResult(status -> { service.rewardWorkPost(member); service.spendWork(member, "ARCADE_PLAY"); service.buySnack(member, kind); });
                 var event = store.history(member, 100).stream().filter(entry -> kind.equals(entry.reason())).findFirst().orElseThrow();
                 assertEquals(kind, event.reason());
                 assertEquals("WATER".equals(kind) ? -1 : -2, event.amount());

@@ -373,4 +373,14 @@ class LobbySocketTest {
             assertEquals(200, http.send(HttpRequest.newBuilder(URI.create(base + path)).GET().build(), HttpResponse.BodyHandlers.ofString()).statusCode(), path);
         }
     }
+
+    /** 게임 규칙은 누구나 읽는다(화면이 비용·간식·직급 숫자를 여기서 받는다). */
+    @Test void rulesArePublic() throws Exception {
+        var response = http.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port() + "/api/rules")).GET().build(), HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, response.statusCode());
+        var body = JSON.readTree(response.body());
+        assertEquals(6, body.path("snacks").size());
+        assertEquals("인턴", body.path("ranks").get(0).path("name").stringValue());
+        assertEquals(5, body.path("actions").get(0).path("fatigueCost").asInt());
+    }
 }
