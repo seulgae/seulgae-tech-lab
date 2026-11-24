@@ -486,9 +486,40 @@ function officeFx(ctx: Context): RoomHandlers {
   return { destroy: () => ctx.stop() }
 }
 
-/** 실습 연구실(로비 오른쪽 위): 유즈맵 대기실. 들어오면 잠깐 뒤 대기실 창이 자동으로 열리고, 가운데 단말기에서 다시 열 수 있다. */
+/**
+ * 실습 연구실(로비 오른쪽 위): 모든 연구원이 모이는 유즈맵 네온 라운지.
+ * 벽의 네온 간판과 흐르는 전광판, 색이 돌아가는 조명과 바닥 띠, 떠오르는 빛 알갱이로 분위기를 내고,
+ * 들어오면 대기실 창이 열린다(가운데 단말기에서 E로 다시 연다).
+ */
 function practiceLabFx(ctx: Context): RoomHandlers {
-  const ambience = officeFx(ctx)
+  const { scene } = ctx
+  /* 네온 간판 */
+  scene.add.rectangle(400, 18, 260, 28, 0x05040f, 0.92).setStrokeStyle(2, 0x22d3ee).setDepth(61)
+  const sign = ctx.text(400, 18, '◆ USE MAP LOUNGE ◆', 14, '#67e8f9', 62, true)
+  scene.tweens.add({ targets: sign, alpha: 0.55, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' })
+  /* 벽 전광판(간판 아래): 안내 문구가 오른쪽에서 왼쪽으로 흐른다 */
+  scene.add.rectangle(400, 48, 300, 18, 0x0b0820, 0.95).setStrokeStyle(1, 0xa855f7).setDepth(62)
+  const marquee = ctx.text(560, 48, '모두 모여라!  방을 만들고 친구를 불러요  ·  지금 열린 맵: 협동 버그 잡기  ·  가운데 단말기에서 E', 11, '#f0abfc', 63, true).setOrigin(0, 0.5)
+  const mask = scene.add.rectangle(400, 48, 296, 16, 0xffffff).setVisible(false).createGeometryMask()
+  marquee.setMask(mask)
+  scene.tweens.add({ targets: marquee, x: { from: 560, to: 240 - marquee.width }, duration: 14000, repeat: -1 })
+  /* 색이 돌아가는 조명 */
+  const colors = ['#22d3ee', '#a855f7', '#f472b6', '#4ade80']
+  const spots = [[150, 260], [650, 260], [150, 420], [650, 420], [400, 330]].map(([x, y], i) => ctx.glow(x!, y!, colors[i % colors.length]!, 4.5, 3, 0.22, -30))
+  let turn = 0
+  ctx.every(1600, 1600, () => {
+    turn++
+    spots.forEach((spot, i) => { spot.setTint(hex(colors[(i + turn) % colors.length]!)); scene.tweens.add({ targets: spot, alpha: { from: 0.3, to: 0.16 }, duration: 1500 }) })
+  })
+  /* 바닥 가운데 빛 띠(문에서 단말기까지) */
+  const strip = scene.add.rectangle(400, 330, 10, 300, 0x22d3ee, 0.18).setDepth(-40).setBlendMode(Phaser.BlendModes.ADD)
+  scene.tweens.add({ targets: strip, alpha: 0.05, scaleX: 2.2, duration: 1200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' })
+  /* 떠오르는 빛 알갱이 */
+  const motes = scene.add.particles(0, 0, 'dot', {
+    x: { min: 40, max: 760 }, y: 570, lifespan: 6000, speedY: { min: -30, max: -12 }, speedX: { min: -6, max: 6 },
+    scale: { start: 1.5, end: 0 }, alpha: { start: 0.7, end: 0 }, frequency: 220, tint: [0x22d3ee, 0xa855f7, 0xf472b6],
+    blendMode: Phaser.BlendModes.ADD,
+  }).setDepth(900)
   /* 방 이동(페이드·서버 확인)이 끝나기 전에는 창을 열 수 없어서, 열릴 때까지 0.5초마다 다시 시도한다(최대 15초). */
   let tries = 0, stopped = false
   const tryOpen = () => {
@@ -498,7 +529,7 @@ function practiceLabFx(ctx: Context): RoomHandlers {
     ctx.scene.time.delayedCall(500, tryOpen)
   }
   ctx.scene.time.delayedCall(700, tryOpen)
-  return { destroy: () => { stopped = true; ambience.destroy?.() } }
+  return { destroy: () => { stopped = true; motes.destroy(); ctx.stop() } }
 }
 
 /** 개인 기숙사(로비 오른쪽 아래): 사무실 조명·시계 위에 내 가구(dormFx) */
