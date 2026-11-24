@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.springframework.stereotype.Component;
 
 /**
- * 실습 연구실 유즈맵 대기실: 접속한 연구원, 방(이름·맵·인원·비밀번호·방장·준비), 게임 시작·끝.
+ * 협동 연구실 유즈맵 대기실: 접속한 연구원, 방(이름·맵·인원·비밀번호·방장·준비), 게임 시작·끝.
  * 메모리에만 두며(서버를 다시 켜면 사라진다) 판정은 하지 않는다. 게임 중 판정은 방장 브라우저의 맵이 한다.
  * 모든 메서드는 한 번에 하나만 실행된다(synchronized). 잘못된 요청은 IllegalArgumentException(사용자에게 보일 문구)으로 거절한다.
  *

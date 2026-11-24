@@ -1,4 +1,4 @@
-/* 실습 연구실 유즈맵 대기실 */
+/* 협동 연구실 유즈맵 대기실 */
 .research-panel.usemap-panel { width: min(860px, calc(100vw - 32px)); }
 .research-panel.usemap-panel.playing { width: min(980px, calc(100vw - 16px)); }
 .usemap-header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }

@@ -89,7 +89,7 @@ export const ROOM_THEMES: Record<RoomId, RoomTheme> = {
     door: { frame: '#070614', frameLight: '#22d3ee', panel: '#1e1b4b', panelLight: '#312e81', handle: '#f0abfc', sign: '#22d3ee' },
     page: { background: '#070816', card: '#0f1228', border: '#3b2f7a', accent: '#67e8f9', muted: '#c4b5fd' },
     textures: { computer: 'dev-desk', chair: 'office-chair', plant: 'tall-plant' },
-    notes: { title: '실습\n연구실', body: '모두 모이는\n유즈맵 라운지.', missionTitle: '유즈맵 라운지', mission: '모든 연구원이 모여 함께 노는 네온 라운지예요. 들어오면 대기실 창이 열려요. 방을 만들거나 들어가서, 방장이 맵을 고르고 시작해요. 소파에서 쉬다가 가운데 단말기에서 E로 대기실을 다시 열 수 있어요. 첫 맵은 협동 버그 잡기!' },
+    notes: { title: '협동\n연구실', body: '모두 모이는\n유즈맵 라운지.', missionTitle: '유즈맵 라운지', mission: '모든 연구원이 모여 함께 노는 네온 라운지예요. 들어오면 대기실 창이 열려요. 방을 만들거나 들어가서, 방장이 맵을 고르고 시작해요. 소파에서 쉬다가 가운데 단말기에서 E로 대기실을 다시 열 수 있어요. 첫 맵은 협동 버그 잡기!' },
   },
   'office-3': {
     mood: '네온이 번쩍이는 보랏빛 오락실(월루 전용 휴게 공간)',

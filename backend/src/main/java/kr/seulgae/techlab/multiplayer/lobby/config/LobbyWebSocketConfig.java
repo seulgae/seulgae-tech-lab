@@ -67,7 +67,7 @@ public class LobbyWebSocketConfig implements WebSocketConfigurer {
             @Override public void afterHandshake(ServerHttpRequest request, ServerHttpResponse response, WebSocketHandler socket, Exception exception) {}
         };
         registry.addHandler(handler, "/ws/lobby").setAllowedOrigins(origins.toArray(String[]::new)).addInterceptors(interceptor);
-        // 실습 연구실 유즈맵 대기실(방·채팅·게임 중계). 같은 Origin 검사와 회원 확인을 쓴다.
+        // 협동 연구실 유즈맵 대기실(방·채팅·게임 중계). 같은 Origin 검사와 회원 확인을 쓴다.
         registry.addHandler(usemap, "/ws/usemap").setAllowedOrigins(origins.toArray(String[]::new)).addInterceptors(interceptor);
     }
 
