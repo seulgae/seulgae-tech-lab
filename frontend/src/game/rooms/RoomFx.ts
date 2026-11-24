@@ -432,7 +432,10 @@ function treatTable(ctx: Context) {
       store?.setItem(TREAT_STORAGE_KEY, JSON.stringify(log))
       count = log[kind]
     } catch { /* 저장이 막혀도 연출은 계속한다 */ }
-    ctx.banner.show(paid ? `${treatMessage(kind, count)} · ${paid}` : treatMessage(kind, count), kind === 'coffee' ? '#c9a24b' : '#e05a6c', 1800)
+    /* 회원이면 마신 뒤 실제 값을 함께 보여 준다(최대치에 가까우면 +5보다 적게 오른다). */
+    const now = inventoryStore.get()
+    const after = paid && now.available ? (kind === 'coffee' ? ` · 기력 ${now.fatigue}/${now.fatigueMax}` : ` · HP ${now.hp}/${now.hpMax}`) : ''
+    ctx.banner.show(paid ? `${treatMessage(kind, count)} · ${paid}${after}` : treatMessage(kind, count), kind === 'coffee' ? '#c9a24b' : '#e05a6c', 2200)
   }
 
   /** 책장에서 책 한 권이 내 캐릭터 쪽으로 포물선을 그리며 날아온다. */
