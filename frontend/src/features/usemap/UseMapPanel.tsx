@@ -10,7 +10,7 @@ const CATALOG = catalogFile.maps as UseMapCatalogEntry[]
 const time = (at: number) => new Date(at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
 
 /**
- * 실습 연구실 유즈맵 대기실: 방 목록·방 만들기·입장, 대기실/방 채팅, 방 안(참가자·준비·맵 선택·시작), 게임 화면(맵 iframe).
+ * 협동 연구실 유즈맵 대기실: 방 목록·방 만들기·입장, 대기실/방 채팅, 방 안(참가자·준비·맵 선택·시작), 게임 화면(맵 iframe).
  * 맵은 sandbox iframe에서 실행되고 SDK(postMessage)로만 플랫폼과 대화한다. 판정은 방장 브라우저의 맵이 한다.
  *
  * @author 길태형

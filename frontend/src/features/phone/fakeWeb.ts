@@ -71,7 +71,7 @@ const SITES: Record<string, (hour: number) => Omit<WebPage, 'address'>> = {
   'help.lab': () => ({
     title: '연구소 길 안내', theme: 'help', blocks: [
       { type: 'heading', text: '로비에서 갈 수 있는 곳' },
-      { type: 'list', items: ['왼쪽 위: 개발 연구실', '오른쪽 위: 실습 연구실, 오른쪽 아래: 개인 기숙사', '왼쪽 아래: 오락실', '아래 가운데: 바깥(강가·포장마차)'] },
+      { type: 'list', items: ['왼쪽 위: 개발 연구실', '오른쪽 위: 협동 연구실, 오른쪽 아래: 개인 기숙사', '왼쪽 아래: 오락실', '아래 가운데: 바깥(강가·포장마차)'] },
       { type: 'heading', text: '개발 연구실에서 갈 수 있는 곳' },
       { type: 'list', items: ['왼쪽 위: 서비스 연구실(업무 게시판)', '오른쪽 위: 관리자실(관리자만)', '왼쪽 아래: 서버실', '오른쪽 아래: 회의실(채팅·교환)'] },
       { type: 'heading', text: '알아 두면 좋은 것' },

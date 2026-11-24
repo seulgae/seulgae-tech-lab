@@ -23,7 +23,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * 실습 연구실 유즈맵 대기실 WebSocket(/ws/usemap).
+ * 협동 연구실 유즈맵 대기실 WebSocket(/ws/usemap).
  * 받는 메시지(t): ping, chat(scope lobby|room, text), create(name, mapId, max, password), join(roomId, password), leave, ready(ready),
  * map(mapId), start, game(data: 맵이 정한 값, 같은 방 다른 사람에게 그대로 전달), end(result).
  * 보내는 메시지(t): welcome, rooms, room, left, chat, start, game, end, error.

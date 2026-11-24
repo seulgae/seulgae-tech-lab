@@ -1085,7 +1085,7 @@
       ]
     },
     "office-2": {
-      "name": "실습 연구실",
+      "name": "협동 연구실",
       "interactions": [
         {
           "id": "office-2-usemap",
