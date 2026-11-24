@@ -103,7 +103,7 @@ public class InventoryController {
         return service.view(member);
     }
 
-    /** 로비 데스크 간식(CAKE 3원 HP +10, COFFEE 2원 피로도 +5). 가득이면 422, 동전 부족 409. */
+    /** 로비 데스크 간식(CAKE 3원 HP +10, COFFEE 2원 스태미나 +5). 가득이면 422, 동전 부족 409. */
     @PostMapping("/snack")
     public InventoryViewDTO buySnack(@RequestBody(required = false) SnackRequestDTO body, HttpServletRequest request) {
         var member = member(request);
@@ -126,7 +126,7 @@ public class InventoryController {
     @PostMapping("/plant")
     public PlantResultDTO shakePlant(HttpServletRequest request) { return service.shakePlant(member(request)); }
 
-    /** 오락실 한 판(동전 1원, HP -3, 피로도 -5). 지치면 423, 동전 부족 409. @return {"coins": 남은 동전} */
+    /** 오락실 한 판(동전 1원, HP -3, 스태미나 -5). 지치면 423, 동전 부족 409. @return {"coins": 남은 동전} */
     @PostMapping("/arcade")
     public Map<String, Integer> playArcade(HttpServletRequest request) {
         return Map.of("coins", service.playArcade(member(request)));

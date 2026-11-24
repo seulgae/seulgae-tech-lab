@@ -134,3 +134,19 @@
 .furniture-name small { opacity: 0.65; font-size: 11px; }
 .furniture-card button { min-width: 56px; padding: 5px 8px; border-radius: 8px; border: 0; background: #e7c66f; color: #2a1d0a; font-weight: 700; cursor: pointer; }
 .furniture-card button:disabled { opacity: 0.45; cursor: default; }
+
+/* 지도 앱: 가운데 방과 문 위치대로 놓은 둘레 방(3열 3행) */
+.map-grid { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 52px); gap: 6px; padding: 8px; border-radius: 12px; background: rgba(255, 255, 255, 0.05); }
+.map-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 4px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.18); background: rgba(255, 255, 255, 0.08); color: inherit; font-size: 11px; cursor: pointer; }
+.map-cell small { font-size: 10px; color: #ffd23f; }
+.map-center { grid-column: 2; grid-row: 1 / span 2; background: rgba(231, 198, 111, 0.18); font-weight: 700; }
+.map-top-left { grid-column: 1; grid-row: 1; }
+.map-top-right { grid-column: 3; grid-row: 1; }
+.map-bottom-left { grid-column: 1; grid-row: 2; }
+.map-bottom-right { grid-column: 3; grid-row: 2; }
+.map-bottom { grid-column: 2; grid-row: 3; }
+.map-here { border-color: #ffd23f; box-shadow: 0 0 0 1px #ffd23f inset; }
+.map-picked { background: rgba(127, 208, 168, 0.22); }
+.map-info p { margin: 4px 0 0; font-size: 12px; line-height: 1.5; }
+.map-info small { display: block; opacity: 0.7; }
+.icon-map { background: linear-gradient(160deg, #7fd0a8, #2f6f8f); }

@@ -17,7 +17,7 @@ import kr.seulgae.techlab.inventory.entity.*;
 public interface InventoryService {
     String FISH = "FISH", WORK_POST = "WORK_POST", ARCADE_PLAY = "ARCADE_PLAY";
     int WORK_POST_REWARD = 10, DAILY_REWARD_LIMIT = 10, ARCADE_COST = 1, MAX_ITEMS = 40, MAX_GROUND_ITEMS = 30;
-    /** 일·오락 한 번에 드는 HP와 피로도 */
+    /** 일·오락 한 번에 드는 HP와 스태미나 */
     int WORK_HP_COST = 3, WORK_FATIGUE_COST = 5;
     /** 간식: 공통코드 COIN_REASON(CAKE, COFFEE), 가격과 회복량 */
     String CAKE = "CAKE", COFFEE = "COFFEE";
@@ -30,7 +30,7 @@ public interface InventoryService {
     /** 포장마차 물고기 판매: 저녁(한국 시간 18시~자정)에만 연다. 한 마리 최대 30원 */
     String FISH_SALE = "FISH_SALE";
     int FISH_PRICE_MAX = 30, CART_OPEN_HOUR = 18;
-    /** HP·피로도가 모자라 일·오락을 할 수 없음(423 Locked) */
+    /** HP·스태미나가 모자라 일·오락을 할 수 없음(423 Locked) */
     HttpStatus TIRED = HttpStatus.LOCKED;
     /** 이미 가득 차서 간식을 사지 않음(422) */
     HttpStatus ALREADY_FULL = HttpStatus.UNPROCESSABLE_CONTENT;
@@ -51,18 +51,18 @@ public interface InventoryService {
     /** 사무실 게시물 보상. 하루 한도를 넘으면 0원이다. @return 실제로 받은 동전 */
     int rewardWorkPost(UUID member);
 
-    /** 오락실 한 판. HP·피로도가 모자라면 423, 동전이 없으면 409(둘 다 아무것도 바꾸지 않음). @return 남은 동전 */
+    /** 오락실 한 판. HP·스태미나가 모자라면 423, 동전이 없으면 409(둘 다 아무것도 바꾸지 않음). @return 남은 동전 */
     int playArcade(UUID member);
 
-    /** 일·오락을 할 수 있을 만큼 HP·피로도가 남았는지 확인한다. 모자라면 423. */
+    /** 일·오락을 할 수 있을 만큼 HP·스태미나가 남았는지 확인한다. 모자라면 423. */
     void ensureFit(UUID member);
 
-    /** 사무실 게시판에서 일한 뒤 HP -3, 피로도 -5(모자라면 빼지 않는다). */
+    /** 사무실 게시판에서 일한 뒤 HP -3, 스태미나 -5(모자라면 빼지 않는다). */
     void spendWork(UUID member);
 
     /**
-     * 로비 간식·음료를 서버 가격으로 구매한다. 탄산음료 2원 피로도 +5, 물 1원 피로도 +2.
-     * 케이크 3원 HP +10, 커피 2원 피로도 +5이며 회복은 최대치에서 멈춘다.
+     * 로비 간식·음료를 서버 가격으로 구매한다. 탄산음료 2원 스태미나 +5, 물 1원 스태미나 +2.
+     * 케이크 3원 HP +10, 커피 2원 스태미나 +5이며 회복은 최대치에서 멈춘다.
      * 이미 가득이면 422(돈을 받지 않음), 동전이 모자라면 409.
      * @param member 구매 회원
      * @param kind 서버가 허용한 간식·음료 코드

@@ -12,6 +12,8 @@ import CalendarApp from './apps/CalendarApp'
 import BrowserApp from './apps/BrowserApp'
 import SnsApp from './apps/SnsApp'
 import FurnitureShopApp from './apps/FurnitureShopApp'
+import MapApp from './apps/MapApp'
+import type { RoomId } from '../../game/maps/rooms'
 import '../../components/panel.css'
 import '../inventory/inventory.css'
 import './phone.css'
@@ -57,7 +59,7 @@ export default function PhonePanel({ client, onClose }: { client: () => Multipla
             <h2 id="phone-title" className="phone-sr">슬개폰</h2>
             {inventory.available ? (
               <section className="phone-widget" aria-label="내 상태">
-                {([['HP', inventory.hp, inventory.hpMax, 'hp'], ['피로도', inventory.fatigue, inventory.fatigueMax, 'fatigue']] as const).map(([label, value, max, key]) => (
+                {([['HP', inventory.hp, inventory.hpMax, 'hp'], ['스태미나', inventory.fatigue, inventory.fatigueMax, 'fatigue']] as const).map(([label, value, max, key]) => (
                   <div key={key} className={`inventory-vital vital-${key}`}>
                     <span>{label}</span>
                     <span className="inventory-bar" role="meter" aria-label={label} aria-valuemin={0} aria-valuemax={max} aria-valuenow={value}>
@@ -66,7 +68,7 @@ export default function PhonePanel({ client, onClose }: { client: () => Multipla
                     <strong>{value}/{max}</strong>
                   </div>
                 ))}
-                <small>일·오락 한 번에 HP -3, 피로도 -5 · 게시물 보상 오늘 {inventory.rewardsLeftToday}번 남음</small>
+                <small>일·오락 한 번에 HP -3, 스태미나 -5 · 게시물 보상 오늘 {inventory.rewardsLeftToday}번 남음</small>
               </section>
             ) : (
               <section className="phone-widget phone-login" aria-label="로그인">
@@ -103,6 +105,7 @@ export default function PhonePanel({ client, onClose }: { client: () => Multipla
                 {app === 'browser' && <BrowserApp />}
                 {app === 'sns' && <SnsApp canWrite={member} />}
                 {app === 'furniture' && <FurnitureShopApp onClose={onClose} />}
+                {app === 'map' && <MapApp current={(client()?.currentRoom() ?? 'lobby') as RoomId} />}
               </>
             )}
           </div>
