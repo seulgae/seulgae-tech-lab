@@ -1191,7 +1191,7 @@
       ]
     },
     "office-3": {
-      "name": "오락실",
+      "name": "오락 연구실",
       "interactions": [
         {
           "id": "office-3-arcade",
