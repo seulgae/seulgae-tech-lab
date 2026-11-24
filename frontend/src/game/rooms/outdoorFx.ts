@@ -54,7 +54,8 @@ export function outdoorFx(ctx: Context): RoomHandlers {
   drawGround(ctx)
   let phase = skyPhase(new Date())
   let layer = drawPhase(ctx, phase)
-  ctx.banner.show(`연구소 밖으로 나왔어요 · ${SKY_LABELS[phase]}`, '#a7d98a')
+  const arrival = ctx.options.from === 'lobby' ? '연구소 밖으로 나왔어요' : '연구소에 도착했어요'
+  ctx.banner.show(`${arrival} · ${SKY_LABELS[phase]}`, '#a7d98a')
   scene.time.addEvent({ delay: 60_000, loop: true, callback: () => {
     const next = skyPhase(new Date())
     if (next === phase) return
