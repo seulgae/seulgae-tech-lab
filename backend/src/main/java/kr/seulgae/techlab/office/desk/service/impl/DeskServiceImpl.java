@@ -78,7 +78,7 @@ public class DeskServiceImpl implements DeskService {
         if (format == null || format.isEmpty() || format.length() > FORMAT_MAX) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "format must be 1-" + FORMAT_MAX + " characters");
         String output;
         try { output = JavaProblems.render(format, problem.args()); }
-        catch (IllegalFormatException exception) { return new JavaAnswerDTO(problemId, format, null, false, false, exception.getClass().getSimpleName() + ": " + exception.getMessage()); }
+        catch (IllegalFormatException exception) { return new JavaAnswerDTO(problemId, format, null, false, false, JavaProblems.explain(exception, problem.args())); }
         catch (IllegalArgumentException exception) { return new JavaAnswerDTO(problemId, format, null, false, false, exception.getMessage()); }
         boolean correct = output.equals(problem.view().expected());
         /* 맞히면 동전 1원, 하루 3번까지(같은 문제를 다시 풀어도 센다) */
