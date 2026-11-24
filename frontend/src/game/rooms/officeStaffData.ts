@@ -29,13 +29,15 @@ const ANGRY = [
 const BUSY = ['지금 좀 바빠요… 그래도 고마워요.', '이것만 고치고 커피 마시러 가요.', '손이 키보드에서 안 떨어지네요.', '아까 소리 질러서 미안해요…']
 
 /**
- * 서비스 연구실 오른쪽 열 작업석 연구원 셋(위·가운데·아래 의자에 앉는다).
+ * 서비스 연구실 작업석 연구원 넷: 오른쪽 열 셋(위·가운데·아래)과 왼쪽 가운데 QA 자리 하나.
+ * 왼쪽 위 아이디어 자리는 officeLifeFx의 막힌 연구원이, 왼쪽 아래는 내 자리(플레이어 컴퓨터)다.
  * 채용 업무 화면을 없앤 뒤 일반 직원으로 바꿨다: 일하다가 가끔 화가 나서 한마디 한다.
  */
 export const OFFICE_DESK_WORKERS: readonly NpcDef[] = ([
   { id: 'office-desk-top', name: '집중하는 연구원', kind: 'researcher-woman', x: 610, y: 228 },
   { id: 'office-desk-middle', name: '디버깅하는 연구원', kind: 'researcher-man', x: 610, y: 378 },
   { id: 'office-desk-bottom', name: '배포 담당 연구원', kind: 'researcher-silver', x: 610, y: 528 },
+  { id: 'office-desk-qa', name: 'QA 담당 연구원', kind: 'researcher-red', x: 190, y: 378 },
 ] as const).map(worker => ({
   id: worker.id, kind: worker.kind, name: worker.name, path: [{ x: worker.x, y: worker.y }],
   fixed: true, seated: true, idle: true, speed: 0, pause: [600000, 600000] as const, talk: BUSY, angry: ANGRY,

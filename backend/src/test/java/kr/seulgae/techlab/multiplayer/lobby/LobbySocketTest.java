@@ -358,4 +358,18 @@ class LobbySocketTest {
             assertEquals(401, response.statusCode(), path);
         }
     }
+
+    /** 내 자리 컴퓨터는 회원 전용(401), 아이디어·QA 게시판 목록은 누구나 읽는다. */
+    @Test void deskNeedsLoginButBoardsAreReadable() throws Exception {
+        String base = "http://127.0.0.1:" + port();
+        assertEquals(401, http.send(HttpRequest.newBuilder(URI.create(base + "/api/desk")).GET().build(), HttpResponse.BodyHandlers.ofString()).statusCode());
+        for (String path : new String[]{"/api/desk/claim", "/api/desk/java"}) {
+            var response = http.send(HttpRequest.newBuilder(URI.create(base + path)).header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString("{\"problemId\":\"sum\",\"format\":\"%d\"}")).build(), HttpResponse.BodyHandlers.ofString());
+            assertEquals(401, response.statusCode(), path);
+        }
+        for (String path : new String[]{"/api/ideas", "/api/qa"}) {
+            assertEquals(200, http.send(HttpRequest.newBuilder(URI.create(base + path)).GET().build(), HttpResponse.BodyHandlers.ofString()).statusCode(), path);
+        }
+    }
 }
