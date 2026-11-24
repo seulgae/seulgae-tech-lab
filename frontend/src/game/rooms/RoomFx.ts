@@ -21,6 +21,7 @@ import { inventoryStore } from '../../features/inventory/inventoryStore'
 import { snackOf } from '../../features/rules/rulesStore'
 import { adminRoomFx } from './adminRoomFx'
 import { outdoorFx } from './outdoorFx'
+import { seniorWelcome } from '../npc/seniorWelcome'
 import { townsfolk } from '../npc/townsfolkFx.ts'
 import { ARCADE_NPCS, DEV_LAB_NPCS, LOBBY_NPCS } from '../npc/npcData.ts'
 
@@ -93,7 +94,7 @@ function lobbyFx(ctx: Context): RoomHandlers {
     alpha: { start: 1, end: 0 }, tint: [0xffd89a, 0xfff2b8, 0xe0b867],
   }).setDepth(950)
 
-  ctx.banner.show(ctx.options.from ? '중앙 로비로 돌아왔어요' : '슬개기술연구소 중앙 로비에 오신 것을 환영합니다')
+  ctx.banner.show(ctx.options.from ? '로비로 들어왔어요' : '슬개기술연구소 중앙 로비에 오신 것을 환영합니다')
   let announcement = 0
   ctx.every(35000, 55000, () => {
     playSfx('announce', { volume: 0.6 })
@@ -115,17 +116,19 @@ function lobbyFx(ctx: Context): RoomHandlers {
   const treats = treatTable(ctx)
   // 로비를 청소하는 직원과 방명록 작성을 안내하며 순찰하는 경비 아저씨
   const staff = townsfolk(ctx, LOBBY_NPCS)
+  const senior = ctx.options.welcomeNewResearcher ? seniorWelcome(ctx) : undefined
   return {
-    targets: staff.targets,
-    hint: staff.hint,
+    targets: () => senior ? [...staff.targets(), senior.target()] : staff.targets(),
+    hint: target => senior?.target().id === target.id ? 'E · 선임 연구원에게 말 걸기' : staff.hint(target),
     intercept: target => {
+      if (senior?.target().id === target.id) { senior.greet(); return true }
       if (staff.intercept(target)) return true
       if (target.kind === 'coffee' || target.kind === 'cake') { treats.buy(target.kind); return true }
       // 책장은 책이 날아오는 연출만 하고, 책 읽기 창은 Scene이 연다.
       if (target.kind === 'bookshelf') treats.pullBook(target)
       return false
     },
-    destroy: () => { ctx.stop(); unsubscribe(); staff.destroy() },
+    destroy: () => { ctx.stop(); unsubscribe(); staff.destroy(); senior?.destroy() },
   }
 }
 
