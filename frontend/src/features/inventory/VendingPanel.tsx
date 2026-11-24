@@ -40,7 +40,8 @@ export default function VendingPanel({ onClose }: { onClose: () => void }) {
     buyingRef.current = false
     setBusy(null)
     if (result === 'bought') {
-      setMessage(`${DRINKS[kind].name} 한 잔, 시원하게 마셨어요!`)
+      const now = inventoryStore.get()
+      setMessage(`${DRINKS[kind].name} 한 잔, 시원하게 마셨어요! 기력 ${now.fatigue}/${now.fatigueMax}`)
       playSfx('coin', { volume: 0.6 })
       return
     }
