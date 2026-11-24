@@ -32,12 +32,14 @@ import org.springframework.web.socket.server.standard.ServletServerContainerFact
 @EnableScheduling
 public class LobbyWebSocketConfig implements WebSocketConfigurer {
     private final LobbySocketHandler handler;
+    private final kr.seulgae.techlab.usemap.websocket.UseMapSocketHandler usemap;
     private final Set<String> origins;
     private final AuthService auth;
 
-    public LobbyWebSocketConfig(LobbySocketHandler handler, AuthService auth,
+    public LobbyWebSocketConfig(LobbySocketHandler handler, kr.seulgae.techlab.usemap.websocket.UseMapSocketHandler usemap, AuthService auth,
         @Value("${lab.multiplayer.allowed-origins:http://localhost:5173,http://127.0.0.1:5173,http://localhost:5188,http://127.0.0.1:5188,https://seulgae-server.tailac4b36.ts.net}") String allowedOrigins) {
         this.handler = handler;
+        this.usemap = usemap;
         this.auth = auth;
         origins = Arrays.stream(allowedOrigins.split(",")).map(String::trim).filter(value -> !value.isEmpty()).collect(Collectors.toUnmodifiableSet());
         if (origins.isEmpty() || origins.stream().anyMatch(value -> value.contains("*"))) throw new IllegalArgumentException("Explicit WebSocket origins required");
@@ -46,7 +48,7 @@ public class LobbyWebSocketConfig implements WebSocketConfigurer {
     /** Origin이 없거나 허용되지 않은 핸드셰이크를 업그레이드 전에 거부한다. */
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        registry.addHandler(handler, "/ws/lobby").setAllowedOrigins(origins.toArray(String[]::new)).addInterceptors(new HandshakeInterceptor() {
+        var interceptor = new HandshakeInterceptor() {
             @Override public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response, WebSocketHandler socket, Map<String, Object> attributes) {
                 String origin = request.getHeaders().getOrigin();
                 if (origin != null && origins.contains(origin)) {
@@ -63,7 +65,10 @@ public class LobbyWebSocketConfig implements WebSocketConfigurer {
                 return false;
             }
             @Override public void afterHandshake(ServerHttpRequest request, ServerHttpResponse response, WebSocketHandler socket, Exception exception) {}
-        });
+        };
+        registry.addHandler(handler, "/ws/lobby").setAllowedOrigins(origins.toArray(String[]::new)).addInterceptors(interceptor);
+        // 실습 연구실 유즈맵 대기실(방·채팅·게임 중계). 같은 Origin 검사와 회원 확인을 쓴다.
+        registry.addHandler(usemap, "/ws/usemap").setAllowedOrigins(origins.toArray(String[]::new)).addInterceptors(interceptor);
     }
 
     /** @return 수신 크기와 유휴 시간을 제한한 내장 WebSocket 컨테이너 설정 */

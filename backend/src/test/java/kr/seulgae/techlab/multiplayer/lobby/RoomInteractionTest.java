@@ -52,7 +52,7 @@ class RoomInteractionTest {
     }
 
     @Test void everyRoomHasInteractionsOutsideSpawnAndOnlyKnownKinds() {
-        var kinds = java.util.Set.of("vending-machine", "water-dispenser", "pull-requests", "guestbook", "build-info", "server-status", "table-talk", "agenda", "admin-console", "admin-apply", "fishing", "my-desk", "arcade", "gamble");
+        var kinds = java.util.Set.of("vending-machine", "water-dispenser", "pull-requests", "guestbook", "build-info", "server-status", "table-talk", "agenda", "admin-console", "admin-apply", "fishing", "my-desk", "usemap", "arcade", "gamble");
         for (var roomId : world.roomIds()) {
             var interactions = world.interactions(roomId);
             // 2·4번은 아직 빈 사무실이라 상호작용이 없다.

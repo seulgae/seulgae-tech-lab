@@ -1,0 +1,13 @@
+{
+  "maps": [
+    {
+      "id": "bug-squash",
+      "name": "협동 버그 잡기",
+      "description": "오른쪽에서 몰려오는 버그를 다 같이 눌러 잡아 서버를 90초 동안 지켜요.",
+      "minPlayers": 1,
+      "maxPlayers": 8,
+      "entry": "/usemaps/bug-squash/index.html",
+      "version": "1.0.0"
+    }
+  ]
+}

@@ -52,7 +52,7 @@ export function createRoomFx(scene: Phaser.Scene, roomId: RoomId, options: Optio
   const builders = {
     lobby: lobbyFx, 'development-lab': developmentFx, 'server-room': serverFx, 'meeting-room': meetingFx,
     'control-room': adminRoomFx, outdoor: outdoorFx,
-    'office-1': officeFx, 'office-2': officeFx, 'office-3': arcadeFx, 'office-4': dormRoomFx,
+    'office-1': officeFx, 'office-2': practiceLabFx, 'office-3': arcadeFx, 'office-4': dormRoomFx,
   } as const
   const room = builders[roomId](new Context(scene, banner, { ...options, room: roomId }))
   const shakePlant = plantShaker(scene, options.plants ?? new Map(), banner)
@@ -484,6 +484,13 @@ function officeFx(ctx: Context): RoomHandlers {
   ctx.scene.tweens.add({ targets: lamp, alpha: 0.14, duration: 2600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' })
   wallClock(ctx, 640, '#5f3d24', '#8c2f39')
   return { destroy: () => ctx.stop() }
+}
+
+/** 실습 연구실(로비 오른쪽 위): 유즈맵 대기실. 들어오면 잠깐 뒤 대기실 창이 자동으로 열리고, 가운데 단말기에서 다시 열 수 있다. */
+function practiceLabFx(ctx: Context): RoomHandlers {
+  const ambience = officeFx(ctx)
+  ctx.scene.time.delayedCall(700, () => ctx.options.openPanel?.('usemap'))
+  return { destroy: () => ambience.destroy?.() }
 }
 
 /** 개인 기숙사(로비 오른쪽 아래): 사무실 조명·시계 위에 내 가구(dormFx) */

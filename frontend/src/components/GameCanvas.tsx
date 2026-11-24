@@ -17,6 +17,7 @@ import BookPanel from '../features/books/BookPanel'
 import SqlConsolePanel from '../features/admin/SqlConsolePanel'
 import AdminApplyPanel from '../features/admin/AdminApplyPanel'
 import MyDeskPanel from '../features/office/MyDeskPanel'
+import UseMapPanel from '../features/usemap/UseMapPanel'
 import ArcadePanel from '../features/arcade/ArcadePanel'
 import GamblePanel from '../features/arcade/GamblePanel'
 import { GAMBLE_MACHINES } from '../features/arcade/gambleApi'
@@ -220,6 +221,7 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
       {labPanel === 'admin-console' && <SqlConsolePanel onClose={closeLabPanel} />}
       {labPanel === 'admin-apply' && <AdminApplyPanel onClose={closeLabPanel} />}
       {labPanel === 'my-desk' && <MyDeskPanel onClose={closeLabPanel} />}
+      {labPanel === 'usemap' && <UseMapPanel onClose={closeLabPanel} />}
       {labPanel === 'arcade' && <ArcadePanel onClose={closeLabPanel} />}
       {labPanel === 'gamble' && GAMBLE_MACHINES[gambleId] && <GamblePanel game={GAMBLE_MACHINES[gambleId]!} onClose={closeLabPanel} />}
       {labPanel === 'inventory' && <PhonePanel client={getClient} onClose={closeLabPanel} />}
