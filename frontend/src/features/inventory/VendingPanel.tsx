@@ -8,10 +8,10 @@ import './inventory.css'
 import './vending.css'
 
 /**
- * 로비 자판기에서 네 가지 음료를 골라 구매하고 즉시 마시는 창이다.
+ * 로비 자판기에서 음료·간식(운영 DB tb_lab_snack, place = VENDING)을 골라 구매하고 즉시 먹는 창이다.
  * 가격과 회복은 서버에서 확정하며 로그인·잔액 부족·회복 불필요 상태를 안내한다.
  * @author seulgae
- * @version 1.0, 로비 음료 자판기
+ * @version 1.1, 도시락·에너지드링크와 규칙 테이블
  * @see "None"
  * @param props 닫기 콜백
  * @returns 음료 선택 모달
@@ -45,33 +45,35 @@ export default function VendingPanel({ onClose }: { onClose: () => void }) {
     setBusy(null)
     if (result === 'bought') {
       const now = inventoryStore.get()
-      setMessage(`${snackOf(kind)?.name ?? '음료'} 한 잔, 시원하게 마셨어요! 기력 ${now.fatigue}/${now.fatigueMax}`)
+      const snack = snackOf(kind)
+      const eat = snack && snack.hpGain > 0
+      setMessage(`${snack?.name ?? '음료'} ${eat ? '하나, 든든하게 먹었어요' : '한 잔, 시원하게 마셨어요'}! HP ${now.hp}/${now.hpMax} · 기력 ${now.fatigue}/${now.fatigueMax}`)
       playSfx('coin', { volume: 0.6 })
       return
     }
-    setMessage({ guest: '로그인 후 동전으로 구매할 수 있어요.', broke: '동전이 부족해요.', full: '이미 기력이 최대치예요. 동전은 쓰지 않았어요.', error: '구매 결과를 확인하지 못했어요. 잔액을 확인한 뒤 다시 이용해 주세요.' }[result])
+    setMessage({ guest: '로그인 후 동전으로 구매할 수 있어요.', broke: '동전이 부족해요.', full: '이미 가득해서 회복할 게 없어요. 동전은 쓰지 않았어요.', error: '구매 결과를 확인하지 못했어요. 잔액을 확인한 뒤 다시 이용해 주세요.' }[result])
     void inventoryStore.refresh()
   }
 
   return (
     <dialog ref={dialogRef} className="research-panel inventory-panel vending-panel" aria-labelledby="vending-title" onCancel={event => { event.preventDefault(); onClose() }}>
       <header className="research-panel-header">
-        <div><p className="research-eyebrow">잠깐의 시원한 휴식</p><h2 id="vending-title">음료 자판기</h2></div>
+        <div><p className="research-eyebrow">잠깐의 시원한 휴식</p><h2 id="vending-title">간식·음료 자판기</h2></div>
         <button type="button" className="research-close" onClick={onClose} autoFocus>닫기</button>
       </header>
       <p className="inventory-note" role="status">{message}</p>
-      <p className="inventory-note">내 동전 <strong>{inventory.available ? `${inventory.coins}원` : '—'}</strong> · 기력 {inventory.unlimited ? '∞' : `${inventory.fatigue}/${inventory.fatigueMax}`}</p>
+      <p className="inventory-note">내 동전 <strong>{inventory.available ? `${inventory.coins}원` : '—'}</strong> · HP {inventory.unlimited ? '∞' : `${inventory.hp}/${inventory.hpMax}`} · 기력 {inventory.unlimited ? '∞' : `${inventory.fatigue}/${inventory.fatigueMax}`}</p>
       {inventory.loaded && !inventory.available && <p className="inventory-note"><a className="auth-kakao" href={LOGIN_URL}>카카오 로그인</a> 후 구매해 주세요.</p>}
       <div className="vending-drinks">
         {drinks.map(drink => (
           <button type="button" className={`vending-drink vending-${drink.code.toLowerCase()}`} key={drink.code} disabled={!inventory.available || busy !== null} onClick={() => void buy(drink.code)}>
-            <span className="vending-can" aria-hidden="true">{drink.code === 'WATER' ? '물' : '톡!'}</span>
+            <span className="vending-can" aria-hidden="true">{drink.code === 'WATER' ? '물' : drink.hpGain > 0 ? '🍱' : drink.fatigueGain >= 10 ? '⚡' : '톡!'}</span>
             <strong>{drink.name} · {drink.price}원</strong>
             <small>{busy === drink.code ? '꺼내는 중…' : gainText(drink)}</small>
           </button>
         ))}
       </div>
-      <p className="research-footer">구매 즉시 마셔요. 기력이 최대치면 동전을 받지 않아요. ESC로 닫아요.</p>
+      <p className="research-footer">구매 즉시 먹고 마셔요. 회복할 게 없으면 동전을 받지 않아요. ESC로 닫아요.</p>
     </dialog>
   )
 }

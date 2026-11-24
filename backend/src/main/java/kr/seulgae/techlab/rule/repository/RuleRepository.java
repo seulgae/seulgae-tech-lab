@@ -3,6 +3,7 @@ package kr.seulgae.techlab.rule.repository;
 import java.util.List;
 import kr.seulgae.techlab.badge.entity.Rank;
 import kr.seulgae.techlab.rule.entity.ActionCost;
+import kr.seulgae.techlab.rule.entity.GameValue;
 import kr.seulgae.techlab.rule.entity.Snack;
 
 /**
@@ -21,4 +22,7 @@ public interface RuleRepository {
 
     /** @return 직급(낮은 직급부터) */
     List<Rank> ranks();
+
+    /** @return 숫자 규칙(tb_lab_game_rule). 없으면 비어 있고 GameRules가 기본값을 쓴다 */
+    default List<GameValue> values() { return List.of(); }
 }

@@ -10,6 +10,8 @@ import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 import kr.seulgae.techlab.inventory.repository.InventoryRepository;
+import kr.seulgae.techlab.rule.entity.ActionCost;
+import kr.seulgae.techlab.rule.service.VitalsGate;
 import kr.seulgae.techlab.stock.dto.StockDTO;
 import kr.seulgae.techlab.stock.dto.StockViewDTO;
 import kr.seulgae.techlab.stock.entity.Holding;
@@ -38,12 +40,16 @@ public class StockServiceImpl implements StockService {
     private final InventoryRepository inventory;
     private final Random random;
     private final Clock clock;
+    /** 거래 한 번에 드는 HP·기력(STOCK_TRADE) */
+    private VitalsGate gate;
 
     @Autowired
+    public StockServiceImpl(StockRepository stocks, InventoryRepository inventory, VitalsGate gate) { this(stocks, inventory); this.gate = gate; }
+
     public StockServiceImpl(StockRepository stocks, InventoryRepository inventory) { this(stocks, inventory, new SecureRandom(), Clock.systemDefaultZone()); }
 
     public StockServiceImpl(StockRepository stocks, InventoryRepository inventory, Random random, Clock clock) {
-        this.stocks = stocks; this.inventory = inventory; this.random = random; this.clock = clock;
+        this.stocks = stocks; this.inventory = inventory; this.random = random; this.clock = clock; this.gate = VitalsGate.defaults(inventory);
     }
 
     @Override
@@ -69,10 +75,12 @@ public class StockServiceImpl implements StockService {
         Stock stock = tradable(member, code, quantity);
         Holding held = stocks.holding(member, stock.code()).orElse(new Holding(stock.code(), 0, 0));
         if (held.quantity() + quantity > MAX_HOLDING) throw new ResponseStatusException(HttpStatus.CONFLICT, "Holding limit");
+        gate.ensureFit(member, ActionCost.STOCK_TRADE);
         int cost = stock.price() * quantity;
         /* 동전부터 뺀다: 모자라면 주식을 늘리지 않는다. */
         inventory.changeCoins(member, -cost, BUY).orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Not enough coins"));
         stocks.saveHolding(member, stock.code(), held.quantity() + quantity, held.totalCost() + cost);
+        gate.spend(member, ActionCost.STOCK_TRADE);
         return view(member);
     }
 
@@ -82,11 +90,13 @@ public class StockServiceImpl implements StockService {
         Stock stock = tradable(member, code, quantity);
         Holding held = stocks.holding(member, stock.code()).orElse(new Holding(stock.code(), 0, 0));
         if (held.quantity() < quantity) throw new ResponseStatusException(HttpStatus.CONFLICT, "Not enough shares");
+        gate.ensureFit(member, ActionCost.STOCK_TRADE);
         /* 판 만큼 산 금액도 비율대로 줄여 남은 주식의 평균 단가를 유지한다. */
         int remaining = held.quantity() - quantity;
         int remainingCost = remaining == 0 ? 0 : (int) ((long) held.totalCost() * remaining / held.quantity());
         stocks.saveHolding(member, stock.code(), remaining, remainingCost);
         inventory.changeCoins(member, stock.price() * quantity, SELL).orElseThrow();
+        gate.spend(member, ActionCost.STOCK_TRADE);
         return view(member);
     }
 

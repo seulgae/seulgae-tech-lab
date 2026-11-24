@@ -68,4 +68,9 @@ public interface InventoryRepository {
      * 급여 차례를 잡는다: 마지막 급여가 없거나 cutoff 이전이면 now로 바꾸고 true. 동시에 여러 번 불러도 한 번만 true다.
      */
     boolean claimSalary(UUID member, OffsetDateTime now, OffsetDateTime cutoff);
+    /**
+     * 침대 휴식 회복 차례를 잡는다: 마지막 휴식 회복이 없거나 cutoff 이전이면 HP·기력을 올리고(최대치까지) 시각을 now로 바꾼다.
+     * 동시에 여러 번 불러도 한 번만 회복한다. @return 회복했으면 회복 뒤 값, 아직 차례가 아니면 빈 값
+     */
+    Optional<Vitals> rest(UUID member, int hp, int fatigue, OffsetDateTime now, OffsetDateTime cutoff);
 }

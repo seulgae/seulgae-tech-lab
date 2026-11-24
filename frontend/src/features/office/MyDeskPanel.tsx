@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { BoardError } from '../boards/boardsApi'
 import { LOGIN_URL, useAuth } from '../auth/authStore'
 import { playSfx } from '../../audio/AudioManager'
-import { inventoryStore } from '../inventory/inventoryStore'
+import { TIRED_STATUS, inventoryStore } from '../inventory/inventoryStore'
+import { tiredMessage } from '../rules/rulesStore'
 import { answerJava, claimDailyReward, fetchDesk, javaString } from './officeApi'
 import type { DeskView, JavaAnswer, JavaProblem } from './officeApi'
 import { IdeaBoard } from './IdeaBoard'
@@ -161,14 +162,16 @@ function DevWindow({ desk, onDesk, onClose }: { desk: DeskView; onDesk: (desk: D
     try {
       const answer = await answerJava(problem.id, format)
       setResult(answer)
+      /* 답을 낼 때마다 기력이 들어 가방(HP·기력)을 다시 읽는다 */
+      void inventoryStore.refresh()
       if (answer.correct) {
         setSolved(set => new Set(set).add(problem.id)); playSfx('success', { volume: 0.6 })
-        if (answer.rewarded) { void inventoryStore.refresh(); onDesk({ ...desk, javaRewardsToday: desk.javaRewardsToday + 1 }) }
+        if (answer.rewarded) { onDesk({ ...desk, javaRewardsToday: desk.javaRewardsToday + 1 }) }
       } else playSfx('error', { volume: 0.4 })
     } catch (cause) {
       const status = cause instanceof BoardError ? cause.status : 0
       setResult({ problemId: problem.id, format, output: null, correct: false, rewarded: false,
-        error: status === 429 ? '너무 빨리 실행했어요. 1초 뒤에 다시 눌러 주세요.' : status === 401 ? '로그인이 풀렸어요. 다시 로그인해 주세요.' : status === 400 ? '형식 문자열은 1~100자로 써 주세요.' : '실행하지 못했어요. 잠시 후 다시 해 보세요.' })
+        error: status === TIRED_STATUS ? tiredMessage('JAVA_ANSWER') : status === 429 ? '너무 빨리 실행했어요. 1초 뒤에 다시 눌러 주세요.' : status === 401 ? '로그인이 풀렸어요. 다시 로그인해 주세요.' : status === 400 ? '형식 문자열은 1~100자로 써 주세요.' : '실행하지 못했어요. 잠시 후 다시 해 보세요.' })
     }
     finally { setBusy(false) }
   }

@@ -7,6 +7,7 @@ import kr.seulgae.techlab.inventory.repository.*;
 import kr.seulgae.techlab.rule.entity.ActionCost;
 import kr.seulgae.techlab.rule.entity.Snack;
 import kr.seulgae.techlab.rule.service.GameRules;
+import kr.seulgae.techlab.rule.service.VitalsGate;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -85,7 +86,11 @@ public class InventoryServiceImpl implements InventoryService {
         var range = species == null ? null : FISH_SIZES.get(species);
         if (range == null || cm == null || cm < range[0] || cm > range[1]) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown fish");
         if (store.owned(member).size() >= MAX_ITEMS) throw new ResponseStatusException(HttpStatus.CONFLICT, "Inventory full");
-        return store.add(member, FISH, species, cm);
+        /* 낚은 물고기를 넣을 때 기력이 든다(FISH_CATCH). 모자라면 423, 넣지 않는다. */
+        gate().ensureFit(member, ActionCost.FISH_CATCH);
+        Item item = store.add(member, FISH, species, cm);
+        gate().spend(member, ActionCost.FISH_CATCH);
+        return item;
     }
 
     /** 사무실 게시물 보상. 하루 한도를 넘으면 0원이다. @return 실제로 받은 동전 */
@@ -110,14 +115,7 @@ public class InventoryServiceImpl implements InventoryService {
     public int arcadePlaysLeft(UUID member) { return Math.max(0, DAILY_ARCADE_PLAYS - store.countToday(member, ARCADE_PLAY)); }
 
     /** 이 행동을 할 만큼 HP·기력이 남았는지 확인한다(비용은 tb_lab_action_cost). 모자라면 423. */
-    public void ensureFit(UUID member, String action) {
-        if (unlimited(member)) return;
-        var cost = rules.action(action);
-        var vitals = store.vitals(member);
-        if (vitals.hp() < cost.hpCost() || vitals.fatigue() < cost.fatigueCost()) {
-            throw new ResponseStatusException(TIRED, "Too tired: eat cake or drink coffee in the lobby");
-        }
-    }
+    public void ensureFit(UUID member, String action) { gate().ensureFit(member, action); }
 
     /** 행동을 한 뒤 비용(tb_lab_action_cost)을 뺀다(모자라면 빼지 않는다). */
     @Transactional
@@ -126,13 +124,10 @@ public class InventoryServiceImpl implements InventoryService {
     /** 연구소장은 HP·기력이 무제한이라 일·오락에서 줄지 않는다. */
     private boolean unlimited(UUID member) { return rules.rankOf(store.workCount(member)).unlimited(); }
 
-    private void spend(UUID member, String action) {
-        if (unlimited(member)) return;
-        var cost = rules.action(action);
-        if (cost.hpCost() == 0 && cost.fatigueCost() == 0) return;
-        store.changeVitals(member, -cost.hpCost(), -cost.fatigueCost())
-            .orElseThrow(() -> new ResponseStatusException(TIRED, "Too tired: eat cake or drink coffee in the lobby"));
-    }
+    private void spend(UUID member, String action) { gate().spend(member, action); }
+
+    /** 행동 비용 확인기(지금 규칙으로) */
+    private VitalsGate gate() { return new VitalsGate(store, rules); }
 
     /**
      * 로비 간식·음료를 운영 DB(tb_lab_snack) 가격으로 구매한다. 회복은 최대치에서 멈춘다.

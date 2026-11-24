@@ -138,4 +138,16 @@ public class InMemoryInventoryRepository implements InventoryRepository {
         salaries.put(member, now);
         return true;
     }
+
+    private final Map<UUID, OffsetDateTime> rests = new ConcurrentHashMap<>();
+
+    @Override public synchronized Optional<Vitals> rest(UUID member, int hp, int fatigue, OffsetDateTime now, OffsetDateTime cutoff) {
+        var last = rests.get(member);
+        if (last != null && last.isAfter(cutoff)) return Optional.empty();
+        rests.put(member, now);
+        var before = vitals(member);
+        var next = new Vitals(Math.min(before.hpMax(), before.hp() + hp), before.hpMax(), Math.min(before.fatigueMax(), before.fatigue() + fatigue), before.fatigueMax());
+        vitals.put(member, next);
+        return Optional.of(next);
+    }
 }

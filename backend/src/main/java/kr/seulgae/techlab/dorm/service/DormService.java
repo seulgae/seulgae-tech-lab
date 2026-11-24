@@ -2,6 +2,7 @@ package kr.seulgae.techlab.dorm.service;
 
 import java.util.UUID;
 import kr.seulgae.techlab.dorm.dto.DormViewDTO;
+import kr.seulgae.techlab.dorm.dto.RestDTO;
 
 /**
  * 개인 기숙사 가구 기능 명세(구현: DormServiceImpl).
@@ -14,6 +15,8 @@ import kr.seulgae.techlab.dorm.dto.DormViewDTO;
 public interface DormService {
     /** 공통코드 COIN_REASON의 가구 구매 사유 */
     String FURNITURE_BUY = "FURNITURE_BUY";
+    /** 쉴 수 있는 가구(침대) 코드 */
+    String BED = "BED";
     /** 회원 한 명이 가질 수 있는 가구 수 */
     int MAX_FURNITURE = 60;
     /** 기숙사 바닥 경계(벽 안쪽, px) */
@@ -60,4 +63,14 @@ public interface DormService {
      * @exception org.springframework.web.server.ResponseStatusException 내 가구가 아니면 404
      */
     DormViewDTO store(UUID member, UUID id);
+
+    /**
+     * 놓인 침대에서 쉰다: 마지막 휴식 회복에서 REST_EVERY_SEC가 지났으면 HP·기력을 REST_HP·REST_FATIGUE만큼 올린다.
+     * 화면은 침대에 누워 있는 동안 간격마다 부른다.
+     *
+     * @param member 회원 ID
+     * @return 회복 여부와 회복 뒤 HP·기력
+     * @exception org.springframework.web.server.ResponseStatusException 놓인 침대가 없으면 409
+     */
+    RestDTO rest(UUID member);
 }

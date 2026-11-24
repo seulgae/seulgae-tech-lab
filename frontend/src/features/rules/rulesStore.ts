@@ -1,17 +1,18 @@
 import { useSyncExternalStore } from 'react'
 
 /**
- * 게임 규칙(행동별 HP·기력 비용, 간식·음료, 직급). 운영 DB 테이블을 서버(/api/rules)에서 받아 쓴다.
- * 화면에 숫자를 따로 적어 두지 않기 위한 곳이며, 받기 전·실패 때는 V23 시드와 같은 기본값을 쓴다.
+ * 게임 규칙(행동별 HP·기력 비용, 간식·음료, 직급, 숫자 규칙). 운영 DB 테이블을 서버(/api/rules)에서 받아 쓴다.
+ * 화면에 숫자를 따로 적어 두지 않기 위한 곳이며, 받기 전·실패 때는 V23·V24 시드와 같은 기본값을 쓴다.
  *
  * @author 길태형
- * @version 1.0, 게임 규칙 테이블
+ * @version 1.1, 새 행동 비용·침대 휴식 규칙(V24)
  * @see None
  */
 export type ActionCost = { code: string; name: string; hpCost: number; fatigueCost: number; description: string }
 export type Snack = { code: string; name: string; price: number; hpGain: number; fatigueGain: number; place: 'LOBBY' | 'VENDING' }
 export type RankRule = { code: string; name: string; minWork: number; pay: number; vitalsMax: number; unlimited: boolean }
-export type GameRules = { actions: ActionCost[]; snacks: Snack[]; ranks: RankRule[] }
+export type GameValue = { code: string; name: string; value: number; description: string }
+export type GameRules = { actions: ActionCost[]; snacks: Snack[]; ranks: RankRule[]; values: GameValue[] }
 
 export const DEFAULT_RULES: GameRules = {
   actions: [
@@ -19,6 +20,11 @@ export const DEFAULT_RULES: GameRules = {
     { code: 'QA_REGISTER', name: 'QA 티켓 등록', hpCost: 3, fatigueCost: 5, description: '내 자리 컴퓨터 QA 게시판' },
     { code: 'QA_MOVE', name: 'QA 단계 변경', hpCost: 3, fatigueCost: 5, description: 'QA 티켓을 조치 중·조치 완료로' },
     { code: 'ARCADE_PLAY', name: '오락실 한 판', hpCost: 3, fatigueCost: 5, description: '오락실 메인 오락기(벽돌 부수기 등)' },
+    { code: 'GAMBLE_BET', name: '오락실 내기 한 판', hpCost: 0, fatigueCost: 3, description: '오락실 홀짝·사다리' },
+    { code: 'FISH_CATCH', name: '물고기 낚기', hpCost: 0, fatigueCost: 4, description: '낚은 물고기를 보관함에 넣을 때' },
+    { code: 'JAVA_ANSWER', name: '자바 연습 문제 풀기', hpCost: 0, fatigueCost: 2, description: '내 자리 컴퓨터 자바 연습(답 제출마다)' },
+    { code: 'STOCK_TRADE', name: '주식 거래', hpCost: 0, fatigueCost: 1, description: '폰 주식 앱 사기·팔기' },
+    { code: 'FURNITURE_PLACE', name: '가구 배치', hpCost: 2, fatigueCost: 0, description: '개인 기숙사에 가구 놓기' },
   ],
   snacks: [
     { code: 'CAKE', name: '케이크', price: 3, hpGain: 10, fatigueGain: 0, place: 'LOBBY' },
@@ -27,6 +33,8 @@ export const DEFAULT_RULES: GameRules = {
     { code: 'CIDER', name: '사이다', price: 2, hpGain: 0, fatigueGain: 5, place: 'VENDING' },
     { code: 'FANTA', name: '환타', price: 2, hpGain: 0, fatigueGain: 5, place: 'VENDING' },
     { code: 'WATER', name: '물', price: 1, hpGain: 0, fatigueGain: 2, place: 'VENDING' },
+    { code: 'LUNCHBOX', name: '도시락', price: 6, hpGain: 25, fatigueGain: 0, place: 'VENDING' },
+    { code: 'ENERGY_DRINK', name: '에너지드링크', price: 5, hpGain: 0, fatigueGain: 20, place: 'VENDING' },
   ],
   ranks: [
     { code: 'INTERN', name: '인턴', minWork: 0, pay: 1, vitalsMax: 50, unlimited: false },
@@ -35,6 +43,11 @@ export const DEFAULT_RULES: GameRules = {
     { code: 'PRINCIPAL', name: '책임', minWork: 10, pay: 20, vitalsMax: 220, unlimited: false },
     { code: 'CHIEF', name: '수석', minWork: 30, pay: 50, vitalsMax: 500, unlimited: false },
     { code: 'DIRECTOR', name: '연구소장', minWork: 100, pay: 100, vitalsMax: 999, unlimited: true },
+  ],
+  values: [
+    { code: 'REST_EVERY_SEC', name: '침대 휴식 간격', value: 60, description: '침대에 누워 있으면 이 초마다 한 번 회복한다(초)' },
+    { code: 'REST_HP', name: '침대 휴식 HP 회복', value: 3, description: '한 번 회복할 때 오르는 HP' },
+    { code: 'REST_FATIGUE', name: '침대 휴식 기력 회복', value: 3, description: '한 번 회복할 때 오르는 기력' },
   ],
 }
 
@@ -50,7 +63,10 @@ export const rulesStore = {
     loading ??= fetch('/api/rules', { headers: { Accept: 'application/json' } })
       .then(response => response.ok ? response.json() as Promise<GameRules> : Promise.reject(new Error(String(response.status))))
       .then(rules => {
-        if (Array.isArray(rules.actions) && Array.isArray(rules.snacks) && Array.isArray(rules.ranks)) { state = rules; listeners.forEach(listener => listener()) }
+        if (Array.isArray(rules.actions) && Array.isArray(rules.snacks) && Array.isArray(rules.ranks)) {
+          state = { ...rules, values: Array.isArray(rules.values) ? rules.values : DEFAULT_RULES.values }
+          listeners.forEach(listener => listener())
+        }
         return state
       })
       .catch(() => { loading = null; return state })
@@ -103,6 +119,16 @@ export const gainText = (snack: Snack) => [snack.hpGain ? `HP +${snack.hpGain}` 
 export const snackOf = (code: string, rules: GameRules = state) => rules.snacks.find(snack => snack.code === code)
 
 /**
+ * 숫자 규칙 값(없으면 기본값, 그것도 없으면 0).
+ *
+ * @param code 규칙 코드
+ * @param rules 규칙
+ * @returns 값
+ */
+export const ruleValue = (code: string, rules: GameRules = state) =>
+  (rules.values ?? []).find(item => item.code === code)?.value ?? DEFAULT_RULES.values.find(item => item.code === code)?.value ?? 0
+
+/**
  * 기력·HP가 모자라 막혔을 때 안내(지금 규칙의 숫자로).
  *
  * @param code 막힌 행동 코드
@@ -112,5 +138,5 @@ export const snackOf = (code: string, rules: GameRules = state) => rules.snacks.
 export function tiredMessage(code: string, rules: GameRules = state): string {
   const cake = snackOf('CAKE', rules), coffee = snackOf('COFFEE', rules)
   const fill = [coffee ? `${coffee.name}(${gainText(coffee)})` : '', cake ? `${cake.name}(${gainText(cake)})` : ''].filter(Boolean).join('나 ')
-  return `기력이나 HP가 모자라요(한 번에 ${costText(code, rules).replace(/-/g, '')} 필요). 로비 데스크에서 ${fill || '간식'}로 채워요.`
+  return `기력이나 HP가 모자라요(한 번에 ${costText(code, rules).replace(/-/g, '')} 필요). 로비 데스크에서 ${fill || '간식'}로 채우거나, 자판기·기숙사 침대에서 쉬어요.`
 }

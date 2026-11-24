@@ -4,8 +4,10 @@ import type { Context } from './fxContext'
 import type { RoomHandlers } from './RoomFx'
 import { playSfx } from '../../audio/AudioManager'
 import {
-  DORM_CHANGED_EVENT, DORM_PLACE_EVENT, canPlace, fetchDorm, placeFurniture, storeFurniture, takePlacement,
+  DORM_CHANGED_EVENT, DORM_PLACE_EVENT, canPlace, fetchDorm, placeFurniture, restInBed, storeFurniture, takePlacement,
 } from '../../features/dorm/dormApi'
+import type { RestResult } from '../../features/dorm/dormApi'
+import { ruleValue } from '../../features/rules/rulesStore'
 import type { DormView, Furniture } from '../../features/dorm/dormApi'
 
 /** 가구 코드 → 텍스처(침대·러그·조명은 기숙사 전용, 나머지는 연구소 가구를 그대로 쓴다) */
@@ -18,6 +20,9 @@ export const DORM_TEXTURES: Record<string, string> = {
 const PLACE_GAP = 20
 const PLACE_TARGET = 'dorm-place'
 const ITEM_PREFIX = 'dorm-item-'
+const BED_PREFIX = 'dorm-bed-'
+/** 침대에서 이만큼 멀어지면 일어난 것으로 본다(px) */
+const REST_LEAVE = 90
 
 type Drawn = { parts: Phaser.GameObjects.GameObject[] }
 
@@ -25,9 +30,11 @@ type Drawn = { parts: Phaser.GameObjects.GameObject[] }
  * 개인 기숙사(office-4): 내 가구만 그리고, 부딪히는 가구는 충돌 영역을 만든다.
  * 배치 중에는 캐릭터 위에 반투명 가구(초록=놓을 수 있음, 빨강=못 놓음)가 따라다니고 E로 놓는다(ESC 취소).
  * 놓인 가구 앞에서 E를 누르면 보관함으로 되돌린다. 비회원은 빈 방과 로그인 안내만 본다.
+ * 침대 앞에서 E를 누르면 눕는다: 누워 있는 동안 휴식 간격(tb_lab_game_rule REST_EVERY_SEC)마다 서버에 회복을 요청하고,
+ * 다시 E를 누르거나 침대에서 멀어지면 일어난다. 침대 보관은 폰 가구 앱 보관함에서 한다.
  *
  * @author 길태형
- * @version 1.0, 개인 기숙사 가구
+ * @version 1.1, 침대 휴식
  * @see None
  * @param ctx 방 연출 도구(장면·배너·옵션)
  * @returns 방 핸들러
@@ -41,6 +48,10 @@ export function dormFx(ctx: Context): RoomHandlers {
   let ghost: Phaser.GameObjects.Image | undefined
   let busy = false
   let stopped = false
+  /** 누워 있는 침대(없으면 null)와 머리 위 Zz, 다음 회복 요청 타이머 */
+  let resting: { id: string; x: number; y: number } | null = null
+  let snore: Phaser.GameObjects.Text | undefined
+  let restTimer: Phaser.Time.TimerEvent | undefined
 
   const shapeOf = (code: string): Furniture | undefined => view?.catalog.find(entry => entry.code === code)
   const spot = () => {
@@ -82,6 +93,7 @@ export function dormFx(ctx: Context): RoomHandlers {
   }
 
   const startPlacing = async (id: string) => {
+    wake()
     if (!view) await load()
     const item = view?.furniture.find(entry => entry.id === id)
     if (stopped || !item) return
@@ -91,8 +103,49 @@ export function dormFx(ctx: Context): RoomHandlers {
     banner.show(`${shapeOf(item.code)?.name ?? '가구'}: 자리를 고르고 E로 놓아요 · ESC 취소`, '#86efac', 3200)
   }
 
-  /* 배치 중이면 반투명 가구를 캐릭터 위로 옮기고 놓을 수 있는지 색으로 보여 준다. */
+  /* 일어난다: 타이머와 Zz를 치운다 */
+  const wake = (message?: string) => {
+    if (!resting) return
+    resting = null
+    restTimer?.remove()
+    restTimer = undefined
+    snore?.destroy()
+    snore = undefined
+    if (message) banner.show(message, '#a7d98a', 2600)
+  }
+
+  /* 서버에 회복을 한 번 요청하고, 다음 간격에 다시 부른다(간격은 서버가 지키므로 조금 일찍 불러도 안전하다). */
+  const restOnce = async () => {
+    if (!resting) return
+    let result: RestResult
+    try { result = await restInBed() }
+    catch (cause) { wake(cause instanceof Error ? cause.message : '쉬지 못했어요.'); return }
+    if (!resting || stopped) return
+    if (result.unlimited) { wake('연구소장은 HP·기력이 무제한이라 쉴 필요가 없어요'); return }
+    const full = result.hp >= result.hpMax && result.fatigue >= result.fatigueMax
+    if (result.recovered) {
+      playSfx('success', { volume: 0.4 })
+      banner.show(`푹 쉬는 중… HP ${result.hp}/${result.hpMax} · 기력 ${result.fatigue}/${result.fatigueMax}`, '#a7d98a', 2600)
+    }
+    if (full) { wake('HP·기력이 가득 찼어요. 개운하게 일어났어요!'); return }
+    restTimer = scene.time.delayedCall(Math.max(5, result.everySec) * 1000, () => { void restOnce() })
+  }
+
+  /* 침대에 눕는다 */
+  const lieDown = (target: RoomInteraction) => {
+    const id = target.id.slice(BED_PREFIX.length)
+    resting = { id, x: target.x, y: target.y }
+    snore = scene.add.text(target.x, target.y - target.height / 2 - 18, 'Zz', { fontFamily: 'monospace', fontSize: '16px', color: '#cfe3ff' }).setOrigin(0.5).setDepth(1001)
+    scene.tweens.add({ targets: snore, y: snore.y - 10, alpha: 0.4, duration: 1200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' })
+    const every = ruleValue('REST_EVERY_SEC'), hp = ruleValue('REST_HP'), fatigue = ruleValue('REST_FATIGUE')
+    banner.show(`침대에 누웠어요 · ${every}초마다 HP +${hp} · 기력 +${fatigue} · E로 일어나기`, '#cfe3ff', 3200)
+    void restOnce()
+  }
+
+  /* 배치 중이면 반투명 가구를 캐릭터 위로 옮기고 놓을 수 있는지 색으로 보여 준다. 누워 있다가 멀어지면 일어난다. */
   const follow = () => {
+    const player = ctx.options.player?.()
+    if (resting && player && Math.hypot(player.x - resting.x, player.y - resting.y) > REST_LEAVE) wake('침대에서 일어났어요')
     const at = spot()
     if (!ghost || !placing || !at || !view) return
     ghost.setPosition(at.x, at.y).setTint(canPlace(view, placing, at.x, at.y) ? 0x86efac : 0xf87171)
@@ -149,7 +202,9 @@ export function dormFx(ctx: Context): RoomHandlers {
       return (view?.furniture ?? []).flatMap(item => {
         const shape = shapeOf(item.code)
         if (!item.placed || !shape || item.x === null || item.y === null) return []
-        return [{ id: ITEM_PREFIX + item.id, kind: 'npc' as const, label: `${shape.name} 보관하기`, x: item.x, y: item.y - shape.height / 2, width: shape.width, height: shape.height, range: 20 }]
+        /* 침대는 눕기, 나머지 가구는 보관하기 */
+        const bed = item.code === 'BED'
+        return [{ id: (bed ? BED_PREFIX : ITEM_PREFIX) + item.id, kind: 'npc' as const, label: bed ? '침대에서 쉬기' : `${shape.name} 보관하기`, x: item.x, y: item.y - shape.height / 2, width: shape.width, height: shape.height, range: 20 }]
       })
     },
     hint: target => {
@@ -157,10 +212,12 @@ export function dormFx(ctx: Context): RoomHandlers {
         const at = spot()
         return view && placing && at && canPlace(view, placing, at.x, at.y) ? 'E · 여기에 놓기 · ESC 취소' : '여기에는 놓을 수 없어요 · ESC 취소'
       }
+      if (target.id.startsWith(BED_PREFIX)) return resting ? 'E · 일어나기' : 'E · 침대에서 쉬기 (침대 보관은 폰 가구 앱)'
       return target.id.startsWith(ITEM_PREFIX) ? `E · ${target.label}(보관함으로)` : undefined
     },
     intercept: target => {
       if (target.id === PLACE_TARGET) { place(); return true }
+      if (target.id.startsWith(BED_PREFIX)) { if (resting) wake('침대에서 일어났어요'); else lieDown(target); return true }
       if (!target.id.startsWith(ITEM_PREFIX)) return false
       const id = target.id.slice(ITEM_PREFIX.length)
       void run(() => storeFurniture(id), '보관함에 넣었어요')
@@ -168,6 +225,7 @@ export function dormFx(ctx: Context): RoomHandlers {
     },
     destroy: () => {
       stopped = true
+      wake()
       cancel()
       for (const item of drawn) for (const part of item.parts) part.destroy()
       scene.events.off(Phaser.Scenes.Events.UPDATE, follow)

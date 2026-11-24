@@ -1,13 +1,21 @@
 package kr.seulgae.techlab.dorm.service.impl;
 
+import java.time.Clock;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 import kr.seulgae.techlab.dorm.dto.DormViewDTO;
+import kr.seulgae.techlab.dorm.dto.RestDTO;
 import kr.seulgae.techlab.dorm.entity.Furniture;
 import kr.seulgae.techlab.dorm.entity.MemberFurniture;
 import kr.seulgae.techlab.dorm.repository.DormRepository;
 import kr.seulgae.techlab.dorm.service.DormService;
 import kr.seulgae.techlab.inventory.repository.InventoryRepository;
+import kr.seulgae.techlab.rule.entity.ActionCost;
+import kr.seulgae.techlab.rule.entity.GameValue;
+import kr.seulgae.techlab.rule.service.GameRules;
+import kr.seulgae.techlab.rule.service.VitalsGate;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,17 +25,28 @@ import org.springframework.web.server.ResponseStatusException;
  * 개인 기숙사 가구 규칙 구현.
  * 배치 규칙: 바닥(가구 크기)이 벽 안쪽이어야 하고, 문 앞을 막지 않으며, 부딪히는 가구끼리는 겹치지 않는다(러그는 아무 데나).
  * 화면도 같은 규칙으로 미리 보여 주지만, 실제 판정은 서버가 한다.
+ * 가구를 놓을 때 HP가 들고(FURNITURE_PLACE), 놓인 침대에서 쉬면 일정 간격마다 HP·기력이 오른다(tb_lab_game_rule REST_*).
  *
  * @author 길태형
- * @version 1.0, 개인 기숙사 가구
+ * @version 1.1, 가구 배치 비용과 침대 휴식
  * @see None
  */
 @Service
 public class DormServiceImpl implements DormService {
     private final DormRepository dorm;
     private final InventoryRepository inventory;
+    private final VitalsGate gate;
+    private final GameRules rules;
+    private final Clock clock;
 
-    public DormServiceImpl(DormRepository dorm, InventoryRepository inventory) { this.dorm = dorm; this.inventory = inventory; }
+    @Autowired
+    public DormServiceImpl(DormRepository dorm, InventoryRepository inventory, VitalsGate gate, GameRules rules) { this(dorm, inventory, gate, rules, Clock.systemDefaultZone()); }
+
+    public DormServiceImpl(DormRepository dorm, InventoryRepository inventory) { this(dorm, inventory, VitalsGate.defaults(inventory), GameRules.defaults(), Clock.systemDefaultZone()); }
+
+    public DormServiceImpl(DormRepository dorm, InventoryRepository inventory, VitalsGate gate, GameRules rules, Clock clock) {
+        this.dorm = dorm; this.inventory = inventory; this.gate = gate; this.rules = rules; this.clock = clock;
+    }
 
     @Override
     public DormViewDTO view(UUID member) {
@@ -63,8 +82,25 @@ public class DormServiceImpl implements DormService {
             if (otherShape.blocking() && overlaps(shape, x, y, otherShape, other.x(), other.y()))
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Overlaps other furniture");
         }
+        gate.ensureFit(member, ActionCost.FURNITURE_PLACE);
         dorm.place(member, id, x, y).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Furniture not found"));
+        gate.spend(member, ActionCost.FURNITURE_PLACE);
         return view(member);
+    }
+
+    @Override
+    @Transactional
+    public RestDTO rest(UUID member) {
+        if (dorm.owned(member).stream().noneMatch(item -> item.placed() && BED.equals(item.code())))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Place a bed first");
+        int every = Math.max(1, rules.value(GameValue.REST_EVERY_SEC));
+        int hp = rules.value(GameValue.REST_HP), fatigue = rules.value(GameValue.REST_FATIGUE);
+        boolean unlimited = rules.rankOf(inventory.workCount(member)).unlimited();
+        /* 간격 확인과 회복을 조건부 UPDATE 한 번으로: 여러 탭에서 동시에 불러도 한 번만 오른다 */
+        OffsetDateTime now = OffsetDateTime.now(clock);
+        var recovered = inventory.rest(member, hp, fatigue, now, now.minusSeconds(every));
+        var vitals = recovered.orElseGet(() -> inventory.vitals(member));
+        return new RestDTO(recovered.isPresent(), vitals.hp(), vitals.hpMax(), vitals.fatigue(), vitals.fatigueMax(), every, hp, fatigue, unlimited);
     }
 
     @Override

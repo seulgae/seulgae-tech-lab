@@ -9,6 +9,8 @@ import java.util.UUID;
 import kr.seulgae.techlab.gamble.dto.GambleResultDTO;
 import kr.seulgae.techlab.gamble.service.GambleService;
 import kr.seulgae.techlab.inventory.repository.InventoryRepository;
+import kr.seulgae.techlab.rule.entity.ActionCost;
+import kr.seulgae.techlab.rule.service.VitalsGate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -28,11 +30,15 @@ public class GambleServiceImpl implements GambleService {
     static final int LADDER_ROWS = 6;
     private final InventoryRepository inventory;
     private final Random random;
+    /** 한 판에 드는 HP·기력(GAMBLE_BET) */
+    private VitalsGate gate;
 
     @Autowired
+    public GambleServiceImpl(InventoryRepository inventory, VitalsGate gate) { this(inventory, new SecureRandom()); this.gate = gate; }
+
     public GambleServiceImpl(InventoryRepository inventory) { this(inventory, new SecureRandom()); }
 
-    public GambleServiceImpl(InventoryRepository inventory, Random random) { this.inventory = inventory; this.random = random; }
+    public GambleServiceImpl(InventoryRepository inventory, Random random) { this.inventory = inventory; this.random = random; this.gate = VitalsGate.defaults(inventory); }
 
     /** 게임 결과(연출 값, 당첨금) */
     record Outcome(List<Integer> numbers, int payout) {}
@@ -46,10 +52,12 @@ public class GambleServiceImpl implements GambleService {
         if (bet == null || bet < MIN_BET || bet > MAX_BET) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "bet must be " + MIN_BET + "-" + MAX_BET);
         String normalized = validPick(game, pick);
         if (betsLeft(member) <= 0) throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Daily bet limit");
+        gate.ensureFit(member, ActionCost.GAMBLE_BET);
         /* 건 돈부터 뺀다: 모자라면 판을 열지 않는다. */
         int coins = inventory.changeCoins(member, -bet, BET).orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Not enough coins"));
         Outcome outcome = roll(game, bet, normalized, random);
         if (outcome.payout() > 0) coins = inventory.changeCoins(member, outcome.payout(), WIN).orElseThrow();
+        gate.spend(member, ActionCost.GAMBLE_BET);
         return new GambleResultDTO(game, normalized, bet, outcome.numbers(), outcome.payout() > bet, outcome.payout(), coins, betsLeft(member));
     }
 

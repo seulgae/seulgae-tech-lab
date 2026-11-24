@@ -42,6 +42,14 @@ export default function BrowserApp() {
           if (block.type === 'heading') return <h4 key={index}>{block.text}</h4>
           if (block.type === 'text') return <p key={index}>{block.text}</p>
           if (block.type === 'list') return <ul key={index}>{block.items.map(item => <li key={item}>{item}</li>)}</ul>
+          if (block.type === 'table') return (
+            <div key={index} className="browser-table-wrap">
+              <table className="browser-table">
+                <thead><tr>{block.head.map(cell => <th key={cell} scope="col">{cell}</th>)}</tr></thead>
+                <tbody>{block.rows.map(row => <tr key={row.join('|')}>{row.map((cell, cellIndex) => <td key={cellIndex}>{cell}</td>)}</tr>)}</tbody>
+              </table>
+            </div>
+          )
           return <button type="button" key={index} className="browser-link" onClick={() => go(block.href)}>{block.text}</button>
         })}
       </article>

@@ -87,10 +87,11 @@ export const inventoryStore = {
     } catch { /* 연결 문제는 다음에 다시 */ }
     return state
   },
-  /** 낚은 물고기를 가방에 넣는다. @returns 넣었으면 true(비회원·가방 가득·잘못된 물고기는 false) */
-  async storeFish(species: string, cm: number) {
+  /** 낚은 물고기를 가방에 넣는다(기력이 든다). @returns 넣었으면 true, 기력이 모자라면 'tired'(비회원·가방 가득·잘못된 물고기는 false) */
+  async storeFish(species: string, cm: number): Promise<boolean | 'tired'> {
     try {
       const response = await call('/api/inventory/fish', { method: 'POST', body: JSON.stringify({ species, cm }) })
+      if (response.status === TIRED_STATUS) return 'tired'
       if (!response.ok) { if (response.status === 401) set({ ...state, loaded: true, available: false }); return false }
       apply(await response.json())
       return true

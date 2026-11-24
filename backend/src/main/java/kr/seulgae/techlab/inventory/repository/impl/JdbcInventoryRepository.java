@@ -179,4 +179,14 @@ public class JdbcInventoryRepository implements InventoryRepository {
         return jdbc.sql("UPDATE lab.tb_lab_member_inventory SET last_salary_at = :now WHERE member_id = :m AND (last_salary_at IS NULL OR last_salary_at <= :cutoff)")
             .param("now", now).param("m", member).param("cutoff", cutoff).update() == 1;
     }
+
+    @Override public Optional<Vitals> rest(UUID member, int hp, int fatigue, OffsetDateTime now, OffsetDateTime cutoff) {
+        ensureRow(member);
+        return jdbc.sql("""
+            UPDATE lab.tb_lab_member_inventory SET hp = LEAST(hp_max, hp + :hp), fatigue = LEAST(fatigue_max, fatigue + :fatigue),
+                last_rest_at = :now, updated_at = CURRENT_TIMESTAMP
+            WHERE member_id = :m AND (last_rest_at IS NULL OR last_rest_at <= :cutoff) RETURNING hp, hp_max, fatigue, fatigue_max
+            """).param("m", member).param("hp", hp).param("fatigue", fatigue).param("now", now).param("cutoff", cutoff)
+            .query((rs, row) -> vitals(rs)).optional();
+    }
 }
