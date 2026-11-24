@@ -147,12 +147,12 @@ jobs:
           import json,os
           manifest = dict(format=1, repository=os.environ['GITHUB_REPOSITORY'],
                           sha=os.environ['GITHUB_SHA'], run_id=int(os.environ['GITHUB_RUN_ID']),
-                          db_schema=dict(min=24,max=25),
+                          db_schema=dict(min=25,max=25),
                           images={s:'ghcr.io/seulgae/seulgae-tech-lab-'+s+'@'+os.environ[s.upper()+'_DIGEST']
                                   for s in ('backend','frontend')})
           with open('release.json','w') as f: json.dump(manifest,f,indent=2)
           PY
           gh release create "deploy-run-$GITHUB_RUN_ID" release.json \
             --target "$GITHUB_SHA" --title "Deployable tech lab $GITHUB_SHA" \
-            --notes "Pinned application images from validated main CI. DB schema compatibility: 24..25." \
+            --notes "Pinned application images from validated main CI. DB schema compatibility: 25..25." \
             --prerelease --latest=false

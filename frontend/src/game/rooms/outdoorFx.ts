@@ -2,6 +2,8 @@ import Phaser from 'phaser'
 import type { Context } from './fxContext'
 import { hex } from './fxContext'
 import type { RoomHandlers } from './RoomFx'
+import type { RoomInteraction } from '../maps/rooms'
+import { isNearObject } from '../interaction'
 import { SKY_LABELS, SKY_PALETTES, skyPhase } from './timeOfDay'
 import type { SkyPhase } from './timeOfDay'
 import { localDay } from './roomEventLogic'
@@ -24,6 +26,10 @@ const OVERLAY_DEPTH = 880
 /** 다리·데크는 걸어 다니는 바닥이라 물(-44~-42) 바로 위, 모든 캐릭터(깊이 = 발 y)보다 아래에 그린다. */
 export const WALKABLE_DECK_DEPTH = -41
 const POPUP_DEPTH = 1001
+const ENDING_SIGN: RoomInteraction = {
+  id: 'outdoor-ending-sign', kind: 'ending-sign', label: '돌아가는 길',
+  x: 347, y: 264, width: 36, height: 22, range: 32,
+}
 
 /** 시간대별 화면 전체 빛(색·세기)과 물 색 */
 const AMBIENCE: Record<SkyPhase, { tint: string; alpha: number; water: string; waterLight: string }> = {
@@ -59,11 +65,25 @@ export function outdoorFx(ctx: Context): RoomHandlers {
   const fishing = fishingGame(ctx, () => phase)
   // 호숫가를 오가는 시민 셋과 저녁 6시에 들어오는 포장마차
   const folks = townsfolk(ctx, OUTDOOR_NPCS, true)
+  const { x, y, width, height, range, label } = ENDING_SIGN
+  const openEnding = () => {
+    const player = ctx.options.player?.()
+    if (player && !fishing.busy() && isNearObject(player.x, player.y, ENDING_SIGN, range)) {
+      ctx.options.openPanel?.('ending')
+    }
+  }
+  scene.add.rectangle(x, y - 5, 4, 19, 0x553522).setDepth(y)
+  scene.add.rectangle(x, y - 18, width + 12, height, 0x563725).setStrokeStyle(2, 0xd3ae74)
+    .setDepth(y + 1).setInteractive({ useHandCursor: true }).on('pointerup', openEnding)
+  ctx.text(x, y - 18, label, 10, '#ffe8bc', y + 2)
   return {
-    intercept: target => target.kind === 'fishing' ? fishing.press() : folks.intercept(target),
+    intercept: target => {
+      if (target.kind === 'ending-sign') { openEnding(); return true }
+      return target.kind === 'fishing' ? fishing.press() : folks.intercept(target)
+    },
     hint: target => target.kind === 'fishing' ? fishing.hint() : folks.hint(target),
     locksMovement: () => fishing.busy(),
-    targets: folks.targets,
+    targets: () => [...folks.targets(), ENDING_SIGN],
     destroy: () => { ctx.stop(); fishing.destroy(); folks.destroy() },
   }
 }
