@@ -14,12 +14,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
- * 게임 규칙(행동 비용·간식·직급·숫자 규칙). 운영 DB 테이블을 1분마다 다시 읽어 메모리에 두고 쓴다(요청마다 DB를 읽지 않음).
+ * 행동 비용·간식·직급·숫자 규칙을 메모리에 캐시한다. 갱신 간격이 지나거나 무효화된 뒤 첫 조회에서 DB를 읽는다.
  * DB를 읽지 못하면 마지막으로 읽은 값, 그것도 없으면 V23·V24 시드와 같은 기본값을 쓴다.
  *
  * @author 길태형
  * @version 1.1, 새 행동 비용·숫자 규칙(V24)
- * @see None
+ * @see RuleRepository
  */
 @Component
 public class GameRules {
@@ -72,7 +72,7 @@ public class GameRules {
         });
     }
 
-    /** @return 지금 규칙(1분이 지났으면 다시 읽는다) */
+    /** @return 캐시가 만료되었으면 갱신을 시도한 뒤 현재 규칙을 반환한다. */
     public Rules rules() {
         long now = clock.getAsLong();
         if (now - loadedAt >= REFRESH_MS) reload(now);
@@ -129,9 +129,19 @@ public class GameRules {
         return rules().values().stream().filter(item -> item.code().equals(code)).mapToInt(GameValue::value).findFirst().orElse(0);
     }
 
-    /** @param work 누적 일 완료 수 @return 직급 */
+    /**
+     * 누적 업무 완료 수에서 현재 직급을 결정한다.
+     *
+     * @param work 누적 업무 완료 수
+     * @return 현재 직급
+     */
     public Rank rankOf(int work) { return Rank.of(ranks(), work); }
 
-    /** @param work 누적 일 완료 수 @return 다음 직급(최고면 null) */
+    /**
+     * 누적 업무 완료 수에서 다음 승진 직급을 찾는다.
+     *
+     * @param work 누적 업무 완료 수
+     * @return 다음 직급. 최고 직급이면 null
+     */
     public Rank nextRank(int work) { return Rank.next(ranks(), work); }
 }

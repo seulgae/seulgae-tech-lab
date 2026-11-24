@@ -32,7 +32,7 @@ import org.springframework.web.server.ResponseStatusException;
  *
  * @author 길태형
  * @version 1.0, 주식 앱
- * @see None
+ * @see "None"
  */
 @Service
 public class StockServiceImpl implements StockService {

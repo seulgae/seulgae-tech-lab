@@ -9,6 +9,6 @@ import java.util.UUID;
  *
  * @author 길태형
  * @version 1.0, 계층별 패키지 정리
- * @see None
+ * @see "None"
  */
 public record SnsPost(UUID id, UUID authorId, String nickname, String content, OffsetDateTime createdAt) {}

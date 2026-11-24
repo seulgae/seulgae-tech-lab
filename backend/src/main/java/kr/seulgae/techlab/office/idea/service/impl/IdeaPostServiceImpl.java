@@ -14,7 +14,7 @@ import org.springframework.web.server.ResponseStatusException;
  *
  * @author 길태형
  * @version 1.0, 아이디어 기획 게시판
- * @see None
+ * @see "None"
  */
 @Service
 public class IdeaPostServiceImpl implements IdeaPostService {

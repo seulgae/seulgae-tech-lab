@@ -29,7 +29,7 @@ type Callbacks = { room?: (roomId: RoomId, pending: boolean) => void; snapshot?:
   tradeStatus?: (status: TradeStatus) => void }
 
 /**
- * 소켓 상태와 입력 전송을 관리하고 끊김 시 제한된 지수 지연으로 재접속한다.
+ * 로컬 방 이동과 회의실 소켓 상태를 관리한다. 회의실이 연결을 잃으면 제한된 지수 지연으로 재접속한다.
  *
  * @author seulgae
  * @version 1.0, 단일 소켓의 방 세대 검증·예측 초기화·방별 채팅과 재연결
@@ -93,8 +93,7 @@ export default class MultiplayerClient {
 
   /** Scene은 구독만 교체하고 React 게임 컴포넌트가 소켓 수명을 소유한다. */
   /**
-   * 회원 닉네임을 적용한다. 같은 소켓으로는 이름을 바꿀 수 없으므로, 이미 다른 이름으로 접속했다면 바로 다시 접속한다.
-   * 모바일처럼 로그인 확인이 게임 시작(2.5초)보다 늦게 끝나면 임시 이름 "연구원-xxxx"로 남던 문제를 막는다.
+   * 로컬 이름표에 회원 닉네임을 적용한다. 회의실 소켓이 활성 상태라면 새 이름으로 다시 연결한다.
    * @returns 다시 접속을 시작했으면 true
    */
   applyNickname(nickname: string) {

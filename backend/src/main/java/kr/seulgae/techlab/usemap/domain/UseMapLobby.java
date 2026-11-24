@@ -18,7 +18,7 @@ import org.springframework.stereotype.Component;
  *
  * @author 길태형
  * @version 1.0, 유즈맵 플랫폼
- * @see None
+ * @see "None"
  */
 @Component
 public class UseMapLobby {
@@ -98,7 +98,10 @@ public class UseMapLobby {
      */
     public synchronized List<String> members(String roomId) { return Optional.ofNullable(rooms.get(roomId)).map(room -> List.copyOf(room.players)).orElse(List.of()); }
 
-    /** @param id 연결 id @return 닉네임(없으면 빈 값) */
+    /**
+     * @param id 연결 id
+     * @return 닉네임(없으면 빈 값)
+     */
     public synchronized Optional<String> nickname(String id) { return Optional.ofNullable(players.get(id)).map(Player::nickname); }
 
     /**

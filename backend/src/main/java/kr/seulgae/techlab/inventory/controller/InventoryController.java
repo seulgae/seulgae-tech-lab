@@ -65,7 +65,11 @@ public class InventoryController {
     @GetMapping("/ground")
     public List<GroundItemDTO> ground(@RequestParam String room) { return service.groundView(room(room)); }
 
-    /** 내 아이템을 지금 서 있는 곳 바닥에 내려놓는다. 바닥이 가득하거나 내 것이 아니면 409. @return 이 방 바닥 목록 */
+    /**
+     * 내 아이템을 지금 서 있는 곳 바닥에 내려놓는다. 바닥이 가득하거나 내 것이 아니면 409.
+     *
+     * @return 이 방 바닥 목록
+     */
     @PostMapping("/drop")
     public List<GroundItemDTO> drop(@RequestBody(required = false) ItemRequestDTO body, HttpServletRequest request) {
         var member = member(request);
@@ -76,7 +80,11 @@ public class InventoryController {
         return changed(item.room());
     }
 
-    /** 가까운(48px) 바닥 아이템을 줍는다. 멀거나 이미 주웠거나 가방이 가득하면 409. @return 이 방 바닥 목록 */
+    /**
+     * 가까운(48px) 바닥 아이템을 줍는다. 멀거나 이미 주웠거나 가방이 가득하면 409.
+     *
+     * @return 이 방 바닥 목록
+     */
     @PostMapping("/pick")
     public List<GroundItemDTO> pick(@RequestBody(required = false) ItemRequestDTO body, HttpServletRequest request) {
         var member = member(request);
@@ -126,13 +134,21 @@ public class InventoryController {
     @PostMapping("/plant")
     public PlantResultDTO shakePlant(HttpServletRequest request) { return service.shakePlant(member(request)); }
 
-    /** 오늘 남은 오락실 판 수. @return {"playsLeftToday": n} */
+    /**
+     * 오늘 남은 오락실 판 수.
+     *
+     * @return {"playsLeftToday": n}
+     */
     @GetMapping("/arcade")
     public Map<String, Integer> arcadeStatus(HttpServletRequest request) {
         return Map.of("playsLeftToday", service.arcadePlaysLeft(member(request)));
     }
 
-    /** 오락실 한 판(동전 1원, HP -3, 기력 -5, 하루 5판). 5판을 다 했으면 429, 지치면 423, 동전 부족 409. @return {"coins": 남은 동전, "playsLeftToday": 남은 판} */
+    /**
+     * 오락 한 판의 동전과 서버 규칙에 따른 HP·기력 비용을 처리한다. 판 수 초과는 429, 기력이나 HP 부족은 423, 동전 부족은 409다.
+     *
+     * @return {"coins": 남은 동전, "playsLeftToday": 남은 판}
+     */
     @PostMapping("/arcade")
     public Map<String, Integer> playArcade(HttpServletRequest request) {
         var member = member(request);

@@ -13,7 +13,7 @@ import org.springframework.web.server.ResponseStatusException;
  *
  * @author 길태형
  * @version 1.0, HP·기력 행동 비용 확대
- * @see None
+ * @see "None"
  */
 @Component
 public class VitalsGate {

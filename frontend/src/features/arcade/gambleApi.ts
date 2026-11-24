@@ -4,7 +4,7 @@ import { tiredMessage } from '../rules/rulesStore.ts'
  *
  * @author 길태형
  * @version 1.0, 오락실 내기 게임
- * @see None
+ * @see "None"
  */
 export type GambleGame = 'ODD_EVEN' | 'LADDER' | 'DICE' | 'SLOT'
 export type GambleResult = { game: GambleGame; pick: string; bet: number; numbers: number[]; win: boolean; payout: number; coins: number; betsLeftToday: number }

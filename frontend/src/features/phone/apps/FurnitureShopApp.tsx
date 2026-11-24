@@ -12,7 +12,7 @@ const errorText = (cause: unknown) => cause instanceof Error ? cause.message : '
  *
  * @author 길태형
  * @version 1.0, 개인 기숙사 가구
- * @see None
+ * @see "None"
  * @param props 폰 닫기 콜백
  * @returns 가구점 화면
  */

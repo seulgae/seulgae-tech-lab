@@ -10,7 +10,7 @@ import kr.seulgae.techlab.auth.entity.*;
  *
  * @author 길태형
  * @version 1.0, 계층별 패키지 정리(서비스 인터페이스 분리)
- * @see None
+ * @see "None"
  */
 public interface LevelService {
     int USER = 1, OPERATOR = 2, ADMIN = 3, REASON_MAX = 200;

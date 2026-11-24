@@ -5,6 +5,6 @@ package kr.seulgae.techlab.dorm.entity;
  *
  * @author 길태형
  * @version 1.0, 개인 기숙사 가구
- * @see None
+ * @see "None"
  */
 public record Furniture(String code, String name, int price, int width, int height, boolean blocking) {}

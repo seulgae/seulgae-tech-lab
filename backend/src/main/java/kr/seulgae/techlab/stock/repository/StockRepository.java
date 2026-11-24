@@ -14,7 +14,7 @@ import kr.seulgae.techlab.stock.entity.Stock;
  *
  * @author 길태형
  * @version 1.0, 주식 앱
- * @see None
+ * @see "None"
  */
 public interface StockRepository {
     /**

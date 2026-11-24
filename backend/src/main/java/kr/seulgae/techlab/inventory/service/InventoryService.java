@@ -12,7 +12,7 @@ import kr.seulgae.techlab.inventory.entity.*;
  *
  * @author 길태형
  * @version 1.0, 계층별 패키지 정리(서비스 인터페이스 분리)
- * @see None
+ * @see "None"
  */
 public interface InventoryService {
     String FISH = "FISH", WORK_POST = "WORK_POST", ARCADE_PLAY = "ARCADE_PLAY";
@@ -47,10 +47,18 @@ public interface InventoryService {
     /** 낚은 물고기를 가방에 넣는다. 어종·크기를 확인하고 가방이 꽉 차면 거절한다. */
     Item storeFish(UUID member, String species, Integer cm);
 
-    /** 사무실 게시물 보상. 하루 한도를 넘으면 0원이다. @return 실제로 받은 동전 */
+    /**
+     * 사무실 게시물 보상. 하루 한도를 넘으면 0원이다.
+     *
+     * @return 실제로 받은 동전
+     */
     int rewardWorkPost(UUID member);
 
-    /** 오락실 한 판. 오늘 5판을 다 했으면 429, HP·기력이 모자라면 423, 동전이 없으면 409(모두 아무것도 바꾸지 않음). @return 남은 동전 */
+    /**
+     * 오락실 한 판. 오늘 5판을 다 했으면 429, HP·기력이 모자라면 423, 동전이 없으면 409(모두 아무것도 바꾸지 않음).
+     *
+     * @return 남은 동전
+     */
     int playArcade(UUID member);
 
     /** 오늘 남은 오락실 판 수 */
@@ -73,8 +81,7 @@ public interface InventoryService {
     void spendWork(UUID member, String action);
 
     /**
-     * 로비 간식·음료를 서버 가격으로 구매한다. 탄산음료 2원 기력 +5, 물 1원 기력 +2.
-     * 케이크 3원 HP +10, 커피 2원 기력 +5이며 회복은 최대치에서 멈춘다.
+     * 서버 규칙에 등록된 간식·음료를 구매하고, 등록된 회복량을 적용한다. 회복은 최대치에서 멈춘다.
      * 이미 가득이면 422(돈을 받지 않음), 동전이 모자라면 409.
      * @param member 구매 회원
      * @param kind 서버가 허용한 간식·음료 코드

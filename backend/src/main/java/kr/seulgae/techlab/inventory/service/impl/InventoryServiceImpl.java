@@ -22,14 +22,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
- * 인벤토리 규칙(일지 #7): 낚은 물고기 보관, 버리기(방 바닥)·줍기, 동전.
- * 사무실 게시물 하나에 10원(도배 방지로 하루 10번까지), 오락실 게임 한 판에 1원.
- * HP·기력(일지 #10): 기본 최대 50. 사무실 게시판 일·오락 한 번에 HP -3, 기력 -5.
- * 로비 데스크 케이크(3원)는 HP +10, 커피(2원)는 기력 +5. 모자라면 일·오락을 할 수 없다.
+ * 물고기 보관, 방 바닥의 아이템 이동, 동전 보상·지출과 회복을 처리한다.
+ * 행동 비용, 간식의 가격·회복량, 직급별 최대치는 게임 규칙을 읽어 적용한다.
  *
  * @author seulgae
  * @version 1.1, 자판기 음료 구매와 서버 가격 검증
- * @see "None"
+ * @see GameRules
  */
 @Service
 public class InventoryServiceImpl implements InventoryService {
@@ -93,14 +91,22 @@ public class InventoryServiceImpl implements InventoryService {
         return item;
     }
 
-    /** 사무실 게시물 보상. 하루 한도를 넘으면 0원이다. @return 실제로 받은 동전 */
+    /**
+     * 사무실 게시물 보상. 하루 한도를 넘으면 0원이다.
+     *
+     * @return 실제로 받은 동전
+     */
     @Transactional
     public int rewardWorkPost(UUID member) {
         if (store.countToday(member, WORK_POST) >= DAILY_REWARD_LIMIT) return 0;
         return store.changeCoins(member, WORK_POST_REWARD, WORK_POST).isPresent() ? WORK_POST_REWARD : 0;
     }
 
-    /** 오락실 한 판. 오늘 5판을 다 했으면 429, HP·기력이 모자라면 423, 동전이 없으면 409(모두 아무것도 바꾸지 않음). @return 남은 동전 */
+    /**
+     * 오락실 한 판. 오늘 5판을 다 했으면 429, HP·기력이 모자라면 423, 동전이 없으면 409(모두 아무것도 바꾸지 않음).
+     *
+     * @return 남은 동전
+     */
     @Transactional
     public int playArcade(UUID member) {
         if (arcadePlaysLeft(member) <= 0) throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Daily arcade limit");

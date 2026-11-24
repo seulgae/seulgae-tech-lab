@@ -5,6 +5,6 @@ package kr.seulgae.techlab.office.idea.dto;
  *
  * @author 길태형
  * @version 1.0, 아이디어 기획 게시판
- * @see None
+ * @see "None"
  */
 public record IdeaRequestDTO(String title, String content) {}

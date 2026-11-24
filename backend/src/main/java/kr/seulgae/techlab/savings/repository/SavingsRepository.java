@@ -11,7 +11,7 @@ import kr.seulgae.techlab.savings.entity.Savings;
  *
  * @author 길태형
  * @version 1.0, 은행 적금
- * @see None
+ * @see "None"
  */
 public interface SavingsRepository {
     /**

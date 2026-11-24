@@ -8,6 +8,6 @@ import org.springframework.web.bind.annotation.*;
  *
  * @author 길태형
  * @version 1.0, 계층별 패키지 정리
- * @see None
+ * @see "None"
  */
 public record TodoDoneRequestDTO(Boolean done) {}

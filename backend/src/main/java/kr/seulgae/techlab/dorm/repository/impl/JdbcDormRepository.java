@@ -16,7 +16,7 @@ import org.springframework.stereotype.Repository;
  *
  * @author 길태형
  * @version 1.0, 개인 기숙사 가구
- * @see None
+ * @see "None"
  */
 @Repository
 public class JdbcDormRepository implements DormRepository {

@@ -12,7 +12,7 @@ const signed = (value: number, unit = '') => `${value > 0 ? '+' : ''}${value.toL
  *
  * @author 길태형
  * @version 1.0, 주식 앱
- * @see None
+ * @see "None"
  * @returns 주식 화면
  */
 export default function StockApp() {

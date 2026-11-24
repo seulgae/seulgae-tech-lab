@@ -15,7 +15,7 @@ import kr.seulgae.techlab.gamble.dto.GambleResultDTO;
  *
  * @author 길태형
  * @version 1.0, 오락실 내기 게임
- * @see None
+ * @see "None"
  */
 public interface GambleService {
     int MIN_BET = 1, MAX_BET = 20, DAILY_BETS = 5;

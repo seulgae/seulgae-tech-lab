@@ -18,7 +18,7 @@ const date = (value: string) => new Date(value).toLocaleString('ko-KR', { month:
  *
  * @author 길태형
  * @version 1.0, 게시판 개편(내 자리 컴퓨터 아이콘)
- * @see None
+ * @see "None"
  * @returns 게시판 본문
  */
 export function IdeaBoard() {

@@ -35,7 +35,7 @@ type Drawn = { parts: Phaser.GameObjects.GameObject[] }
  *
  * @author 길태형
  * @version 1.1, 침대 휴식
- * @see None
+ * @see "None"
  * @param ctx 방 연출 도구(장면·배너·옵션)
  * @returns 방 핸들러
  */

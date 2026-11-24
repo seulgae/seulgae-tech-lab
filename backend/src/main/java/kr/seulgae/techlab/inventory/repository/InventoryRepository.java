@@ -8,7 +8,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * 인벤토리 저장소(V5 lab.tb_lab_member_inventory, lab.tb_lab_coin_history, lab.tb_lab_item). 운영은 PostgreSQL, 로컬·테스트는 메모리 구현을 쓴다.
+ * 인벤토리 저장소(V5 lab.tb_lab_member_inventory, lab.tb_lab_coin_history, lab.tb_lab_item). 로컬과 운영 앱은 PostgreSQL을 사용하고, 단위 테스트에서는 메모리 구현을 사용할 수 있다.
  *
  * @author seulgae
  * @version 1.1, 구매 시 회복 상태 잠금
@@ -51,14 +51,22 @@ public interface InventoryRepository {
      * @return 바뀐 행 수. 2가 아니면 호출한 쪽이 되돌려야 한다(트랜잭션).
      */
     int swap(UUID a, UUID itemA, UUID b, UUID itemB);
-    /** 내 가방의 아이템을 없앤다(판매). @return 지운 행 수(내 것이 아니면 0) */
+    /**
+     * 내 가방의 아이템을 없앤다(판매).
+     *
+     * @return 지운 행 수(내 것이 아니면 0)
+     */
     int remove(UUID member, UUID itemId);
     /** 이 방 바닥의 아이템을 줍는다. 이미 누가 주웠으면 빈 값(동시에 주워도 한 명만 성공) */
     Optional<Item> pick(UUID member, UUID itemId, String roomId);
 
     /** 누적 일 완료 수(사원증 직급의 기준) */
     int workCount(UUID member);
-    /** 누적 일 완료 수를 1 올린다. @return 올린 뒤의 값 */
+    /**
+     * 누적 일 완료 수를 1 올린다.
+     *
+     * @return 올린 뒤의 값
+     */
     int addWork(UUID member);
     /** HP·기력 최대치를 둘 다 max로 바꾸고 가득 채운다(승진). */
     void raiseVitals(UUID member, int max);
@@ -70,7 +78,9 @@ public interface InventoryRepository {
     boolean claimSalary(UUID member, OffsetDateTime now, OffsetDateTime cutoff);
     /**
      * 침대 휴식 회복 차례를 잡는다: 마지막 휴식 회복이 없거나 cutoff 이전이면 HP·기력을 올리고(최대치까지) 시각을 now로 바꾼다.
-     * 동시에 여러 번 불러도 한 번만 회복한다. @return 회복했으면 회복 뒤 값, 아직 차례가 아니면 빈 값
+     * 동시에 여러 번 불러도 한 번만 회복한다.
+     *
+     * @return 회복했으면 회복 뒤 값, 아직 차례가 아니면 빈 값
      */
     Optional<Vitals> rest(UUID member, int hp, int fatigue, OffsetDateTime now, OffsetDateTime cutoff);
 }

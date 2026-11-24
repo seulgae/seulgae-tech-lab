@@ -5,6 +5,6 @@ package kr.seulgae.techlab.gamble.dto;
  *
  * @author 길태형
  * @version 1.0, 오락실 내기 게임
- * @see None
+ * @see "None"
  */
 public record GambleRequestDTO(String game, Integer bet, String pick) {}

@@ -10,7 +10,7 @@ import { areaOf, mapAreas } from '../mapLayout'
  *
  * @author 길태형
  * @version 1.0, 폰 지도 앱
- * @see None
+ * @see "None"
  * @param props 지금 방
  * @returns 지도 화면
  */

@@ -8,6 +8,6 @@ import kr.seulgae.techlab.savings.entity.Savings;
  *
  * @author 길태형
  * @version 1.0, 은행 적금
- * @see None
+ * @see "None"
  */
 public record SavingsViewDTO(int coins, List<SavingsTermDTO> terms, List<Savings> savings, int maxAmount, int maxOpen) {}

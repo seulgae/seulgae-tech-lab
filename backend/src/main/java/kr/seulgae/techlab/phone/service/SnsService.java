@@ -9,7 +9,7 @@ import kr.seulgae.techlab.phone.dto.*;
  *
  * @author 길태형
  * @version 1.0, 계층별 패키지 정리(서비스 인터페이스 분리)
- * @see None
+ * @see "None"
  */
 public interface SnsService {
     int CONTENT_MAX = 140, DAILY_POSTS = 20, LIST_LIMIT = 50;

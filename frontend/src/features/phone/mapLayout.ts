@@ -8,7 +8,7 @@ import type { RoomId } from '../../game/maps/rooms.ts'
  *
  * @author 길태형
  * @version 1.0, 폰 지도 앱
- * @see None
+ * @see "None"
  */
 export type MapSlot = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'bottom'
 export type MapCell = { room: RoomId; name: string; slot: MapSlot | 'center'; hub?: RoomId }

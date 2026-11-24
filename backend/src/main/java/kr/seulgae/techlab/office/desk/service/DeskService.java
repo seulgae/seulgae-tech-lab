@@ -11,7 +11,7 @@ import kr.seulgae.techlab.office.desk.dto.JavaAnswerDTO;
  *
  * @author 길태형
  * @version 1.0, 내 자리 컴퓨터
- * @see None
+ * @see "None"
  */
 public interface DeskService {
     int DAILY_REWARD = 5, JAVA_REWARD = 1, JAVA_DAILY_REWARDS = 3, FORMAT_MAX = 100;

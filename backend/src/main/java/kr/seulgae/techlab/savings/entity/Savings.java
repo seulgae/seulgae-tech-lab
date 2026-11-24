@@ -8,7 +8,7 @@ import java.util.UUID;
  *
  * @author 길태형
  * @version 1.0, 은행 적금
- * @see None
+ * @see "None"
  */
 public record Savings(UUID id, int principal, int termDays, int ratePct, OffsetDateTime createdAt, OffsetDateTime maturesAt,
                       OffsetDateTime closedAt, Integer payout) {}

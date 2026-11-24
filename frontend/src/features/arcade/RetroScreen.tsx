@@ -15,7 +15,7 @@ const readHigh = (key: string) => { try { return Number(localStorage.getItem(key
  *
  * @author 길태형
  * @version 1.0, 오락실 게임 고르기
- * @see None
+ * @see "None"
  * @param props 게임
  * @returns 게임 화면
  */

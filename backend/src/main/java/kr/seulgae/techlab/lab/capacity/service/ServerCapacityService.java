@@ -7,7 +7,7 @@ import kr.seulgae.techlab.lab.capacity.dto.*;
  *
  * @author 길태형
  * @version 1.0, 계층별 패키지 정리(서비스 인터페이스 분리)
- * @see None
+ * @see "None"
  */
 public interface ServerCapacityService {
     /** 이 값을 넘으면 화면에 경고(블로그 글의 운영 기준과 같은 80%) */

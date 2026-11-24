@@ -10,7 +10,7 @@ import kr.seulgae.techlab.stock.dto.StockViewDTO;
  *
  * @author 길태형
  * @version 1.0, 주식 앱
- * @see None
+ * @see "None"
  */
 public interface StockService {
     /** 시세가 한 번 움직이는 간격 */

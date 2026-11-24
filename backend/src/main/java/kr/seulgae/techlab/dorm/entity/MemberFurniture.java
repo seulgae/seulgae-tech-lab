@@ -8,6 +8,6 @@ import java.util.UUID;
  *
  * @author 길태형
  * @version 1.0, 개인 기숙사 가구
- * @see None
+ * @see "None"
  */
 public record MemberFurniture(UUID id, String code, boolean placed, Integer x, Integer y) {}

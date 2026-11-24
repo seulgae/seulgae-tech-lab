@@ -19,7 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * @author 길태형
  * @version 1.0, 사원증·급여
- * @see None
+ * @see "None"
  */
 @Service
 public class BadgeServiceImpl implements BadgeService {

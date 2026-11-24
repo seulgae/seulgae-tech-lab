@@ -44,7 +44,7 @@ const PANEL_SOUNDS: Partial<Record<string, EffectKey>> = {
 }
 
 /**
- * 방의 표시·충돌·출입구와 방별 상호작용(연구 기록·빌드 정보·서버 상태·테이블 대화)을 연결하는 게임 장면이다.
+ * 방 표시·출입구·이동과 충돌을 관리하고 첫 출근 및 방별 상호작용을 React 패널에 연결한다.
  *
  * @author seulgae
  * @version 1.2, 방별 테마·문 열림 연출·방 이벤트 연결

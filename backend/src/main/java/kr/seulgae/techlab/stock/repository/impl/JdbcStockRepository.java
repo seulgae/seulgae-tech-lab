@@ -19,7 +19,7 @@ import org.springframework.stereotype.Repository;
  *
  * @author 길태형
  * @version 1.0, 주식 앱
- * @see None
+ * @see "None"
  */
 @Repository
 public class JdbcStockRepository implements StockRepository {

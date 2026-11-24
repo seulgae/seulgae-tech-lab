@@ -45,12 +45,13 @@ import { MOBILE_INPUT } from '../game/input/mobileInput'
 import type { DirectionInput } from '../game/input/mobileInput'
 
 /**
- * Phaser 게임의 생성·정리와 연구 기록 패널의 이벤트 연결을 관리한다.
+ * Phaser 게임과 화면 패널의 수명을 관리하고, 방 이동·모바일 입력·상호작용 이벤트를 React에 연결한다.
  *
  * @author seulgae
  * @version 1.2, 야외 첫 출근과 튜토리얼 선택 연결
  * @see "None"
- * @returns 게임 캔버스와 조건부 연구 기록 패널
+ * @param props 현재 방이 바뀔 때 호출하는 콜백
+ * @returns 게임 캔버스와 현재 열린 상호작용 패널
  */
 export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: RoomId) => void } = {}) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -73,7 +74,7 @@ export default function GameCanvas({ onRoomChange }: { onRoomChange?: (roomId: R
   const [tradeNotice, setTradeNotice] = useState<string | null>(null)
   const closeTrade = useCallback(() => setTradeOffer(null), [])
   useEffect(() => { if (!tradeNotice) return; const timer = setTimeout(() => setTradeNotice(null), 4000); return () => clearTimeout(timer) }, [tradeNotice])
-  // 로그인 확인이 게임 시작보다 늦게 끝나도(모바일) 회원 닉네임으로 다시 접속한다.
+  // 로그인 확인이 늦어도 이름표를 갱신한다. 회의실 소켓이 연결된 상태라면 새 닉네임으로 다시 접속한다.
   const auth = useAuth()
   const memberNickname = auth.member?.nickname
   // 관리자실 문: 관리자 회원만 들어간다.

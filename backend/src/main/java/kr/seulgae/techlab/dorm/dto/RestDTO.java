@@ -5,6 +5,6 @@ package kr.seulgae.techlab.dorm.dto;
  *
  * @author 길태형
  * @version 1.0, 기숙사 침대 휴식
- * @see None
+ * @see "None"
  */
 public record RestDTO(boolean recovered, int hp, int hpMax, int fatigue, int fatigueMax, int everySec, int hpGain, int fatigueGain, boolean unlimited) {}

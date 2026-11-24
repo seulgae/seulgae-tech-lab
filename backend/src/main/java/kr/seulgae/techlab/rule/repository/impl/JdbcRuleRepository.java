@@ -14,7 +14,7 @@ import org.springframework.stereotype.Repository;
  *
  * @author 길태형
  * @version 1.1, 숫자 규칙(tb_lab_game_rule)
- * @see None
+ * @see "None"
  */
 @Repository
 public class JdbcRuleRepository implements RuleRepository {

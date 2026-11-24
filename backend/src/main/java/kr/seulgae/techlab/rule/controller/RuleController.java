@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * @author 길태형
  * @version 1.0, 게임 규칙 테이블
- * @see None
+ * @see "None"
  */
 @RestController
 @RequestMapping("/api/rules")

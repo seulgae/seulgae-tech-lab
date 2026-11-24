@@ -9,6 +9,6 @@ import kr.seulgae.techlab.dorm.entity.MemberFurniture;
  *
  * @author 길태형
  * @version 1.0, 개인 기숙사 가구
- * @see None
+ * @see "None"
  */
 public record DormViewDTO(int coins, List<Furniture> catalog, List<MemberFurniture> furniture) {}

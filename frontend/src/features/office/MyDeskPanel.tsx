@@ -30,7 +30,7 @@ const TITLES: Record<Exclude<Window, null>, string> = { mail: '📧 메일', ide
  *
  * @author 길태형
  * @version 1.0, 내 자리 컴퓨터
- * @see None
+ * @see "None"
  * @param props 닫기 콜백
  * @returns 모니터 모달
  */

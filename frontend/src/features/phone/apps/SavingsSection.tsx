@@ -12,7 +12,7 @@ const when = (iso: string) => new Date(iso).toLocaleString('ko-KR', { month: 'nu
  *
  * @author 길태형
  * @version 1.0, 은행 적금
- * @see None
+ * @see "None"
  * @param props 잔액이 바뀌면 부르는 콜백(통장 화면 새로고침)
  * @returns 적금 카드
  */
