@@ -12,7 +12,7 @@ export type QaStatus = 'REGISTERED' | 'IN_PROGRESS' | 'RESOLVED'
 export type QaTicket = { id: string; title: string; content: string; status: QaStatus; statusName: string; author: string | null; createdAt: string; updatedAt: string | null }
 export type DailyTask = { code: string; title: string; where: string; done: boolean }
 export type JavaProblem = { id: string; title: string; description: string; argsCode: string; expected: string; hints: string[] }
-export type DeskView = { tasks: DailyTask[]; reward: number; rewardClaimed: boolean; problems: JavaProblem[]; javaRewardsToday: number; javaRewardLimit: number; coins: number }
+export type DeskView = { tasks: DailyTask[]; reward: number; rewardClaimed: boolean; problems: JavaProblem[]; javaRewardsToday: number; javaRewardLimit: number; coins: number; promotedTo?: string | null }
 export type JavaAnswer = { problemId: string; format: string; output: string | null; correct: boolean; rewarded: boolean; error: string | null }
 
 /** 서비스 연구실 컴퓨터(상호작용 id) → 열 창. 아이디어·QA 게시판은 내 자리 컴퓨터의 아이콘으로 연다. */

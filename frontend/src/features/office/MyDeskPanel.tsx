@@ -109,7 +109,12 @@ function MailWindow({ desk, onDesk, onClose }: { desk: DeskView; onDesk: (desk: 
   const allDone = desk.tasks.every(task => task.done)
   const claim = async () => {
     setBusy(true)
-    try { onDesk(await claimDailyReward()); setMessage(`수고했어요! 동전 ${desk.reward}원을 받았어요.`); playSfx('coin', { volume: 0.7 }); void inventoryStore.refresh() }
+    try {
+      const next = await claimDailyReward()
+      onDesk(next)
+      setMessage(next.promotedTo ? `수고했어요! 동전 ${desk.reward}원을 받았어요. 🎉 ${next.promotedTo}(으)로 승진! HP·기력 최대치가 늘고 가득 찼어요.` : `수고했어요! 동전 ${desk.reward}원을 받았어요. 일 완료 +1`)
+      playSfx(next.promotedTo ? 'success' : 'coin', { volume: 0.7 }); void inventoryStore.refresh()
+    }
     catch (cause) { setMessage(cause instanceof BoardError && cause.status === 409 ? '아직 다 하지 않았거나 이미 받았어요.' : '보상을 받지 못했어요.') }
     finally { setBusy(false) }
   }
@@ -117,7 +122,7 @@ function MailWindow({ desk, onDesk, onClose }: { desk: DeskView; onDesk: (desk: 
     <section className="desk-window" aria-label="메일">
       <header><span>📧 받은 메일 · 오늘 할 업무</span><button type="button" onClick={onClose} aria-label="메일 닫기">✕</button></header>
       <div className="desk-window-body">
-        <p className="desk-mail-from"><strong>보낸 사람</strong> 연구소장 · <strong>제목</strong> 오늘도 연구소를 잘 부탁해요</p>
+        <p className="desk-mail-from"><strong>보낸 사람</strong> 연구소 본부 · <strong>제목</strong> 오늘도 연구소를 잘 부탁해요</p>
         <ul className="desk-tasks">
           {desk.tasks.map(task => (
             <li key={task.code} className={task.done ? 'done' : ''}>

@@ -6,6 +6,9 @@ import java.time.ZoneId;
 import java.util.IllegalFormatException;
 import java.util.List;
 import java.util.UUID;
+import kr.seulgae.techlab.badge.entity.Rank;
+import kr.seulgae.techlab.badge.service.BadgeService;
+import kr.seulgae.techlab.badge.service.impl.BadgeServiceImpl;
 import kr.seulgae.techlab.inventory.repository.InventoryRepository;
 import kr.seulgae.techlab.inventory.service.InventoryService;
 import kr.seulgae.techlab.office.desk.dto.DailyTaskDTO;
@@ -31,16 +34,31 @@ public class DeskServiceImpl implements DeskService {
     private final InventoryRepository inventory;
     private final Clock clock;
 
+    private final BadgeService badge;
+
     @Autowired
+    public DeskServiceImpl(InventoryRepository inventory, BadgeService badge) { this(inventory, Clock.system(SEOUL), badge); }
+
+    public DeskServiceImpl(InventoryRepository inventory, Clock clock) { this(inventory, clock, new BadgeServiceImpl(inventory, clock)); }
+
     public DeskServiceImpl(InventoryRepository inventory) { this(inventory, Clock.system(SEOUL)); }
 
-    public DeskServiceImpl(InventoryRepository inventory, Clock clock) { this.inventory = inventory; this.clock = clock; }
+    public DeskServiceImpl(InventoryRepository inventory, Clock clock, BadgeService badge) { this.inventory = inventory; this.clock = clock; this.badge = badge; }
 
     @Override
-    public DeskViewDTO view(UUID member) {
+    public DeskViewDTO view(UUID member) { return view(member, null); }
+
+    /**
+     * 화면 값.
+     *
+     * @param member 회원 ID
+     * @param promotedTo 방금 오른 직급 이름(없으면 null)
+     * @return 화면 값
+     */
+    private DeskViewDTO view(UUID member, String promotedTo) {
         return new DeskViewDTO(tasks(member), DAILY_REWARD, inventory.countToday(member, DAILY_TASKS) > 0,
             JavaProblems.ALL.stream().map(JavaProblems.Problem::view).toList(), inventory.countToday(member, JAVA_PRACTICE), JAVA_DAILY_REWARDS,
-            inventory.coins(member));
+            inventory.coins(member), promotedTo);
     }
 
     /**
@@ -67,7 +85,9 @@ public class DeskServiceImpl implements DeskService {
         if (!tasks(member).stream().allMatch(DailyTaskDTO::done)) throw new ResponseStatusException(HttpStatus.CONFLICT, "Tasks not done");
         if (inventory.countToday(member, DAILY_TASKS) > 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "Already claimed");
         inventory.changeCoins(member, DAILY_REWARD, DAILY_TASKS).orElseThrow();
-        return view(member);
+        /* 오늘 업무를 다 하면 일 하나 완료: 누적 수가 올라 직급이 오를 수 있다 */
+        Rank promoted = badge.completeWork(member);
+        return view(member, promoted == null ? null : promoted.name());
     }
 
     @Override
