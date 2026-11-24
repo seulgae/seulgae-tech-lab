@@ -84,7 +84,7 @@ cd /opt/homeserver/apps/seulgae-tech-lab
 python3 deploy/ops.py check
 ```
 
-`check`는 Docker·Compose, PostgreSQL 상태와 네트워크, 두 비밀번호 파일과 권한, 해석된 Compose DB 설정, 기존 Flyway 이력을 확인한다. SQL은 READ ONLY 트랜잭션으로 실행한다. 성공 이력의 스키마 버전 V1~V19만 허용하며 실패 이력·미적용·다른 버전이면 중단한다. 배포할 릴리스와 맞는지는 `deploy`가 릴리스의 `db_schema` 범위로 다시 확인한다. 이미지 Pull, 앱 시작, 마이그레이션은 하지 않는다. 자체 ops 디렉터리와 잠금 파일은 만들 수 있다.
+`check`는 Docker·Compose, PostgreSQL 상태와 네트워크, 두 비밀번호 파일과 권한, 해석된 Compose DB 설정, 기존 Flyway 이력을 확인한다. SQL은 READ ONLY 트랜잭션으로 실행한다. 성공 이력의 스키마 버전 V1~V20만 허용하며 실패 이력·미적용·다른 버전이면 중단한다. 배포할 릴리스와 맞는지는 `deploy`가 릴리스의 `db_schema` 범위로 다시 확인한다. 이미지 Pull, 앱 시작, 마이그레이션은 하지 않는다. 자체 ops 디렉터리와 잠금 파일은 만들 수 있다.
 
 병합 후 main CI에서 이미지·manifest 게시가 끝났는지 GitHub Actions에서 사용자가 확인한 다음:
 
@@ -385,4 +385,11 @@ V17 절차의 3~5번이다. 코드가 `tb_lab_` 새 이름만 쓰는 릴리스(*
 확장 3단계다. 확장 PR 릴리스는 `db_schema` **18..19**, 기능 PR은 **19..19**(Draft로 두고 마이그레이션 뒤 머지).
 - 새 테이블 `tb_lab_furniture`(가구 카탈로그 14종, 가격·바닥 크기·충돌 여부), `tb_lab_member_furniture`(회원 가구: 보관/배치·위치)
 - 공통코드 `COIN_REASON/FURNITURE_BUY`
+- 기존 행은 바꾸지 않는다.
+
+### V20 마이그레이션 (적금·주식·오락실 내기, 2026-11-24)
+
+확장 3단계다. 확장 PR 릴리스는 `db_schema` **19..20**, 기능 PR은 **20..20**(Draft로 두고 마이그레이션 뒤 머지).
+- 새 테이블 `tb_lab_savings`(은행 적금: 원금·기간·이자율·만기·수령), `tb_lab_stock`(가상 종목 6개와 현재가), `tb_lab_stock_price`(시세 기록), `tb_lab_member_stock`(회원 보유 주식)
+- 공통코드 `COIN_REASON`: `SAVINGS_DEPOSIT`, `SAVINGS_PAYOUT`, `STOCK_BUY`, `STOCK_SELL`, `GAMBLE_BET`, `GAMBLE_WIN`
 - 기존 행은 바꾸지 않는다.
