@@ -26,16 +26,16 @@ class OperationsTests(unittest.TestCase):
         self.assertEqual(ops.SUPPORTED_SCHEMAS, versions,
                          '새 마이그레이션 추가 시 배포 사전 검사 허용 목록도 갱신해야 한다')
 
-    def test_v19_still_requires_a_release_that_declares_it(self):
+    def test_v20_still_requires_a_release_that_declares_it(self):
         current = release()
-        current['db_schema'] = {'min': 19, 'max': 19}
-        ops.compatible(current, 19)
-        for version in (0, 18, 20):
+        current['db_schema'] = {'min': 20, 'max': 20}
+        ops.compatible(current, 20)
+        for version in (0, 19, 21):
             with self.assertRaises(ops.OpsError):
                 ops.compatible(current, version)
-        current['db_schema'] = {'min': 18, 'max': 18}
+        current['db_schema'] = {'min': 19, 'max': 19}
         with self.assertRaises(ops.OpsError):
-            ops.compatible(current, 19)
+            ops.compatible(current, 20)
 
     def shared_containers(self):
         return [dict(Name='/' + name, Id=name, RestartCount=0,
