@@ -51,9 +51,9 @@ public class QaTicketController {
     public QaTicket create(@RequestBody(required = false) QaRequestDTO body, HttpServletRequest request) {
         var author = auth.writer(request).orElse(null);
         limiter.check(request);
-        work.ensureFit(author);
+        work.ensureFit(author, kr.seulgae.techlab.rule.entity.ActionCost.QA_REGISTER);
         var created = service.create(body == null ? null : body.title(), body == null ? null : body.content(), author);
-        work.reward(author);
+        work.reward(author, kr.seulgae.techlab.rule.entity.ActionCost.QA_REGISTER);
         return created;
     }
 
@@ -69,9 +69,9 @@ public class QaTicketController {
     public QaTicket move(@PathVariable UUID id, @RequestBody(required = false) QaRequestDTO body, HttpServletRequest request) {
         var author = auth.writer(request).orElse(null);
         limiter.check(request);
-        work.ensureFit(author);
+        work.ensureFit(author, kr.seulgae.techlab.rule.entity.ActionCost.QA_MOVE);
         var moved = service.move(id, body == null ? null : body.status());
-        work.reward(author);
+        work.reward(author, kr.seulgae.techlab.rule.entity.ActionCost.QA_MOVE);
         return moved;
     }
 }

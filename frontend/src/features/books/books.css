@@ -26,3 +26,14 @@
 .book-turn { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; color: #d8bd87; font-size: 13px; }
 
 @media (max-width: 420px) { .book-page { padding: 12px; } .book-page p { font-size: 13px; } }
+
+/* 운영 도서관: 표와 쿼리 */
+.research-panel.book-panel-admin { width: min(760px, calc(100vw - 32px)); }
+.book-table-wrap { overflow-x: auto; margin: 4px 0 10px; }
+.book-table { width: 100%; border-collapse: collapse; font-size: 13px; line-height: 1.45; }
+.book-table th, .book-table td { padding: 5px 8px; border: 1px solid #cdbfa6; text-align: left; vertical-align: top; }
+.book-table th { background: #e7dcc6; color: #3b2418; white-space: nowrap; }
+.book-table td:first-child { font-family: ui-monospace, Consolas, monospace; white-space: nowrap; color: #5a2a1e; }
+.book-code { margin: 6px 0 0; padding: 10px 12px; overflow-x: auto; background: #241a16; color: #f1dfb8; border-radius: 4px; font-size: 12.5px; line-height: 1.5; }
+.book-code code { font-family: ui-monospace, Consolas, monospace; white-space: pre; }
+@media (max-width: 420px) { .book-table { font-size: 12px; } .book-table th, .book-table td { padding: 4px 6px; } }

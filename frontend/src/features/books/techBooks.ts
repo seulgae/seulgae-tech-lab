@@ -2,7 +2,9 @@
  * 로비 책장에 꽂힌 연구소 기술 노트. 정적 데이터라 서버 호출 없이 바로 읽는다.
  * 한 쪽은 짧은 문단 몇 개로, 모바일 화면에서도 스크롤 없이 읽히도록 쓴다.
  */
-export type TechBook = { id: string; title: string; subtitle: string; color: string; pages: { heading: string; body: string[] }[] }
+/** 책 한 쪽: 문단, 그리고 필요하면 표(table)와 따라 칠 쿼리(code) */
+export type BookPage = { heading: string; body: string[]; table?: { head: string[]; rows: string[][] }; code?: string }
+export type TechBook = { id: string; title: string; subtitle: string; color: string; pages: BookPage[] }
 
 export const TECH_BOOKS: readonly TechBook[] = [
   {

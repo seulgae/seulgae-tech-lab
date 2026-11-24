@@ -11,7 +11,7 @@ const readHigh = (key: string) => { try { return Number(localStorage.getItem(key
 
 /**
  * 블록 쌓기·지렁이·하늘 순찰대가 함께 쓰는 오락기 화면: 키보드와 화면 버튼 입력, 프레임 진행, 효과음, 최고 점수.
- * 새 판을 시작할 때 회원은 동전 1원(HP -3, 기력 -5)을 내고, 비회원은 무료로 한다(벽돌 부수기와 같다).
+ * 새 판을 시작할 때 회원은 동전 1원(HP·기력은 ARCADE_PLAY 규칙)을 내고, 비회원은 무료로 한다(벽돌 부수기와 같다).
  *
  * @author 길태형
  * @version 1.0, 오락실 게임 고르기

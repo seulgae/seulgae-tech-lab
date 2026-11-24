@@ -3,7 +3,8 @@ import { PagedList } from '../boards/BoardPagination'
 import { BoardError } from '../boards/boardsApi'
 import { LOGIN_URL, canWrite, useAuth } from '../auth/authStore'
 import { playSfx } from '../../audio/AudioManager'
-import { TIRED_MESSAGE, TIRED_STATUS, inventoryStore } from '../inventory/inventoryStore'
+import { TIRED_STATUS, inventoryStore } from '../inventory/inventoryStore'
+import { tiredMessage } from '../rules/rulesStore'
 import { createIdea, fetchIdeas } from './officeApi'
 import type { IdeaPost } from './officeApi'
 import '../boards/boards.css'
@@ -13,7 +14,7 @@ const date = (value: string) => new Date(value).toLocaleString('ko-KR', { month:
 
 /**
  * 아이디어 기획 게시판 본문: 게임 개발에 도움이 될 아이디어를 쓰고, 목록을 눌러 내용을 펼쳐 본다.
- * 내 자리 컴퓨터의 아이디어 아이콘 창에서 연다. 회원 글 하나에 HP -3·기력 -5, 동전 10원(하루 10번).
+ * 내 자리 컴퓨터의 아이디어 아이콘 창에서 연다. 회원 글 하나에 HP·기력(운영 규칙 tb_lab_action_cost), 동전 10원(하루 10번).
  *
  * @author 길태형
  * @version 1.0, 게시판 개편(내 자리 컴퓨터 아이콘)
@@ -40,7 +41,7 @@ export function IdeaBoard() {
       setMessage('아이디어를 올렸어요!'); playSfx('success', { volume: 0.6 }); void inventoryStore.refresh()
     } catch (cause) {
       playSfx('error', { volume: 0.5 })
-      setMessage(cause instanceof BoardError && cause.status === TIRED_STATUS ? TIRED_MESSAGE : cause instanceof BoardError ? cause.message : '저장하지 못했어요.')
+      setMessage(cause instanceof BoardError && cause.status === TIRED_STATUS ? tiredMessage('IDEA_POST') : cause instanceof BoardError ? cause.message : '저장하지 못했어요.')
     } finally { setBusy(false) }
   }
 

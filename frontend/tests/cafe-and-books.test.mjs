@@ -59,3 +59,17 @@ test('책장 기술 노트는 id가 겹치지 않고 모든 쪽에 제목과 짧
   // 책에 운영 정보(주소·계정)를 적지 않는다.
   assert.doesNotMatch(JSON.stringify(TECH_BOOKS), /\d+\.\d+\.\d+\.\d+|ts\.net|password|stlab_/i)
 })
+
+test('관리자실 양쪽 책장은 운영 도서관이고, 책 앞(아래)에서 꺼낸다', async () => {
+  const shelves = roomProps('control-room')
+  assert.deepEqual(shelves.map(prop => prop.id), ['control-room-bookshelf-0', 'control-room-bookshelf-1'])
+  assert.ok(shelves.every(prop => prop.kind === 'bookshelf'))
+  const left = shelves[0]
+  assert.equal(nearestInteraction('control-room', left.x, left.y + left.height / 2 + 10)?.id, left.id)
+  const { ADMIN_BOOKS } = await import('../src/features/books/adminBooks.ts')
+  const tables = ADMIN_BOOKS.flatMap(book => book.pages).flatMap(page => page.table ? [page.table] : [])
+  for (const table of tables) for (const row of table.rows) assert.equal(row.length, table.head.length, `${table.head.join(',')} 표의 칸 수`)
+  const text = JSON.stringify(ADMIN_BOOKS)
+  for (const name of ['tb_lab_action_cost', 'tb_lab_snack', 'tb_lab_rank', 'tb_lab_furniture', 'tb_lab_common_code']) assert.ok(text.includes(name), name)
+  assert.equal(new Set(ADMIN_BOOKS.map(book => book.id)).size, ADMIN_BOOKS.length)
+})

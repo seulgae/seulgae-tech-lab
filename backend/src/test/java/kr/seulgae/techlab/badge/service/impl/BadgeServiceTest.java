@@ -35,18 +35,18 @@ class BadgeServiceTest {
 
     @Test
     void rankBoundaries() {
-        assertThat(Rank.of(0).name()).isEqualTo("인턴");
-        assertThat(Rank.of(1).name()).isEqualTo("주임");
-        assertThat(Rank.of(4).name()).isEqualTo("주임");
-        assertThat(Rank.of(5).name()).isEqualTo("선임");
-        assertThat(Rank.of(10).name()).isEqualTo("책임");
-        assertThat(Rank.of(29).name()).isEqualTo("책임");
-        assertThat(Rank.of(30).name()).isEqualTo("수석");
-        assertThat(Rank.of(100).name()).isEqualTo("연구소장");
-        assertThat(Rank.next(100)).isNull();
-        assertThat(Rank.next(3).name()).isEqualTo("선임");
-        assertThat(Rank.ALL).extracting(Rank::pay).containsExactly(1, 5, 10, 20, 50, 100);
-        assertThat(Rank.ALL).extracting(Rank::vitalsMax).containsExactly(50, 100, 150, 220, 500, Rank.UNLIMITED_MAX);
+        assertThat(Rank.of(Rank.DEFAULTS, 0).name()).isEqualTo("인턴");
+        assertThat(Rank.of(Rank.DEFAULTS, 1).name()).isEqualTo("주임");
+        assertThat(Rank.of(Rank.DEFAULTS, 4).name()).isEqualTo("주임");
+        assertThat(Rank.of(Rank.DEFAULTS, 5).name()).isEqualTo("선임");
+        assertThat(Rank.of(Rank.DEFAULTS, 10).name()).isEqualTo("책임");
+        assertThat(Rank.of(Rank.DEFAULTS, 29).name()).isEqualTo("책임");
+        assertThat(Rank.of(Rank.DEFAULTS, 30).name()).isEqualTo("수석");
+        assertThat(Rank.of(Rank.DEFAULTS, 100).name()).isEqualTo("연구소장");
+        assertThat(Rank.next(Rank.DEFAULTS, 100)).isNull();
+        assertThat(Rank.next(Rank.DEFAULTS, 3).name()).isEqualTo("선임");
+        assertThat(Rank.DEFAULTS).extracting(Rank::pay).containsExactly(1, 5, 10, 20, 50, 100);
+        assertThat(Rank.DEFAULTS).extracting(Rank::vitalsMax).containsExactly(50, 100, 150, 220, 500, Rank.UNLIMITED_MAX);
     }
 
     @Test
@@ -77,7 +77,7 @@ class BadgeServiceTest {
     void directorHasUnlimitedVitals() {
         var service = new InventoryServiceImpl(inventory);
         for (int i = 0; i < 100; i++) badge.completeWork(me);
-        assertThat(Rank.of(inventory.workCount(me)).unlimited()).isTrue();
+        assertThat(Rank.of(Rank.DEFAULTS, inventory.workCount(me)).unlimited()).isTrue();
         inventory.changeCoins(me, 1, "TEST");
         int before = inventory.vitals(me).fatigue();
         service.playArcade(me);

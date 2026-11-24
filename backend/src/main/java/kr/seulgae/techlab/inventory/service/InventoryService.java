@@ -17,13 +17,10 @@ import kr.seulgae.techlab.inventory.entity.*;
 public interface InventoryService {
     String FISH = "FISH", WORK_POST = "WORK_POST", ARCADE_PLAY = "ARCADE_PLAY";
     int WORK_POST_REWARD = 10, DAILY_REWARD_LIMIT = 10, ARCADE_COST = 1, MAX_ITEMS = 40, MAX_GROUND_ITEMS = 30;
-    /** 일·오락 한 번에 드는 HP와 기력 */
-    int WORK_HP_COST = 3, WORK_FATIGUE_COST = 5;
     /** 오락실 메인 오락기(네 게임 합쳐) 하루 판 수 */
     int DAILY_ARCADE_PLAYS = 5;
-    /** 간식: 공통코드 COIN_REASON(CAKE, COFFEE), 가격과 회복량 */
+    /** 간식 코드(공통코드 COIN_REASON과 같음). 가격·회복량은 운영 DB tb_lab_snack에 있다. */
     String CAKE = "CAKE", COFFEE = "COFFEE";
-    int CAKE_PRICE = 3, CAKE_HP = 10, COFFEE_PRICE = 2, COFFEE_FATIGUE = 5;
     /** 식물 행운: 화분을 흔들면 5% 확률로 1~3원. 하루 10번까지만 당첨되고, 2초 안에 다시 흔들면 추첨하지 않는다(연타 방지). */
     String PLANT_LUCK = "PLANT_LUCK";
     double PLANT_LUCK_CHANCE = 0.05;
@@ -59,11 +56,21 @@ public interface InventoryService {
     /** 오늘 남은 오락실 판 수 */
     int arcadePlaysLeft(UUID member);
 
-    /** 일·오락을 할 수 있을 만큼 HP·기력이 남았는지 확인한다. 모자라면 423. */
-    void ensureFit(UUID member);
+    /**
+     * 이 행동을 할 만큼 HP·기력이 남았는지 확인한다(비용은 운영 DB tb_lab_action_cost). 모자라면 423.
+     *
+     * @param member 회원
+     * @param action 행동 코드(ActionCost)
+     */
+    void ensureFit(UUID member, String action);
 
-    /** 사무실 게시판에서 일한 뒤 HP -3, 기력 -5(모자라면 빼지 않는다). */
-    void spendWork(UUID member);
+    /**
+     * 행동을 한 뒤 HP·기력 비용을 뺀다(모자라면 빼지 않고 423).
+     *
+     * @param member 회원
+     * @param action 행동 코드(ActionCost)
+     */
+    void spendWork(UUID member, String action);
 
     /**
      * 로비 간식·음료를 서버 가격으로 구매한다. 탄산음료 2원 기력 +5, 물 1원 기력 +2.

@@ -40,8 +40,14 @@ export function roomPlants(id: RoomId): (RoomInteraction & { bottom: number })[]
 /**
  * 로비의 생활 소품(클라이언트 전용 연출). 안내 데스크 왼쪽 끝 케이크, 오른쪽 끝 커피 머신, 그리고 책장(rack 가구)이다.
  * 위치는 데스크(x 300~500, y 158~222) 위이고 충돌 영역은 기존 가구 그대로다.
+ * 관리자실 양쪽 책장은 운영 도서관(어떤 테이블로 무엇을 관리하는지 적은 책)이다.
  */
 export function roomProps(id: RoomId): RoomInteraction[] {
+  if (id === 'control-room') {
+    return roomObjects(id).filter(object => object.texture === 'rack').map((object, index): RoomInteraction => ({
+      id: `control-room-bookshelf-${index}`, kind: 'bookshelf', label: '운영 도서관 책 꺼내 보기', ...object.body, range: 40,
+    }))
+  }
   if (id !== 'lobby') return []
   const shelves = roomObjects(id).filter(object => object.texture === 'rack').map((object, index): RoomInteraction => ({
     id: `lobby-bookshelf-${index}`, kind: 'bookshelf', label: '책 꺼내 보기', ...object.body, range: 40,

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { COIN_EVENT, DRINKS, inventoryStore } from '../src/features/inventory/inventoryStore.ts'
+import { COIN_EVENT, inventoryStore } from '../src/features/inventory/inventoryStore.ts'
+import { DEFAULT_RULES } from '../src/features/rules/rulesStore.ts'
 import { parseServerMessage } from '../src/features/multiplayer/model/protocol.ts'
 
 const id = '00000000-0000-4000-8000-0000000000aa'
@@ -47,10 +48,7 @@ test('가방: 비회원은 쓸 수 없고, 동전이 늘면 동전 연출 이벤
 })
 
 test('HP·기력: 간식 구매 결과를 구분하고, 바뀐 만큼 변화 이벤트를 보내며, 지치면 오락실을 시작하지 않는다', async () => {
-  const { VITALS_EVENT, SNACKS, WORK_COST, vitalsText } = await import('../src/features/inventory/inventoryStore.ts')
-  assert.deepEqual(WORK_COST, { hp: 3, fatigue: 5 })
-  assert.equal(SNACKS.CAKE.price, 3); assert.equal(SNACKS.CAKE.hp, 10)
-  assert.equal(SNACKS.COFFEE.price, 2); assert.equal(SNACKS.COFFEE.fatigue, 5)
+  const { VITALS_EVENT, vitalsText } = await import('../src/features/inventory/inventoryStore.ts')
   assert.equal(vitalsText({ hp: -3, fatigue: -5 }), 'HP -3 · 기력 -5')
   assert.equal(vitalsText({ hp: 10, fatigue: 0 }), 'HP +10')
 
@@ -110,8 +108,7 @@ test('식물 행운: 당첨이면 받은 만큼 동전 이벤트를 보내고, �
 test('자판기 네 음료는 종류만 전송하고 실제 잔액·회복은 서버 응답을 따른다', async () => {
   const original = globalThis.fetch
   try {
-    for (const kind of Object.keys(DRINKS)) {
-      assert.equal(DRINKS[kind].price, kind === 'WATER' ? 1 : 2)
+    for (const kind of DEFAULT_RULES.snacks.filter(snack => snack.place === 'VENDING').map(snack => snack.code)) {
       let sent
       globalThis.fetch = async (url, options) => {
         sent = [url, JSON.parse(options.body)]

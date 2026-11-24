@@ -3,7 +3,8 @@ import { PagedList } from '../boards/BoardPagination'
 import { BoardError } from '../boards/boardsApi'
 import { LOGIN_URL, canWrite, useAuth } from '../auth/authStore'
 import { playSfx } from '../../audio/AudioManager'
-import { TIRED_MESSAGE, TIRED_STATUS, inventoryStore } from '../inventory/inventoryStore'
+import { TIRED_STATUS, inventoryStore } from '../inventory/inventoryStore'
+import { tiredMessage } from '../rules/rulesStore'
 import { QA_FLOW, QA_NEXT, createQa, fetchQa, moveQa } from './officeApi'
 import type { QaStatus, QaTicket } from './officeApi'
 import '../boards/boards.css'
@@ -14,7 +15,7 @@ const NAMES: Record<QaStatus, string> = { REGISTERED: '등록', IN_PROGRESS: '�
 
 /**
  * QA 게시판 본문: 문제를 등록하고, 티켓을 펼쳐 조치 중 → 조치 완료로 한 단계씩 넘긴다(되돌리기 없음).
- * 내 자리 컴퓨터의 QA 아이콘 창에서 연다. 회원 등록·상태 변경마다 HP -3·기력 -5, 동전 10원(하루 10번).
+ * 내 자리 컴퓨터의 QA 아이콘 창에서 연다. 회원 등록·상태 변경마다 HP·기력(운영 규칙 tb_lab_action_cost), 동전 10원(하루 10번).
  *
  * @author 길태형
  * @version 1.0, 게시판 개편(내 자리 컴퓨터 아이콘)
@@ -45,7 +46,7 @@ export function QaBoard() {
       return true
     } catch (cause) {
       playSfx('error', { volume: 0.5 })
-      setMessage(cause instanceof BoardError && cause.status === TIRED_STATUS ? TIRED_MESSAGE
+      setMessage(cause instanceof BoardError && cause.status === TIRED_STATUS ? tiredMessage('QA_REGISTER')
         : cause instanceof BoardError && cause.status === 409 ? '이미 다음 단계로 넘어간 티켓이에요. 창을 다시 열어 확인해 주세요.'
         : cause instanceof BoardError ? cause.message : '저장하지 못했어요.')
       return false

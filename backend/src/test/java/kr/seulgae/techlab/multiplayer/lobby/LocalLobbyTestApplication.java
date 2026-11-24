@@ -97,7 +97,8 @@ import org.springframework.context.annotation.Import;
     kr.seulgae.techlab.office.qa.service.impl.QaTicketServiceImpl.class, kr.seulgae.techlab.office.qa.controller.QaTicketController.class,
     kr.seulgae.techlab.office.desk.service.impl.DeskServiceImpl.class, kr.seulgae.techlab.office.desk.controller.DeskController.class,
     kr.seulgae.techlab.badge.service.impl.BadgeServiceImpl.class, kr.seulgae.techlab.badge.controller.BadgeController.class,
-    kr.seulgae.techlab.usemap.domain.UseMapCatalog.class, kr.seulgae.techlab.usemap.domain.UseMapLobby.class, kr.seulgae.techlab.usemap.websocket.UseMapSocketHandler.class})
+    kr.seulgae.techlab.usemap.domain.UseMapCatalog.class, kr.seulgae.techlab.usemap.domain.UseMapLobby.class, kr.seulgae.techlab.usemap.websocket.UseMapSocketHandler.class,
+    kr.seulgae.techlab.rule.service.GameRules.class, kr.seulgae.techlab.rule.controller.RuleController.class})
 public class LocalLobbyTestApplication {
     private static final OffsetDateTime CREATED_AT = OffsetDateTime.parse("2026-11-15T12:00:00+09:00");
 
@@ -127,6 +128,16 @@ public class LocalLobbyTestApplication {
     /** 개인 기숙사 가구(DB 없는 로컬 실행) */
     @Bean
     kr.seulgae.techlab.dorm.repository.DormRepository fixtureDormStore() { return new kr.seulgae.techlab.dorm.repository.impl.InMemoryDormRepository(); }
+
+    /** 게임 규칙(DB 없는 로컬 실행: V23 시드와 같은 기본값) */
+    @Bean
+    kr.seulgae.techlab.rule.repository.RuleRepository fixtureRuleStore() {
+        return new kr.seulgae.techlab.rule.repository.RuleRepository() {
+            @Override public java.util.List<kr.seulgae.techlab.rule.entity.ActionCost> actionCosts() { return kr.seulgae.techlab.rule.service.GameRules.DEFAULT_ACTIONS; }
+            @Override public java.util.List<kr.seulgae.techlab.rule.entity.Snack> snacks() { return kr.seulgae.techlab.rule.service.GameRules.DEFAULT_SNACKS; }
+            @Override public java.util.List<kr.seulgae.techlab.badge.entity.Rank> ranks() { return kr.seulgae.techlab.badge.entity.Rank.DEFAULTS; }
+        };
+    }
 
     /** 은행 적금(DB 없는 로컬 실행) */
     @Bean
