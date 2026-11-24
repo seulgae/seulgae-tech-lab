@@ -3,7 +3,7 @@ import Player from '../Player'
 import createLobbyMap from '../LobbyMap'
 import { PULLS_EVENTS } from '../../features/pulls/pullsApi'
 import { LAB_EVENTS } from '../../features/lab/labEvents'
-import { hasTextInputFocus, isNearObject } from '../interaction'
+import { closerTarget, hasTextInputFocus, isNearObject } from '../interaction'
 import { createPixelAssets } from '../assets/pixelAssets'
 import { createRoomAssets } from '../assets/roomAssets'
 import { createRoomFx } from '../rooms/RoomFx'
@@ -17,7 +17,7 @@ import { MULTIPLAYER_EVENTS } from '../../features/multiplayer/model/protocol'
 import type MultiplayerClient from '../../features/multiplayer/MultiplayerClient'
 import { MOBILE_INPUT } from '../input/mobileInput'
 import type { DirectionInput } from '../input/mobileInput'
-import { ROOMS, doorHint, nearestInteraction, roomObstacles } from '../maps/rooms'
+import { roomSeats, ROOMS, doorHint, nearestInteraction, roomObstacles } from '../maps/rooms'
 import type { RoomId, RoomInteraction, Seat } from '../maps/rooms'
 import { setRoomObstacles } from '../multiplayer/networkPosition'
 import { AudioManager, playSfx } from '../../audio/AudioManager'
@@ -30,6 +30,8 @@ import type { GroundItem } from '../../features/multiplayer/model/protocol'
 import { FISH_COLORS } from '../rooms/fishingLogic'
 
 /** 패널을 열 때 함께 나는 장비 소리(컴퓨터 타이핑, 키오스크, 화이트보드 마커 등) */
+/** 서비스 연구실 왼쪽 맨 아래 의자: 내 자리(앉으면 모니터가 켜진다) */
+const MY_DESK_SEAT = 'office-1-chair-2'
 const PANEL_SOUNDS: Partial<Record<string, EffectKey>> = {
   'pull-requests': 'kiosk', 'build-info': 'typing', 'server-status': 'beep', agenda: 'marker', bookshelf: 'page', 'admin-console': 'typing', 'admin-apply': 'kiosk',
   'my-desk': 'typing', arcade: 'success', gamble: 'coin', guestbook: 'kiosk', 'food-cart': 'coin',
@@ -285,7 +287,9 @@ export default class LabLobbyScene extends Phaser.Scene {
     const door = ROOMS[this.activeRoom].doors.find(d => Math.hypot(this.player!.x - d.x, this.player!.y - d.y) <= 56)
     // 출입구가 우선이며, E 한 번에 한 대상만 실행한다.
     // 바닥 아이템이 바로 발밑에 있으면 줍기가 먼저다.
-    const target = door ? undefined : this.nearestPickup() ?? this.nearestMoving() ?? nearestInteraction(this.activeRoom, this.player.x, this.player.y)
+    // 움직이는 대상(NPC 등)과 고정 대상(의자·컴퓨터)이 둘 다 범위 안이면 가장자리까지 더 가까운 쪽을 고른다.
+    // (예전에는 NPC가 늘 먼저라, 내 자리 의자 앞에서도 근처 연구원에게 말 걸기가 잡혔다.)
+    const target = door ? undefined : this.nearestPickup() ?? closerTarget(this.player.x, this.player.y, this.nearestMoving(), nearestInteraction(this.activeRoom, this.player.x, this.player.y))
     this.syncSeat()
     // 테이블 범위를 벗어나면 서버 거부를 기다리지 않고 근거리 대화를 끈다. 회의실 의자에 앉아 있는 동안은 유지한다.
     if (this.tableTalk && target?.kind !== 'table-talk' && !this.seatTalk) this.setTableTalk(false)
@@ -337,6 +341,11 @@ export default class LabLobbyScene extends Phaser.Scene {
     if (target.kind === 'seat') {
       this.toggleSeat(target as Seat)
       return
+    }
+    // 내 자리 컴퓨터는 의자에 앉아서 켠다: 아직 안 앉았으면 먼저 앉히고(앉으면 모니터가 켜진다), 앉아 있으면 바로 켠다.
+    if (target.kind === 'my-desk' && this.player?.seat?.id !== MY_DESK_SEAT) {
+      const seat = roomSeats(this.activeRoom).find(item => item.id === MY_DESK_SEAT)
+      if (seat) { this.toggleSeat(seat); return }
     }
     this.panelOpen = true
     this.resetChatInput()
@@ -461,6 +470,19 @@ export default class LabLobbyScene extends Phaser.Scene {
     this.sitRequestedAt = this.time.now
     // 회의실 의자에 앉으면 테이블 대화에 자동으로 참여한다.
     if (this.activeRoom === 'meeting-room') { this.seatTalk = true; this.setTableTalk(true, true) }
+    // 서비스 연구실 내 자리에 앉으면 잠깐 뒤 모니터(내 자리 컴퓨터)가 켜진다.
+    if (seat.id === MY_DESK_SEAT) this.time.delayedCall(400, () => { if (this.player?.seat?.id === MY_DESK_SEAT) this.openDesk() })
+  }
+
+  /** 내 자리 컴퓨터 모니터를 연다(자리에 앉은 채로). 장면 입력은 창이 닫힐 때까지 멈춘다. */
+  private openDesk() {
+    if (this.panelOpen || this.transition) return
+    this.panelOpen = true
+    this.resetChatInput()
+    this.interactionHint?.setVisible(false)
+    this.interactionHighlight?.setVisible(false)
+    playSfx('typing', { volume: 0.6 })
+    this.uiEvents.emit(LAB_EVENTS.openPanel, 'my-desk')
   }
 
   /** 서버가 3초(SEAT_CONFIRM_MS) 안에 앉음을 확인하지 않으면(멀거나 빈자리 아님) 일어난다. 일어나면 자동 테이블 대화도 끈다. */

@@ -10,7 +10,7 @@ import { skyPhase } from '../src/game/rooms/timeOfDay.ts'
 import { LAB_EVENTS } from '../src/features/lab/labEvents.ts'
 import { ROOM_THEMES } from '../src/game/rooms/roomThemes.ts'
 import { crispText } from '../src/game/render/renderScale.ts'
-import { isNearObject } from '../src/game/interaction.ts'
+import { closerTarget, isNearObject } from '../src/game/interaction.ts'
 import { PULLS_EVENTS } from '../src/features/pulls/pullsApi.ts'
 import { MOBILE_INPUT } from '../src/game/input/mobileInput.ts'
 import { MULTIPLAYER_EVENTS } from '../src/features/multiplayer/model/protocol.ts'
@@ -100,7 +100,7 @@ function createScene(room = 'lobby') {
     PetBot: class { constructor() { state.pets = (state.pets ?? 0) + 1 } update() {} destroy() {} },
     COIN_EVENT: 'lab:coin', OPEN_INVENTORY_EVENT: 'lab:open-inventory', FISH_COLORS: {}, inventoryStore: { refresh: async () => {} },
     applyRenderZoom: () => { state.zoomApplied = (state.zoomApplied ?? 0) + 1 },
-    hasTextInputFocus: () => state.textFocused,
+    hasTextInputFocus: () => state.textFocused, closerTarget,
     SPAWN: { x: 400, y: 400 }, MULTIPLAYER_EVENTS, MOBILE_INPUT, LobbyMultiplayer: class {
       update() {} destroy() {} stopInput() {}
     },
@@ -585,4 +585,14 @@ test('왼쪽 자판기는 E로 구매 창을 열고 사무실 정수기는 방 �
   office.key._justDown = true; office.scene.update()
   assert.deepEqual(office.state.fx.calls.at(-1), ['intercept', 'water-dispenser'])
   assert.equal(office.scene.player.movementEnabled, true)
+})
+
+test('상호작용 대상: NPC와 의자가 둘 다 범위 안이면 더 가까운 쪽(내 자리 의자 앞에서 연구원이 잡히지 않게)', async () => {
+  const { closerTarget } = await import('../src/game/interaction.ts')
+  const npc = { id: 'npc', x: 230, y: 500, width: 24, height: 40 }
+  const chair = { id: 'chair', x: 190, y: 516, width: 28, height: 24 }
+  assert.equal(closerTarget(190, 530, npc, chair).id, 'chair')
+  assert.equal(closerTarget(232, 500, npc, chair).id, 'npc')
+  assert.equal(closerTarget(190, 530, undefined, chair).id, 'chair')
+  assert.equal(closerTarget(190, 530, npc, undefined).id, 'npc')
 })
