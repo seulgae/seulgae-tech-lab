@@ -24,7 +24,7 @@ public interface InventoryRepository {
      */
     default Vitals lockVitals(UUID member) { return vitals(member); }
     /**
-     * HP·피로도를 더하거나 뺀다. 더할 때는 최대치에서 멈추고, 빼서 0보다 작아지면 빈 값을 돌려준다(아무것도 바꾸지 않음).
+     * HP·스태미나를 더하거나 뺀다. 더할 때는 최대치에서 멈추고, 빼서 0보다 작아지면 빈 값을 돌려준다(아무것도 바꾸지 않음).
      */
     Optional<Vitals> changeVitals(UUID member, int hp, int fatigue);
     /** 동전을 더하거나 뺀다. 잔액이 음수가 되면 빈 값을 돌려준다(아무것도 바꾸지 않음). */

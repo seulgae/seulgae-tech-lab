@@ -21,7 +21,7 @@ import { SNACKS, inventoryStore } from '../../features/inventory/inventoryStore'
 import { adminRoomFx } from './adminRoomFx'
 import { outdoorFx } from './outdoorFx'
 import { townsfolk } from '../npc/townsfolkFx.ts'
-import { DEV_LAB_NPCS, LOBBY_NPCS } from '../npc/npcData.ts'
+import { ARCADE_NPCS, DEV_LAB_NPCS, LOBBY_NPCS } from '../npc/npcData.ts'
 
 /** Scene이 사용하는 방 연출 핸들. 문·장식·이벤트를 한 번에 정리한다. */
 export type RoomFx = {
@@ -399,7 +399,7 @@ function treatTable(ctx: Context) {
   let busyUntil = 0
 
   /**
-   * 회원은 동전으로 산다(케이크 3원 HP +10, 커피 2원 피로도 +5). 비회원은 예전처럼 무료로 즐기기만 한다.
+   * 회원은 동전으로 산다(케이크 3원 HP +10, 커피 2원 스태미나 +5). 비회원은 예전처럼 무료로 즐기기만 한다.
    * 동전이 모자라거나 이미 가득이면 먹지 않고 안내만 한다.
    */
   const buy = (kind: TreatKind) => {
@@ -410,7 +410,7 @@ function treatTable(ctx: Context) {
       // 응답 전에 방을 나가 소품이 정리됐으면 아무것도 하지 않는다.
       if (!props[kind].active) return
       if (result === 'broke') { playSfx('error', { volume: 0.5 }); ctx.banner.show(`동전이 부족해요 · ${snack.name} ${snack.price}원`, '#e05a6c', 1800); return }
-      if (result === 'full') { ctx.banner.show(kind === 'coffee' ? '피로도가 가득해요 · 지금은 괜찮아요' : 'HP가 가득해요 · 배불러요', '#a7d98a', 1800); return }
+      if (result === 'full') { ctx.banner.show(kind === 'coffee' ? '스태미나가 가득해요 · 지금은 괜찮아요' : 'HP가 가득해요 · 배불러요', '#a7d98a', 1800); return }
       enjoy(kind, result === 'bought' ? `${snack.name} ${snack.price}원` : undefined)
     })
   }
@@ -500,5 +500,10 @@ function arcadeFx(ctx: Context): RoomHandlers {
   ctx.every(300, 300, () => { for (const glow of glows) if (Math.random() < 0.35) glow.setAlpha(glow.alpha > 0.2 ? 0.08 : 0.3) })
   const sparkle = scene.add.particles(0, 0, 'spark', { emitting: false, lifespan: 700, speed: { min: 40, max: 120 }, scale: { start: 2, end: 0 }, tint: [0xf472b6, 0x38bdf8, 0xffd23f] }).setDepth(950)
   ctx.every(6000, 11000, () => sparkle.explode(14, 400, 180))
-  return { destroy: () => ctx.stop() }
+  /* 돈을 잃고 절망하거나 따고 신난 단골 다섯 */
+  const regulars = townsfolk(ctx, ARCADE_NPCS)
+  return {
+    targets: regulars.targets, hint: regulars.hint, intercept: target => regulars.intercept(target),
+    destroy: () => { regulars.destroy(); ctx.stop() },
+  }
 }

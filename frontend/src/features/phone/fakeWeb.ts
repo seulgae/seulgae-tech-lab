@@ -23,7 +23,7 @@ export function normalizeAddress(input: string) {
 export function labWeather(hour: number) {
   if (hour >= 18) return { sky: '노을 뒤 밤하늘', temp: 14, tip: '포장마차가 문을 열었어요. 물고기를 팔아 봐요!' }
   if (hour >= 12) return { sky: '맑은 오후', temp: 21, tip: '낚시하기 좋은 날씨예요.' }
-  if (hour >= 6) return { sky: '선선한 아침', temp: 16, tip: '커피 한 잔으로 피로도를 채우고 출근해요.' }
+  if (hour >= 6) return { sky: '선선한 아침', temp: 16, tip: '커피 한 잔으로 스태미나를 채우고 출근해요.' }
   return { sky: '고요한 새벽', temp: 9, tip: '새벽에는 황금 잉어가 나온다는 소문이…?' }
 }
 
@@ -75,7 +75,7 @@ const SITES: Record<string, (hour: number) => Omit<WebPage, 'address'>> = {
       { type: 'heading', text: '개발 연구실에서 갈 수 있는 곳' },
       { type: 'list', items: ['왼쪽 위: 서비스 연구실(업무 게시판)', '오른쪽 위: 관리자실(관리자만)', '왼쪽 아래: 서버실', '오른쪽 아래: 회의실(채팅·교환)'] },
       { type: 'heading', text: '알아 두면 좋은 것' },
-      { type: 'list', items: ['E: 말 걸기·사용하기', 'I: 폰 열기', '로비 데스크: 케이크(HP +10)·커피(피로도 +5)', '회의실: 다른 연구원과 채팅·교환'] },
+      { type: 'list', items: ['E: 말 걸기·사용하기', 'I: 폰 열기', '로비 데스크: 케이크(HP +10)·커피(스태미나 +5)', '회의실: 다른 연구원과 채팅·교환'] },
       { type: 'link', text: '← 포털로', href: HOME_ADDRESS },
     ],
   }),

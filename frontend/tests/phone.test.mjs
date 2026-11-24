@@ -6,7 +6,7 @@ import { PHONE_APPS } from '../src/features/phone/phoneApps.ts'
 import { addTodo, amountText, deleteSns, fetchTodos, searchRecipients, setTodoDone, transfer, writeSns } from '../src/features/phone/phoneApi.ts'
 
 test('폰 앱: 물고기 보관함·은행·캘린더는 회원만, 브라우저·SNS는 누구나', () => {
-  assert.deepEqual(PHONE_APPS.map(app => app.id), ['fish', 'bank', 'calendar', 'browser', 'sns', 'furniture'])
+  assert.deepEqual(PHONE_APPS.map(app => app.id), ['fish', 'bank', 'calendar', 'browser', 'sns', 'furniture', 'map'])
   assert.deepEqual(PHONE_APPS.filter(app => app.memberOnly).map(app => app.id), ['fish', 'bank', 'calendar', 'furniture'])
 })
 
@@ -75,4 +75,14 @@ test('폰 API 요청 형식과 상태별 안내', async () => {
   } finally { globalThis.fetch = original }
   assert.equal(amountText(10), '+10원')
   assert.equal(amountText(-3), '-3원')
+})
+
+test('지도 앱: 문 위치대로 로비·개발 연구실 구역을 나누고, 지금 방이 속한 구역을 찾는다', async () => {
+  const { areaOf, mapAreas, slotOf } = await import('../src/features/phone/mapLayout.ts')
+  assert.equal(slotOf(70, 250), 'top-left'); assert.equal(slotOf(730, 520), 'bottom-right'); assert.equal(slotOf(400, 540), 'bottom')
+  const [lobby, dev] = mapAreas()
+  assert.equal(lobby.hub, 'lobby'); assert.equal(dev.hub, 'development-lab')
+  assert.deepEqual(lobby.cells.find(cell => cell.room === 'office-4')?.slot, 'bottom-right')
+  assert.equal(lobby.cells.find(cell => cell.room === 'development-lab')?.hub, 'development-lab', '다른 구역으로 가는 칸')
+  assert.equal(areaOf('server-room'), 'development-lab'); assert.equal(areaOf('office-3'), 'lobby'); assert.equal(areaOf('outdoor'), 'lobby')
 })
