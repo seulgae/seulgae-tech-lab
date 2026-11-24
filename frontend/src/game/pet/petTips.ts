@@ -11,7 +11,7 @@ export const PET_TIPS: Record<RoomId, readonly string[]> = {
     '케이크는 HP, 커피는 기력!',
     '책장에서 책을 꺼내 읽어 봐요',
     '아래 문으로 나가면 초원이에요',
-    '왼쪽 아래 문은 오락실이에요!',
+    '왼쪽 아래 문은 오락 연구실이에요!',
   ],
   'development-lab': [
     '슈퍼컴퓨터에 아이디어를 남겨요',

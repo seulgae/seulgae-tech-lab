@@ -84,7 +84,7 @@ cd /opt/homeserver/apps/seulgae-tech-lab
 python3 deploy/ops.py check
 ```
 
-`check`는 Docker·Compose, PostgreSQL 상태와 네트워크, 두 비밀번호 파일과 권한, 해석된 Compose DB 설정, 기존 Flyway 이력을 확인한다. SQL은 READ ONLY 트랜잭션으로 실행한다. 성공 이력의 스키마 버전 V1~V24만 허용하며 실패 이력·미적용·다른 버전이면 중단한다. 배포할 릴리스와 맞는지는 `deploy`가 릴리스의 `db_schema` 범위로 다시 확인한다. 이미지 Pull, 앱 시작, 마이그레이션은 하지 않는다. 자체 ops 디렉터리와 잠금 파일은 만들 수 있다.
+`check`는 Docker·Compose, PostgreSQL 상태와 네트워크, 두 비밀번호 파일과 권한, 해석된 Compose DB 설정, 기존 Flyway 이력을 확인한다. SQL은 READ ONLY 트랜잭션으로 실행한다. 성공 이력의 스키마 버전 V1~V25만 허용하며 실패 이력·미적용·다른 버전이면 중단한다. 배포할 릴리스와 맞는지는 `deploy`가 릴리스의 `db_schema` 범위로 다시 확인한다. 이미지 Pull, 앱 시작, 마이그레이션은 하지 않는다. 자체 ops 디렉터리와 잠금 파일은 만들 수 있다.
 
 병합 후 main CI에서 이미지·manifest 게시가 끝났는지 GitHub Actions에서 사용자가 확인한 다음:
 
@@ -422,3 +422,11 @@ V17 절차의 3~5번이다. 코드가 `tb_lab_` 새 이름만 쓰는 릴리스(*
 - `tb_lab_snack`과 공통코드 `COIN_REASON`에 자판기 도시락(6원, HP +25)·에너지드링크(5원, 기력 +20). 23..24 릴리스 자판기에도 바로 보인다.
 - 새 테이블 `tb_lab_game_rule`(숫자 규칙 키 → 값): 침대 휴식 간격(60초)·회복량(HP 3, 기력 3).
 - `tb_lab_member_inventory.last_rest_at`(마지막 침대 휴식 회복 시각, NULL 허용). 기존 행은 바꾸지 않는다.
+
+### V25 마이그레이션 (환생 기록)
+
+V25는 `lab.tb_lab_member.reborn`을 추가한다. 기존 회원은 `false`로 시작하며 회원 데이터와 재화는 보존된다.
+
+1. V24와 V25를 지원하는 스키마 확장 릴리스(`24..25`)를 기존 배포 절차로 먼저 적용한다.
+2. 운영 담당자가 해당 릴리스 체크아웃에서 `python3 deploy/migrate-prod.py`를 실행한다. 기존 스크립트가 백업을 검증하고 Flyway를 V25까지 실행한다.
+3. V25 성공 이력과 사전 검사를 확인한 뒤 엔딩 기능 릴리스(`25..25`)를 적용한다. V25 적용 후 롤백할 때는 V25를 지원하는 확장 릴리스를 사용한다.
