@@ -84,7 +84,7 @@ cd /opt/homeserver/apps/seulgae-tech-lab
 python3 deploy/ops.py check
 ```
 
-`check`는 Docker·Compose, PostgreSQL 상태와 네트워크, 두 비밀번호 파일과 권한, 해석된 Compose DB 설정, 기존 Flyway 이력을 확인한다. SQL은 READ ONLY 트랜잭션으로 실행한다. 성공 이력의 스키마 버전 V1~V20만 허용하며 실패 이력·미적용·다른 버전이면 중단한다. 배포할 릴리스와 맞는지는 `deploy`가 릴리스의 `db_schema` 범위로 다시 확인한다. 이미지 Pull, 앱 시작, 마이그레이션은 하지 않는다. 자체 ops 디렉터리와 잠금 파일은 만들 수 있다.
+`check`는 Docker·Compose, PostgreSQL 상태와 네트워크, 두 비밀번호 파일과 권한, 해석된 Compose DB 설정, 기존 Flyway 이력을 확인한다. SQL은 READ ONLY 트랜잭션으로 실행한다. 성공 이력의 스키마 버전 V1~V21만 허용하며 실패 이력·미적용·다른 버전이면 중단한다. 배포할 릴리스와 맞는지는 `deploy`가 릴리스의 `db_schema` 범위로 다시 확인한다. 이미지 Pull, 앱 시작, 마이그레이션은 하지 않는다. 자체 ops 디렉터리와 잠금 파일은 만들 수 있다.
 
 병합 후 main CI에서 이미지·manifest 게시가 끝났는지 GitHub Actions에서 사용자가 확인한 다음:
 
@@ -393,3 +393,11 @@ V17 절차의 3~5번이다. 코드가 `tb_lab_` 새 이름만 쓰는 릴리스(*
 - 새 테이블 `tb_lab_savings`(은행 적금: 원금·기간·이자율·만기·수령), `tb_lab_stock`(가상 종목 6개와 현재가), `tb_lab_stock_price`(시세 기록), `tb_lab_member_stock`(회원 보유 주식)
 - 공통코드 `COIN_REASON`: `SAVINGS_DEPOSIT`, `SAVINGS_PAYOUT`, `STOCK_BUY`, `STOCK_SELL`, `GAMBLE_BET`, `GAMBLE_WIN`
 - 기존 행은 바꾸지 않는다.
+
+### V21 마이그레이션 (아이디어 기획·QA 게시판, 2026-11-24)
+
+확장 3단계다. 확장 PR 릴리스는 `db_schema` **20..21**, 기능 PR은 **21..21**(Draft로 두고 마이그레이션 뒤 머지).
+- 새 테이블 `tb_lab_idea_post`(아이디어 기획 게시판), `tb_lab_qa_ticket`(QA 티켓: 등록 → 조치 중 → 조치 완료)
+- 공통코드 `QA_STATUS` 3개, `COIN_REASON`의 `JAVA_PRACTICE`, `DAILY_TASKS`
+- 예전 업무 게시판의 QA 티켓을 같은 ID로 옮긴다(최종 승인은 조치 완료, 반려는 조치 중). 예전 테이블은 아직 지우지 않는다.
+- 다음 축소 단계(V22)에서 V21 뒤에 들어온 QA 티켓을 한 번 더 옮기고 `tb_lab_work_item`과 `WORK_CATEGORY`·`WORK_STATUS` 코드를 지운다.
