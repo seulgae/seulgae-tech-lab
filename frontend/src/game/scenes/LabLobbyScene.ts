@@ -32,7 +32,7 @@ import { FISH_COLORS } from '../rooms/fishingLogic'
 /** 패널을 열 때 함께 나는 장비 소리(컴퓨터 타이핑, 키오스크, 화이트보드 마커 등) */
 const PANEL_SOUNDS: Partial<Record<string, EffectKey>> = {
   'pull-requests': 'kiosk', 'build-info': 'typing', 'server-status': 'beep', agenda: 'marker', bookshelf: 'page', 'admin-console': 'typing', 'admin-apply': 'kiosk',
-  'work-board': 'typing', arcade: 'success', guestbook: 'kiosk', 'food-cart': 'coin',
+  'work-board': 'typing', arcade: 'success', gamble: 'coin', guestbook: 'kiosk', 'food-cart': 'coin',
 }
 
 /**
@@ -351,6 +351,7 @@ export default class LabLobbyScene extends Phaser.Scene {
     else {
       if (target.kind === 'work-board') this.uiEvents.emit(LAB_EVENTS.workBoard, target.id)
       if (target.kind === 'server-status') this.uiEvents.emit(LAB_EVENTS.serverRack, target.id)
+      if (target.kind === 'gamble') this.uiEvents.emit(LAB_EVENTS.gamble, target.id)
       this.uiEvents.emit(LAB_EVENTS.openPanel, target.kind)
     }
   }

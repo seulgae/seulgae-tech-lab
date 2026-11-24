@@ -6,8 +6,8 @@ import { PHONE_APPS } from '../src/features/phone/phoneApps.ts'
 import { addTodo, amountText, deleteSns, fetchTodos, searchRecipients, setTodoDone, transfer, writeSns } from '../src/features/phone/phoneApi.ts'
 
 test('폰 앱: 물고기 보관함·은행·캘린더는 회원만, 브라우저·SNS는 누구나', () => {
-  assert.deepEqual(PHONE_APPS.map(app => app.id), ['fish', 'bank', 'calendar', 'browser', 'sns', 'furniture', 'map'])
-  assert.deepEqual(PHONE_APPS.filter(app => app.memberOnly).map(app => app.id), ['fish', 'bank', 'calendar', 'furniture'])
+  assert.deepEqual(PHONE_APPS.map(app => app.id), ['fish', 'bank', 'calendar', 'browser', 'sns', 'furniture', 'map', 'stock'])
+  assert.deepEqual(PHONE_APPS.filter(app => app.memberOnly).map(app => app.id), ['fish', 'bank', 'calendar', 'furniture', 'stock'])
 })
 
 test('폰 시계·달력: 한국 시간, 일요일 시작 달력, 달 넘기기', () => {
@@ -85,4 +85,12 @@ test('지도 앱: 문 위치대로 로비·개발 연구실 구역을 나누고,
   assert.deepEqual(lobby.cells.find(cell => cell.room === 'office-4')?.slot, 'bottom-right')
   assert.equal(lobby.cells.find(cell => cell.room === 'development-lab')?.hub, 'development-lab', '다른 구역으로 가는 칸')
   assert.equal(areaOf('server-room'), 'development-lab'); assert.equal(areaOf('office-3'), 'lobby'); assert.equal(areaOf('outdoor'), 'lobby')
+})
+
+test('적금 만기 수령액과 주식 평가 손익(서버와 같은 계산)', async () => {
+  const { profitOf, savingsPayout } = await import('../src/features/phone/phoneApi.ts')
+  const item = { id: 's', principal: 101, termDays: 3, ratePct: 10, createdAt: '2026-11-24T00:00:00Z', maturesAt: '2026-11-27T00:00:00Z', closedAt: null, payout: null }
+  assert.equal(savingsPayout(item, new Date('2026-11-26T23:59:00Z')), 101, '만기 전은 원금만')
+  assert.equal(savingsPayout(item, new Date('2026-11-27T00:00:00Z')), 111, '만기면 이자(내림)까지')
+  assert.equal(profitOf({ code: 'SGLB', quantity: 3, totalCost: 300 }, 90), -30)
 })

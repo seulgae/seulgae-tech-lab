@@ -47,3 +47,44 @@ export const deleteSns = (id: string) => request<void>(`/api/sns/${encodeURIComp
 
 /** 거래 내역 금액 표시: +10원 / -3원 */
 export const amountText = (amount: number) => `${amount > 0 ? '+' : ''}${amount.toLocaleString('ko-KR')}원`
+
+/* ---------- 은행 적금 ---------- */
+export type Savings = { id: string; principal: number; termDays: number; ratePct: number; createdAt: string; maturesAt: string; closedAt: string | null; payout: number | null }
+export type SavingsView = { coins: number; terms: { days: number; ratePct: number }[]; savings: Savings[]; maxAmount: number; maxOpen: number }
+
+export const fetchSavings = () => request<SavingsView>('/api/savings')
+export const depositSavings = (amount: number, days: number) => request<SavingsView>('/api/savings/deposit', post({ amount, days }), {
+  400: '금액과 기간을 다시 확인해 주세요.', 409: '잔액이 모자라거나 적금이 이미 3개예요.',
+})
+export const withdrawSavings = (id: string) => request<SavingsView>('/api/savings/withdraw', post({ id }), { 404: '내 적금이 아니에요.', 409: '이미 찾은 적금이에요.' })
+
+/**
+ * 지금 찾으면 받을 동전(서버 SavingsServiceImpl.payout과 같은 계산).
+ *
+ * @param item 적금
+ * @param now 지금
+ * @returns 받을 동전
+ */
+export function savingsPayout(item: Savings, now: Date): number {
+  return now >= new Date(item.maturesAt) ? item.principal + Math.floor(item.principal * item.ratePct / 100) : item.principal
+}
+
+/* ---------- 주식 ---------- */
+export type StockQuote = { code: string; name: string; summary: string; price: number; changePct: number; history: number[] }
+export type StockHolding = { code: string; quantity: number; totalCost: number }
+export type StockView = { coins: number; stocks: StockQuote[]; holdings: StockHolding[]; tradesLeftToday: number; nextTickSeconds: number }
+export const STOCK_MAX_QUANTITY = 100
+
+export const fetchStocks = () => request<StockView>('/api/stocks')
+const stockMessages: Messages = { 400: `한 번에 1~${STOCK_MAX_QUANTITY}주까지 사고팔 수 있어요.`, 404: '없는 종목이에요.', 409: '잔액이나 가진 주식이 모자라요.', 429: '오늘은 더 거래할 수 없어요(하루 30번).' }
+export const buyStock = (code: string, quantity: number) => request<StockView>('/api/stocks/buy', post({ code, quantity }), stockMessages)
+export const sellStock = (code: string, quantity: number) => request<StockView>('/api/stocks/sell', post({ code, quantity }), stockMessages)
+
+/**
+ * 보유 주식의 평가 손익: 지금 가격으로 팔면 받을 돈 - 산 금액.
+ *
+ * @param holding 보유
+ * @param price 현재가
+ * @returns 손익(동전)
+ */
+export const profitOf = (holding: StockHolding, price: number) => holding.quantity * price - holding.totalCost
