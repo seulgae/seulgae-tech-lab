@@ -1,0 +1,28 @@
+.install-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 1px solid #4b6258;
+  background: #20383a;
+  color: #e2e8d9;
+}
+
+.install-banner-icon { flex: none; image-rendering: pixelated; }
+.install-banner-copy { flex: 1 1 175px; }
+.install-banner h2 { margin: 0 0 4px; font-size: 14px; }
+.install-banner p { color: #bdcdbf; font-size: 12px; line-height: 1.5; }
+.install-banner p + p { margin-top: 6px; }
+.install-banner-actions { display: flex; gap: 8px; margin-left: auto; }
+.install-banner button {
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid #667f74;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.install-banner .install-banner-primary { border-color: #acc7ab; background: #acc7ab; color: #172c2e; font-weight: 700; }

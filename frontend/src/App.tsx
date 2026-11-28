@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ROOMS } from './game/maps/rooms'
 import type { RoomId } from './game/maps/rooms'
 import GameCanvas from './components/GameCanvas'
+import InstallBanner from './components/InstallBanner'
 import SoundSettings from './audio/SoundSettings'
 import { OPEN_INVENTORY_EVENT } from './features/inventory/inventoryStore'
 import { ROOM_THEMES } from './game/rooms/roomThemes'
@@ -10,11 +11,11 @@ import { authStore } from './features/auth/authStore'
 import './App.css'
 
 /**
- * 야외에서 시작하는 게임 화면과 현재 방의 테마·조작 안내를 배치한다.
+ * 앱 설치 안내와 야외에서 시작하는 게임 화면, 현재 방의 테마·조작 안내를 배치한다.
  *
  * @author seulgae
- * @version 1.2, 야외 시작 화면에 맞춘 방 안내
- * @see "None"
+ * @version 1.3, 게임 화면 상단에 앱 설치 안내 추가
+ * @see InstallBanner
  * @returns 게임 화면을 포함한 메인 영역
  */
 function App() {
@@ -50,6 +51,7 @@ function App() {
           <span className="location-badge"><i aria-hidden="true" /> {ROOMS[roomId].name} <span>LAB</span></span>
         </div>
       </header>
+      <InstallBanner />
       <div className="lab-layout">
         <section className="game-card" id="lobby" aria-labelledby="lobby-title">
           <header className="game-card-header">
